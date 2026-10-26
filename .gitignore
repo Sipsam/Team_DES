@@ -1,0 +1,43 @@
+﻿# Unity generated
+[Ll]ibrary/
+[Tt]emp/
+[Oo]bj/
+[Ll]ogs/
+UserSettings/
+
+# Builds
+[Bb]uild/
+[Bb]uilds/
+
+# Rider / JetBrains
+.idea/
+*.sln.iml
+
+# Visual Studio
+.vs/
+.vscode/
+.vsconfig
+
+# Generated project files
+*.csproj
+*.sln
+*.suo
+*.user
+*.userprefs
+*.pidb
+*.booproj
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Crash / debug
+sysinfo.txt
+*.stackdump
+
+# Optional local file you created
+list.txt
+
+# Git
+.git/
