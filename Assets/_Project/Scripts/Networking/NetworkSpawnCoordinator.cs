@@ -104,6 +104,11 @@ public sealed class NetworkSpawnCoordinator : MonoBehaviour
 
         playerObject.transform.SetPositionAndRotation(spawnPoint.position, spawnPoint.rotation);
         playerObject.GetComponent<PlayerMovement>()?.ResetVerticalVelocity();
+        if (networkManager.IsServer)
+        {
+            RespawnManager respawnManager = FindFirstObjectByType<RespawnManager>();
+            respawnManager?.RegisterSpawn(playerObject.GetComponent<PlayerMovement>());
+        }
         Debug.Log($"Placed client {clientId} at {spawnPoint.name}: {spawnPoint.position}.", playerObject);
     }
 

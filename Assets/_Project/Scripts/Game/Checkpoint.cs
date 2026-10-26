@@ -14,18 +14,20 @@ public sealed class Checkpoint : MonoBehaviour
     private void OnTriggerEnter(Collider other)
     {
         PlayerMovement player = other.GetComponentInParent<PlayerMovement>();
-        if (player == null || (player.IsSpawned && !player.IsOwner))
+        if (player == null || !player.IsSpawned || !player.IsOwner)
         {
             return;
         }
 
+        player.RequestCheckpointServerRpc(gameObject.name);
+    }
+
+    public void RegisterPlayerCheckpoint(PlayerMovement player)
+    {
         RespawnManager manager = respawnManager != null
             ? respawnManager
             : FindFirstObjectByType<RespawnManager>();
 
-        if (manager != null)
-        {
-            manager.SetCheckpoint(transform.position + respawnOffset, transform.rotation);
-        }
+        manager?.SetCheckpoint(player, transform.position + respawnOffset, transform.rotation);
     }
 }

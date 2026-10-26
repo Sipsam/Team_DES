@@ -17,8 +17,10 @@ public sealed class PlayerMovement : NetworkBehaviour
 
     private CharacterController characterController;
     private float verticalSpeed;
+    private Pose initialSpawnPose;
 
     public bool IsGrounded { get; private set; }
+    public Pose InitialSpawnPose => initialSpawnPose;
 
     private void Awake()
     {
@@ -67,16 +69,15 @@ public sealed class PlayerMovement : NetworkBehaviour
 
     public override void OnNetworkSpawn()
     {
-        enabled = IsOwner;
+        if (IsServer)
+        {
+            initialSpawnPose = new Pose(transform.position, transform.rotation);
+            FindFirstObjectByType<RespawnManager>()?.RegisterSpawn(this);
+        }
+
         if (!IsOwner)
         {
             return;
-        }
-
-        RespawnManager respawnManager = FindFirstObjectByType<RespawnManager>();
-        if (respawnManager != null)
-        {
-            respawnManager.RegisterLocalPlayer(this);
         }
 
         Camera mainCamera = Camera.main;
@@ -93,12 +94,6 @@ public sealed class PlayerMovement : NetworkBehaviour
 
     public override void OnNetworkDespawn()
     {
-        RespawnManager respawnManager = FindFirstObjectByType<RespawnManager>();
-        if (respawnManager != null)
-        {
-            respawnManager.UnregisterLocalPlayer(this);
-        }
-
         if (!IsOwner)
         {
             return;
@@ -119,6 +114,73 @@ public sealed class PlayerMovement : NetworkBehaviour
     {
         verticalSpeed = 0f;
         IsGrounded = false;
+    }
+
+    [Rpc(SendTo.SpecifiedInParams, InvokePermission = RpcInvokePermission.Server)]
+    public void RespawnAtOwnerClientRpc(Vector3 position, Quaternion rotation,
+        RpcParams rpcParams = default)
+    {
+        if (!IsOwner)
+        {
+            return;
+        }
+
+        bool controllerWasEnabled = characterController != null && characterController.enabled;
+        if (controllerWasEnabled)
+        {
+            characterController.enabled = false;
+        }
+
+        transform.SetPositionAndRotation(position, rotation);
+        ResetVerticalVelocity();
+
+        if (controllerWasEnabled)
+        {
+            characterController.enabled = true;
+        }
+    }
+
+    [Rpc(SendTo.Server, InvokePermission = RpcInvokePermission.Everyone)]
+    public void RequestCheckpointServerRpc(string checkpointName, RpcParams rpcParams = default)
+    {
+        ulong senderClientId = rpcParams.Receive.SenderClientId;
+        if (!IsServer || senderClientId != OwnerClientId)
+        {
+            return;
+        }
+
+        Checkpoint[] availableCheckpoints = FindObjectsByType<Checkpoint>(FindObjectsSortMode.None);
+        foreach (Checkpoint checkpoint in availableCheckpoints)
+        {
+            if (checkpoint.gameObject.name != checkpointName ||
+                Vector3.Distance(transform.position, checkpoint.transform.position) > 4f)
+            {
+                continue;
+            }
+
+            checkpoint.RegisterPlayerCheckpoint(this);
+            return;
+        }
+    }
+
+    [Rpc(SendTo.Server, InvokePermission = RpcInvokePermission.Everyone)]
+    public void RequestKillZoneRespawnServerRpc(string killZoneName, RpcParams rpcParams = default)
+    {
+        ulong senderClientId = rpcParams.Receive.SenderClientId;
+        if (!IsServer || senderClientId != OwnerClientId)
+        {
+            return;
+        }
+
+        KillZone[] killZones = FindObjectsByType<KillZone>(FindObjectsSortMode.None);
+        foreach (KillZone killZone in killZones)
+        {
+            if (killZone.gameObject.name == killZoneName && killZone.ContainsPlayerPosition(transform.position))
+            {
+                FindFirstObjectByType<RespawnManager>()?.RespawnPlayer(this);
+                return;
+            }
+        }
     }
 
     private static Vector2 ReadMovementInput()

@@ -4,10 +4,12 @@ using UnityEngine;
 
 public sealed class NetworkDebugUI : MonoBehaviour
 {
-    private static readonly Rect MenuRect = new Rect(12f, 12f, 220f, 180f);
+    private static readonly Rect MenuRect = new Rect(12f, 12f, 280f, 330f);
     private static NetworkDebugUI activeInstance;
 
     [SerializeField] private NetworkManager networkManager;
+    [SerializeField] private GameStateManager gameStateManager;
+    [SerializeField] private BridgeController bridgeController;
     [SerializeField] private string address = "127.0.0.1";
     [SerializeField, Min(1)] private int port = 7777;
 
@@ -19,6 +21,16 @@ public sealed class NetworkDebugUI : MonoBehaviour
         if (networkManager == null)
         {
             networkManager = FindFirstObjectByType<NetworkManager>();
+        }
+
+        if (gameStateManager == null)
+        {
+            gameStateManager = FindFirstObjectByType<GameStateManager>();
+        }
+
+        if (bridgeController == null)
+        {
+            bridgeController = FindFirstObjectByType<BridgeController>();
         }
     }
 
@@ -75,6 +87,26 @@ public sealed class NetworkDebugUI : MonoBehaviour
             {
                 StopSession();
             }
+        }
+
+        if (gameStateManager != null)
+        {
+            int connectedPlayers = networkManager.IsListening
+                ? networkManager.ConnectedClientsIds.Count
+                : 0;
+            GUILayout.Space(8f);
+            GUILayout.Label($"Game State: {gameStateManager.CurrentState}");
+            GUILayout.Label($"TurnPoint: {gameStateManager.TurnPointArrivalCount}/{connectedPlayers}");
+            GUILayout.Label(gameStateManager.HasWinner
+                ? $"Winner: Player {gameStateManager.WinnerClientId + 1} (Client {gameStateManager.WinnerClientId})"
+                : "Winner: None");
+        }
+
+        if (bridgeController != null)
+        {
+            GUILayout.Label($"Bridge: {bridgeController.CurrentState}");
+            GUILayout.Label($"Switch A: {(bridgeController.IsSwitchActivated(BridgeSwitchId.A) ? "Active" : "Inactive")}");
+            GUILayout.Label($"Switch B: {(bridgeController.IsSwitchActivated(BridgeSwitchId.B) ? "Active" : "Inactive")}");
         }
 
         GUILayout.Label(statusMessage);

@@ -1,82 +1,71 @@
+using System.Collections.Generic;
+using Unity.Netcode;
 using UnityEngine;
 
-public sealed class RespawnManager : MonoBehaviour
+[RequireComponent(typeof(NetworkObject))]
+public sealed class RespawnManager : NetworkBehaviour
 {
-    [SerializeField] private PlayerMovement player;
+    private readonly Dictionary<ulong, Pose> checkpoints = new Dictionary<ulong, Pose>();
 
-    private CharacterController playerController;
-    private Vector3 checkpointPosition;
-    private Quaternion checkpointRotation;
-
-    private void Awake()
+    public void RegisterSpawn(PlayerMovement player)
     {
-        if (player == null)
+        if (IsServer && player != null && player.IsSpawned)
         {
-            player = FindFirstObjectByType<PlayerMovement>();
-        }
-
-        if (player != null)
-        {
-            playerController = player.GetComponent<CharacterController>();
-            checkpointPosition = player.transform.position;
-            checkpointRotation = player.transform.rotation;
+            checkpoints[player.OwnerClientId] = new Pose(player.transform.position, player.transform.rotation);
         }
     }
 
-    public void RegisterLocalPlayer(PlayerMovement localPlayer)
+    public void SetCheckpoint(PlayerMovement player, Vector3 position, Quaternion rotation)
     {
-        if (localPlayer == null)
+        if (!IsServer || player == null || !player.IsSpawned)
         {
             return;
         }
 
-        player = localPlayer;
-        playerController = player.GetComponent<CharacterController>();
-        checkpointPosition = player.transform.position;
-        checkpointRotation = player.transform.rotation;
+        checkpoints[player.OwnerClientId] = new Pose(position, rotation);
+        Debug.Log($"Checkpoint set for client {player.OwnerClientId}.", player);
     }
 
-    public void UnregisterLocalPlayer(PlayerMovement localPlayer)
+    public void RespawnPlayer(PlayerMovement player)
     {
-        if (player != localPlayer)
+        if (!IsServer || player == null || !player.IsSpawned)
         {
             return;
         }
 
-        player = null;
-        playerController = null;
+        if (!checkpoints.TryGetValue(player.OwnerClientId, out Pose checkpoint))
+        {
+            checkpoint = player.InitialSpawnPose;
+            checkpoints[player.OwnerClientId] = checkpoint;
+        }
+
+        player.RespawnAtOwnerClientRpc(checkpoint.position, checkpoint.rotation,
+            RpcTarget.Single(player.OwnerClientId, RpcTargetUse.Temp));
     }
 
-    public void SetCheckpoint(Vector3 position, Quaternion rotation)
+    public override void OnNetworkSpawn()
     {
-        checkpointPosition = position;
-        checkpointRotation = rotation;
+        if (IsServer)
+        {
+            checkpoints.Clear();
+        }
+
+        if (IsServer && NetworkManager != null)
+        {
+            NetworkManager.OnClientDisconnectCallback += HandleClientDisconnected;
+        }
     }
 
-    public void RespawnPlayer()
+    public override void OnNetworkDespawn()
     {
-        if (player == null)
+        if (IsServer && NetworkManager != null)
         {
-            return;
+            NetworkManager.OnClientDisconnectCallback -= HandleClientDisconnected;
         }
+    }
 
-        if (playerController == null)
-        {
-            playerController = player.GetComponent<CharacterController>();
-        }
-
-        bool controllerWasEnabled = playerController != null && playerController.enabled;
-        if (controllerWasEnabled)
-        {
-            playerController.enabled = false;
-        }
-
-        player.transform.SetPositionAndRotation(checkpointPosition, checkpointRotation);
-        player.ResetVerticalVelocity();
-
-        if (controllerWasEnabled)
-        {
-            playerController.enabled = true;
-        }
+    private void HandleClientDisconnected(ulong clientId)
+    {
+        checkpoints.Remove(clientId);
     }
 }

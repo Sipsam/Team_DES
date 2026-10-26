@@ -12,7 +12,8 @@ public sealed class TurnPoint : MonoBehaviour
 
     private void OnTriggerEnter(Collider other)
     {
-        if (other.GetComponentInParent<PlayerMovement>() == null)
+        PlayerMovement player = other.GetComponentInParent<PlayerMovement>();
+        if (player == null || !player.IsSpawned)
         {
             return;
         }
@@ -21,9 +22,6 @@ public sealed class TurnPoint : MonoBehaviour
             ? gameStateManager
             : FindFirstObjectByType<GameStateManager>();
 
-        if (manager != null && manager.TryTransitionTo(GameState.Competition))
-        {
-            Debug.Log("Competition Phase Started");
-        }
+        manager?.RegisterTurnPointArrival(player.OwnerClientId);
     }
 }

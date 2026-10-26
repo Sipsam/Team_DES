@@ -12,7 +12,8 @@ public sealed class Goal : MonoBehaviour
 
     private void OnTriggerEnter(Collider other)
     {
-        if (other.GetComponentInParent<PlayerMovement>() == null)
+        PlayerMovement player = other.GetComponentInParent<PlayerMovement>();
+        if (player == null || !player.IsSpawned)
         {
             return;
         }
@@ -21,11 +22,6 @@ public sealed class Goal : MonoBehaviour
             ? gameStateManager
             : FindFirstObjectByType<GameStateManager>();
 
-        if (manager != null &&
-            manager.CurrentState == GameState.Competition &&
-            manager.TryTransitionTo(GameState.Finished))
-        {
-            Debug.Log("Prototype Finished");
-        }
+        manager?.TryFinish(player.OwnerClientId);
     }
 }

@@ -3,8 +3,6 @@ using UnityEngine;
 [RequireComponent(typeof(Collider))]
 public sealed class KillZone : MonoBehaviour
 {
-    [SerializeField] private RespawnManager respawnManager;
-
     private void Reset()
     {
         GetComponent<Collider>().isTrigger = true;
@@ -13,18 +11,24 @@ public sealed class KillZone : MonoBehaviour
     private void OnTriggerEnter(Collider other)
     {
         PlayerMovement player = other.GetComponentInParent<PlayerMovement>();
-        if (player == null || (player.IsSpawned && !player.IsOwner))
+        if (player == null || !player.IsSpawned || !player.IsOwner)
         {
             return;
         }
 
-        RespawnManager manager = respawnManager != null
-            ? respawnManager
-            : FindFirstObjectByType<RespawnManager>();
+        player.RequestKillZoneRespawnServerRpc(gameObject.name);
+    }
 
-        if (manager != null)
+    public bool ContainsPlayerPosition(Vector3 position)
+    {
+        Collider zoneCollider = GetComponent<Collider>();
+        if (zoneCollider == null)
         {
-            manager.RespawnPlayer();
+            return false;
         }
+
+        Bounds bounds = zoneCollider.bounds;
+        bounds.Expand(4f);
+        return bounds.Contains(position);
     }
 }

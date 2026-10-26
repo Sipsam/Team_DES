@@ -13,8 +13,9 @@ public sealed class BridgeSwitch : MonoBehaviour, IInteractable
     [SerializeField] private Color inactiveColor = Color.gray;
     [SerializeField] private Color activatedColor = Color.green;
 
-    public bool IsActivated { get; private set; }
-    public bool CanInteract => !IsActivated && bridgeController != null && bridgeController.CanActivateSwitch;
+    public BridgeSwitchId SwitchId => switchId;
+    public bool IsActivated => bridgeController != null && bridgeController.IsSwitchActivated(switchId);
+    public bool CanInteract => !IsActivated && bridgeController != null && bridgeController.CurrentState == BridgeState.Incomplete;
 
     private Renderer switchRenderer;
 
@@ -24,16 +25,42 @@ public sealed class BridgeSwitch : MonoBehaviour, IInteractable
         UpdateVisual();
     }
 
+    private void OnEnable()
+    {
+        if (bridgeController != null)
+        {
+            bridgeController.SwitchStateChanged += HandleSwitchStateChanged;
+        }
+    }
+
+    private void OnDisable()
+    {
+        if (bridgeController != null)
+        {
+            bridgeController.SwitchStateChanged -= HandleSwitchStateChanged;
+        }
+    }
+
+    private void Start()
+    {
+        UpdateVisual();
+    }
+
     public void Interact(PlayerInteraction player)
     {
-        if (IsActivated || bridgeController == null)
+        if (IsActivated || bridgeController == null || player == null ||
+            (player.IsSpawned && !player.IsOwner))
         {
             return;
         }
 
-        if (bridgeController.ActivateSwitch(switchId))
+        bridgeController.RequestSwitchActivation(switchId);
+    }
+
+    private void HandleSwitchStateChanged(BridgeSwitchId changedSwitch, bool activated)
+    {
+        if (changedSwitch == switchId)
         {
-            IsActivated = true;
             UpdateVisual();
         }
     }

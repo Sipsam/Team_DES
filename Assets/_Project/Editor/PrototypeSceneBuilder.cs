@@ -111,6 +111,7 @@ public static class PrototypeSceneBuilder
     private static void BuildScene()
     {
         GameObject gameManager = new GameObject("GameManager");
+        gameManager.AddComponent<NetworkObject>();
         RespawnManager respawnManager = gameManager.AddComponent<RespawnManager>();
         GameStateManager gameStateManager = gameManager.AddComponent<GameStateManager>();
 
@@ -194,6 +195,7 @@ public static class PrototypeSceneBuilder
 
         GameObject bridge = new GameObject("Bridge");
         bridge.transform.SetParent(bridgeArea.transform, false);
+        bridge.AddComponent<NetworkObject>();
         BridgeController bridgeController = bridge.AddComponent<BridgeController>();
         SetObjectReference(bridgeController, "gameStateManager", gameStateManager);
 
@@ -265,8 +267,7 @@ public static class PrototypeSceneBuilder
         BoxCollider killZoneCollider = killZone.AddComponent<BoxCollider>();
         killZoneCollider.size = new Vector3(100f, 1f, 100f);
         killZoneCollider.isTrigger = true;
-        KillZone killZoneScript = killZone.AddComponent<KillZone>();
-        SetObjectReference(killZoneScript, "respawnManager", respawnManager);
+        killZone.AddComponent<KillZone>();
 
         GameObject directionalLight = new GameObject("Directional Light");
         Light lightComponent = directionalLight.AddComponent<Light>();
