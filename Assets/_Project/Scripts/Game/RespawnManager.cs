@@ -23,6 +23,30 @@ public sealed class RespawnManager : MonoBehaviour
         }
     }
 
+    public void RegisterLocalPlayer(PlayerMovement localPlayer)
+    {
+        if (localPlayer == null)
+        {
+            return;
+        }
+
+        player = localPlayer;
+        playerController = player.GetComponent<CharacterController>();
+        checkpointPosition = player.transform.position;
+        checkpointRotation = player.transform.rotation;
+    }
+
+    public void UnregisterLocalPlayer(PlayerMovement localPlayer)
+    {
+        if (player != localPlayer)
+        {
+            return;
+        }
+
+        player = null;
+        playerController = null;
+    }
+
     public void SetCheckpoint(Vector3 position, Quaternion rotation)
     {
         checkpointPosition = position;

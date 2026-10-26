@@ -1,7 +1,8 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
+using Unity.Netcode;
 
-public sealed class PlayerInteraction : MonoBehaviour
+public sealed class PlayerInteraction : NetworkBehaviour
 {
     [SerializeField, Min(0.1f)] private float interactionRadius = 2.5f;
     [SerializeField] private LayerMask interactionLayers = ~0;
@@ -10,6 +11,11 @@ public sealed class PlayerInteraction : MonoBehaviour
 
     private void Update()
     {
+        if (IsSpawned && !IsOwner)
+        {
+            return;
+        }
+
         Keyboard keyboard = Keyboard.current;
         if (keyboard == null || !keyboard.eKey.wasPressedThisFrame)
         {
@@ -18,6 +24,11 @@ public sealed class PlayerInteraction : MonoBehaviour
 
         IInteractable interactable = FindClosestInteractable();
         interactable?.Interact(this);
+    }
+
+    public override void OnNetworkSpawn()
+    {
+        enabled = IsOwner;
     }
 
     private IInteractable FindClosestInteractable()

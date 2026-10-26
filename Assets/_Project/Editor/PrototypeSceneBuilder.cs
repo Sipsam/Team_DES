@@ -1,13 +1,18 @@
 using System.IO;
+using System.Collections.Generic;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using Unity.Netcode;
+using Unity.Netcode.Transports.UTP;
 
 public static class PrototypeSceneBuilder
 {
     private const string SceneDirectory = "Assets/_Project/Scenes";
     private const string ScenePath = SceneDirectory + "/Prototype_01.unity";
+    private const string PlayerPrefabDirectory = "Assets/_Project/Prefabs/Player";
+    private const string PlayerPrefabPath = PlayerPrefabDirectory + "/NetworkPlayer.prefab";
 
     [MenuItem("Tools/Prototype/Create Prototype Scene")]
     private static void CreatePrototypeScene()
@@ -36,6 +41,7 @@ public static class PrototypeSceneBuilder
 
         if (EditorSceneManager.SaveScene(scene, ScenePath))
         {
+            AddSceneToBuildSettings(ScenePath);
             AssetDatabase.Refresh();
             Debug.Log($"Prototype scene created: {ScenePath}");
         }
@@ -128,15 +134,51 @@ public static class PrototypeSceneBuilder
         cameraTarget.transform.SetParent(player.transform, false);
         cameraTarget.transform.localPosition = new Vector3(0f, 1.4f, 0f);
 
+        player.AddComponent<NetworkObject>();
+        OwnerNetworkTransform networkTransform = player.AddComponent<OwnerNetworkTransform>();
+        networkTransform.AuthorityMode = Unity.Netcode.Components.NetworkTransform.AuthorityModes.Owner;
         PlayerMovement playerMovement = player.AddComponent<PlayerMovement>();
         player.AddComponent<PlayerInteraction>();
-        SetObjectReference(respawnManager, "player", playerMovement);
+
+        // A scene camera cannot be referenced from a prefab. The owning client binds it at spawn time.
+        SetObjectReference(playerMovement, "cameraTransform", null);
+
+        Directory.CreateDirectory(PlayerPrefabDirectory);
+        AssetDatabase.Refresh();
+        GameObject networkPlayerPrefab = PrefabUtility.SaveAsPrefabAsset(player, PlayerPrefabPath);
+        if (networkPlayerPrefab == null)
+        {
+            Debug.LogError($"Failed to save network player prefab: {PlayerPrefabPath}");
+            return;
+        }
+        Object.DestroyImmediate(player);
 
         GameObject mainCamera = new GameObject("Main Camera", typeof(Camera), typeof(AudioListener));
         mainCamera.tag = "MainCamera";
         ThirdPersonCamera thirdPersonCamera = mainCamera.AddComponent<ThirdPersonCamera>();
-        SetObjectReference(thirdPersonCamera, "target", cameraTarget.transform);
-        SetObjectReference(playerMovement, "cameraTransform", mainCamera.transform);
+        thirdPersonCamera.enabled = false;
+
+        GameObject networkManagerObject = new GameObject("NetworkManager");
+        NetworkManager networkManager = networkManagerObject.AddComponent<NetworkManager>();
+        UnityTransport transport = networkManagerObject.AddComponent<UnityTransport>();
+        transport.SetConnectionData("127.0.0.1", 7777, "0.0.0.0");
+        networkManager.NetworkConfig.NetworkTransport = transport;
+        networkManager.NetworkConfig.PlayerPrefab = networkPlayerPrefab;
+        networkManager.NetworkConfig.ConnectionApproval = true;
+
+        GameObject spawnPointsObject = new GameObject("PlayerSpawnPoints");
+        Transform spawnPoint01 = CreateSpawnPoint(spawnPointsObject.transform,
+            "SpawnPoint_01", new Vector3(-1.5f, 0.5f, 0f));
+        Transform spawnPoint02 = CreateSpawnPoint(spawnPointsObject.transform,
+            "SpawnPoint_02", new Vector3(1.5f, 0.5f, 0f));
+
+        NetworkSpawnCoordinator spawnCoordinator = networkManagerObject.AddComponent<NetworkSpawnCoordinator>();
+        SetObjectReference(spawnCoordinator, "networkManager", networkManager);
+        SetObjectArray(spawnCoordinator, "spawnPoints", spawnPoint01, spawnPoint02);
+
+        GameObject networkDebugUiObject = new GameObject("NetworkDebugUI");
+        NetworkDebugUI networkDebugUi = networkDebugUiObject.AddComponent<NetworkDebugUI>();
+        SetObjectReference(networkDebugUi, "networkManager", networkManager);
 
         GameObject level = new GameObject("Level");
         GameObject startArea = new GameObject("StartArea");
@@ -290,6 +332,14 @@ public static class PrototypeSceneBuilder
         trigger.isTrigger = true;
     }
 
+    private static Transform CreateSpawnPoint(Transform parent, string objectName, Vector3 position)
+    {
+        GameObject spawnPoint = new GameObject(objectName);
+        spawnPoint.transform.SetParent(parent, false);
+        spawnPoint.transform.localPosition = position;
+        return spawnPoint.transform;
+    }
+
     private static GameObject CreateCube(string objectName, Transform parent, Vector3 position, Vector3 scale)
     {
         GameObject cube = GameObject.CreatePrimitive(PrimitiveType.Cube);
@@ -345,5 +395,40 @@ public static class PrototypeSceneBuilder
 
         property.enumValueIndex = value;
         serializedObject.ApplyModifiedPropertiesWithoutUndo();
+    }
+
+    private static void SetObjectArray(Object target, string propertyName, params Object[] values)
+    {
+        SerializedObject serializedObject = new SerializedObject(target);
+        SerializedProperty property = serializedObject.FindProperty(propertyName);
+        if (property == null || !property.isArray)
+        {
+            Debug.LogError($"Serialized array '{propertyName}' was not found on {target.GetType().Name}.");
+            return;
+        }
+
+        property.arraySize = values.Length;
+        for (int i = 0; i < values.Length; i++)
+        {
+            property.GetArrayElementAtIndex(i).objectReferenceValue = values[i];
+        }
+
+        serializedObject.ApplyModifiedPropertiesWithoutUndo();
+    }
+
+    private static void AddSceneToBuildSettings(string scenePath)
+    {
+        List<EditorBuildSettingsScene> scenes = new List<EditorBuildSettingsScene>(EditorBuildSettings.scenes);
+        for (int i = 0; i < scenes.Count; i++)
+        {
+            if (scenes[i].path == scenePath)
+            {
+                scenes.RemoveAt(i);
+                break;
+            }
+        }
+
+        scenes.Insert(0, new EditorBuildSettingsScene(scenePath, true));
+        EditorBuildSettings.scenes = scenes.ToArray();
     }
 }

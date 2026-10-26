@@ -1,8 +1,9 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
+using Unity.Netcode;
 
 [RequireComponent(typeof(CharacterController))]
-public sealed class PlayerMovement : MonoBehaviour
+public sealed class PlayerMovement : NetworkBehaviour
 {
     [Header("Movement")]
     [SerializeField, Min(0f)] private float moveSpeed = 5f;
@@ -26,6 +27,11 @@ public sealed class PlayerMovement : MonoBehaviour
 
     private void Update()
     {
+        if (IsSpawned && !IsOwner)
+        {
+            return;
+        }
+
         IsGrounded = characterController.isGrounded;
 
         if (IsGrounded && verticalSpeed < 0f)
@@ -57,6 +63,56 @@ public sealed class PlayerMovement : MonoBehaviour
         characterController.Move(velocity * Time.deltaTime);
 
         IsGrounded = characterController.isGrounded;
+    }
+
+    public override void OnNetworkSpawn()
+    {
+        enabled = IsOwner;
+        if (!IsOwner)
+        {
+            return;
+        }
+
+        RespawnManager respawnManager = FindFirstObjectByType<RespawnManager>();
+        if (respawnManager != null)
+        {
+            respawnManager.RegisterLocalPlayer(this);
+        }
+
+        Camera mainCamera = Camera.main;
+        ThirdPersonCamera thirdPersonCamera = mainCamera != null
+            ? mainCamera.GetComponent<ThirdPersonCamera>()
+            : null;
+
+        if (thirdPersonCamera != null)
+        {
+            cameraTransform = thirdPersonCamera.transform;
+            thirdPersonCamera.SetTarget(transform.Find("CameraTarget"));
+        }
+    }
+
+    public override void OnNetworkDespawn()
+    {
+        RespawnManager respawnManager = FindFirstObjectByType<RespawnManager>();
+        if (respawnManager != null)
+        {
+            respawnManager.UnregisterLocalPlayer(this);
+        }
+
+        if (!IsOwner)
+        {
+            return;
+        }
+
+        Camera mainCamera = Camera.main;
+        ThirdPersonCamera thirdPersonCamera = mainCamera != null
+            ? mainCamera.GetComponent<ThirdPersonCamera>()
+            : null;
+
+        if (thirdPersonCamera != null)
+        {
+            thirdPersonCamera.ClearTarget(transform.Find("CameraTarget"));
+        }
     }
 
     public void ResetVerticalVelocity()

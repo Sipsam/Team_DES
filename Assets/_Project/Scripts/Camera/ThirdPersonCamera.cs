@@ -32,6 +32,12 @@ public sealed class ThirdPersonCamera : MonoBehaviour
         Cursor.visible = false;
     }
 
+    private void OnDisable()
+    {
+        Cursor.lockState = CursorLockMode.None;
+        Cursor.visible = true;
+    }
+
     private void Update()
     {
         HandleCursor();
@@ -75,6 +81,27 @@ public sealed class ThirdPersonCamera : MonoBehaviour
         transform.rotation = orbitRotation;
     }
 
+    public void SetTarget(Transform newTarget)
+    {
+        target = newTarget;
+        hasInitializedPosition = false;
+        if (target != null && !enabled)
+        {
+            enabled = true;
+        }
+    }
+
+    public void ClearTarget(Transform expectedTarget)
+    {
+        if (target != expectedTarget)
+        {
+            return;
+        }
+
+        target = null;
+        enabled = false;
+    }
+
     private static void HandleCursor()
     {
         Keyboard keyboard = Keyboard.current;
@@ -84,7 +111,8 @@ public sealed class ThirdPersonCamera : MonoBehaviour
             Cursor.lockState = CursorLockMode.None;
             Cursor.visible = true;
         }
-        else if (mouse != null && mouse.leftButton.wasPressedThisFrame)
+        else if (mouse != null && mouse.leftButton.wasPressedThisFrame &&
+                 !NetworkDebugUI.IsPointerOverMenu(mouse.position.ReadValue()))
         {
             Cursor.lockState = CursorLockMode.Locked;
             Cursor.visible = false;

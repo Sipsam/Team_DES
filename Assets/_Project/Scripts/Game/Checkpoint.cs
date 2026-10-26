@@ -13,7 +13,8 @@ public sealed class Checkpoint : MonoBehaviour
 
     private void OnTriggerEnter(Collider other)
     {
-        if (other.GetComponentInParent<PlayerMovement>() == null)
+        PlayerMovement player = other.GetComponentInParent<PlayerMovement>();
+        if (player == null || (player.IsSpawned && !player.IsOwner))
         {
             return;
         }
