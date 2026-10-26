@@ -16,6 +16,11 @@ public sealed class PlayerInteraction : NetworkBehaviour
             return;
         }
 
+        if (IsSpawned && NetworkManager != null && NetworkManager.ConnectedClientsIds.Count < 2)
+        {
+            return;
+        }
+
         Keyboard keyboard = Keyboard.current;
         if (keyboard == null || !keyboard.eKey.wasPressedThisFrame)
         {

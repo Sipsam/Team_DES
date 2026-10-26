@@ -176,7 +176,7 @@ public sealed class BridgeController : NetworkBehaviour
     private void ApplyBridgeState()
     {
         if (bridgeFrame != null) bridgeFrame.SetActive(true);
-        if (cooperationPath != null) cooperationPath.SetActive(bridgeState.Value != BridgeState.Incomplete);
+        if (cooperationPath != null) cooperationPath.SetActive(bridgeState.Value == BridgeState.Complete);
 
         bool competition = bridgeState.Value == BridgeState.Competition;
         if (safeRoute != null) safeRoute.SetActive(competition);

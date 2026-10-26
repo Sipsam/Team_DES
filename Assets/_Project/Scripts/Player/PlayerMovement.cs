@@ -34,6 +34,11 @@ public sealed class PlayerMovement : NetworkBehaviour
             return;
         }
 
+        if (IsSpawned && NetworkManager != null && NetworkManager.ConnectedClientsIds.Count < 2)
+        {
+            return;
+        }
+
         IsGrounded = characterController.isGrounded;
 
         if (IsGrounded && verticalSpeed < 0f)

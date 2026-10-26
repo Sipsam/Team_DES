@@ -178,8 +178,11 @@ public static class PrototypeSceneBuilder
         SetObjectArray(spawnCoordinator, "spawnPoints", spawnPoint01, spawnPoint02);
 
         GameObject networkDebugUiObject = new GameObject("NetworkDebugUI");
+        MultiplayerSessionManager sessionManager = networkDebugUiObject.AddComponent<MultiplayerSessionManager>();
+        SetObjectReference(sessionManager, "networkManager", networkManager);
         NetworkDebugUI networkDebugUi = networkDebugUiObject.AddComponent<NetworkDebugUI>();
         SetObjectReference(networkDebugUi, "networkManager", networkManager);
+        SetObjectReference(networkDebugUi, "sessionManager", sessionManager);
 
         GameObject level = new GameObject("Level");
         GameObject startArea = new GameObject("StartArea");
@@ -215,23 +218,24 @@ public static class PrototypeSceneBuilder
                 new Vector3(0f, 2f, 26.8f), new Vector3(0f, 2f, 28.6f)
             }, new Vector3(3f, 0.5f, 2f));
 
-        GameObject safeRoute = CreatePath("SafeRoute", bridgeArea.transform,
+        GameObject safeRoute = CreateSegmentPath("SafeRoute", bridgeArea.transform,
             new[]
             {
-                new Vector3(-1.3f, 2f, 16f), new Vector3(-2.3f, 2f, 17.8f),
-                new Vector3(-1.3f, 2f, 19.6f), new Vector3(-2.3f, 2f, 21.4f),
-                new Vector3(-1.3f, 2f, 23.2f), new Vector3(-2.3f, 2f, 25f),
-                new Vector3(-1.3f, 2f, 26.8f), new Vector3(-2.3f, 2f, 28.6f)
-            }, new Vector3(2.5f, 0.5f, 2f));
+                new Vector3(0f, 2f, 16f), new Vector3(-1.5f, 2f, 17.6f),
+                new Vector3(-3.5f, 2f, 19.2f), new Vector3(-5.5f, 2f, 21f),
+                new Vector3(-6.2f, 2f, 23f), new Vector3(-5.8f, 2f, 25f),
+                new Vector3(-4f, 2f, 27f), new Vector3(-2f, 2f, 28.7f),
+                new Vector3(0f, 2f, 30f)
+            }, 2.5f, 0.5f);
 
-        GameObject riskRoute = CreatePath("RiskRoute", bridgeArea.transform,
+        GameObject riskRoute = CreateJumpRoute("RiskRoute", bridgeArea.transform,
             new[]
             {
-                new Vector3(1.3f, 2f, 16f), new Vector3(1.3f, 2f, 17.8f),
-                new Vector3(1.3f, 2f, 19.6f), new Vector3(1.3f, 2f, 21.4f),
-                new Vector3(1.3f, 2f, 23.2f), new Vector3(1.3f, 2f, 25f),
-                new Vector3(1.3f, 2f, 26.8f), new Vector3(1.3f, 2f, 28.6f)
-            }, new Vector3(0.85f, 0.5f, 2f));
+                new Vector3(0f, 2f, 16f), new Vector3(2.1f, 2.4f, 18.1f),
+                new Vector3(-0.5f, 2.9f, 20.1f), new Vector3(2.1f, 2.4f, 22.1f),
+                new Vector3(-0.5f, 2.9f, 24.1f), new Vector3(2.1f, 2.4f, 26.1f),
+                new Vector3(-0.5f, 2.1f, 28.1f), new Vector3(0f, 2.1f, 30f)
+            }, new Vector3(1.15f, 0.5f, 1.2f));
 
         cooperationPath.SetActive(false);
         safeRoute.SetActive(false);
@@ -283,6 +287,40 @@ public static class PrototypeSceneBuilder
         for (int i = 0; i < positions.Length; i++)
         {
             CreateCube($"PathPiece_{i + 1:00}", path.transform, positions[i], pieceSize);
+        }
+
+        return path;
+    }
+
+    private static GameObject CreateSegmentPath(
+        string pathName, Transform parent, Vector3[] waypoints, float width, float thickness)
+    {
+        GameObject path = new GameObject(pathName);
+        path.transform.SetParent(parent, false);
+
+        for (int i = 0; i < waypoints.Length - 1; i++)
+        {
+            Vector3 start = waypoints[i];
+            Vector3 end = waypoints[i + 1];
+            Vector3 direction = end - start;
+            GameObject segment = CreateCube(
+                $"PathSegment_{i + 1:00}", path.transform, (start + end) * 0.5f,
+                new Vector3(width, thickness, direction.magnitude + 0.1f));
+            segment.transform.localRotation = Quaternion.LookRotation(direction.normalized, Vector3.up);
+        }
+
+        return path;
+    }
+
+    private static GameObject CreateJumpRoute(
+        string pathName, Transform parent, Vector3[] platformPositions, Vector3 platformSize)
+    {
+        GameObject path = new GameObject(pathName);
+        path.transform.SetParent(parent, false);
+
+        for (int i = 0; i < platformPositions.Length; i++)
+        {
+            CreateCube($"JumpPlatform_{i + 1:00}", path.transform, platformPositions[i], platformSize);
         }
 
         return path;
