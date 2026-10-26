@@ -14,6 +14,7 @@ GameObject:
   - component: {fileID: 3088524948793357663}
   - component: {fileID: 7672394653702199295}
   - component: {fileID: 6466408209535116004}
+  - component: {fileID: 6794312210460031155}
   m_Layer: 0
   m_Name: NetworkPlayer
   m_TagString: Player
@@ -155,6 +156,7 @@ MonoBehaviour:
   jumpHeight: 1.5
   gravity: 20
   groundedDownForce: 2
+  externalVelocityDecay: 8
 --- !u!114 &6466408209535116004
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -172,6 +174,36 @@ MonoBehaviour:
   interactionLayers:
     serializedVersion: 2
     m_Bits: 4294967295
+--- !u!114 &6794312210460031155
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 884166343593699352}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f8a9c9015d524b258d4a72ec4e90b1af, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerCombat
+  pushRange: 2.2
+  pushForce: 4
+  pushCooldown: 1
+  pushAngle: 110
+  cooperationPushMultiplier: 0.45
+  grabRange: 1.8
+  grabDuration: 1.4
+  grabMoveMultiplier: 0.3
+  grabCooldown: 2
+  grabAngle: 100
+  hitRange: 2
+  hitForce: 6
+  hitCooldown: 1.2
+  hitEnabledInCooperation: 0
+  cooperationHitMultiplier: 0.25
+  grabbedColor: {r: 1, g: 0.72, b: 0.18, a: 1}
+  hitFlashColor: {r: 1, g: 0.25, b: 0.2, a: 1}
+  hitFlashDuration: 0.18
 --- !u!1 &1353387359709332813
 GameObject:
   m_ObjectHideFlags: 0

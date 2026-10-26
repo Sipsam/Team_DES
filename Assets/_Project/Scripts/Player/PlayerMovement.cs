@@ -14,9 +14,13 @@ public sealed class PlayerMovement : NetworkBehaviour
     [SerializeField, Min(0f)] private float jumpHeight = 1.5f;
     [SerializeField, Min(0f)] private float gravity = 20f;
     [SerializeField, Min(0f)] private float groundedDownForce = 2f;
+    [SerializeField, Min(0f)] private float externalVelocityDecay = 8f;
 
     private CharacterController characterController;
     private float verticalSpeed;
+    private Vector3 externalVelocity;
+    private readonly NetworkVariable<float> movementSpeedMultiplier = new NetworkVariable<float>(
+        1f, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
     private Pose initialSpawnPose;
 
     public bool IsGrounded { get; private set; }
@@ -65,9 +69,12 @@ public sealed class PlayerMovement : NetworkBehaviour
         }
 
         verticalSpeed -= gravity * Time.deltaTime;
-        Vector3 velocity = moveDirection * moveSpeed;
-        velocity.y = verticalSpeed;
+        Vector3 velocity = moveDirection * (moveSpeed * movementSpeedMultiplier.Value);
+        velocity += externalVelocity;
+        velocity.y = verticalSpeed + externalVelocity.y;
         characterController.Move(velocity * Time.deltaTime);
+        externalVelocity = Vector3.MoveTowards(
+            externalVelocity, Vector3.zero, externalVelocityDecay * Time.deltaTime);
 
         IsGrounded = characterController.isGrounded;
     }
@@ -118,7 +125,29 @@ public sealed class PlayerMovement : NetworkBehaviour
     public void ResetVerticalVelocity()
     {
         verticalSpeed = 0f;
+        externalVelocity = Vector3.zero;
         IsGrounded = false;
+    }
+
+    public void SetGrabbedServer(bool grabbed, float moveMultiplier = 1f)
+    {
+        if (!IsServer)
+        {
+            return;
+        }
+
+        movementSpeedMultiplier.Value = grabbed ? Mathf.Clamp01(moveMultiplier) : 1f;
+    }
+
+    [Rpc(SendTo.Owner, InvokePermission = RpcInvokePermission.Server)]
+    public void ApplyExternalVelocityRpc(Vector3 velocity)
+    {
+        if (!IsOwner)
+        {
+            return;
+        }
+
+        externalVelocity += Vector3.ClampMagnitude(velocity, 12f);
     }
 
     [Rpc(SendTo.SpecifiedInParams, InvokePermission = RpcInvokePermission.Server)]

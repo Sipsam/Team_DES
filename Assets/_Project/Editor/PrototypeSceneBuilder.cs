@@ -140,6 +140,7 @@ public static class PrototypeSceneBuilder
         networkTransform.AuthorityMode = Unity.Netcode.Components.NetworkTransform.AuthorityModes.Owner;
         PlayerMovement playerMovement = player.AddComponent<PlayerMovement>();
         player.AddComponent<PlayerInteraction>();
+        player.AddComponent<PlayerCombat>();
 
         // A scene camera cannot be referenced from a prefab. The owning client binds it at spawn time.
         SetObjectReference(playerMovement, "cameraTransform", null);

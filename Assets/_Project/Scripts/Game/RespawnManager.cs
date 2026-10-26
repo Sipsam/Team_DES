@@ -33,6 +33,8 @@ public sealed class RespawnManager : NetworkBehaviour
             return;
         }
 
+        player.GetComponent<PlayerCombat>()?.ForceEndGrabServer();
+
         if (!checkpoints.TryGetValue(player.OwnerClientId, out Pose checkpoint))
         {
             checkpoint = player.InitialSpawnPose;
