@@ -112,7 +112,8 @@ public sealed class ThirdPersonCamera : MonoBehaviour
             Cursor.visible = true;
         }
         else if (mouse != null && mouse.leftButton.wasPressedThisFrame &&
-                 !NetworkDebugUI.IsPointerOverMenu(mouse.position.ReadValue()))
+                 !NetworkDebugUI.IsPointerOverMenu(mouse.position.ReadValue()) &&
+                 !DoorPuzzleUI.IsPointerOverPanel(mouse.position.ReadValue()))
         {
             Cursor.lockState = CursorLockMode.Locked;
             Cursor.visible = false;

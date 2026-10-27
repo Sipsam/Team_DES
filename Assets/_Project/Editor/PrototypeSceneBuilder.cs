@@ -130,6 +130,163 @@ public static class PrototypeSceneBuilder
         Debug.Log("RaftArea added. Save the scene to keep the changes.");
     }
 
+    [MenuItem("Tools/Prototype/Add Or Update Raft Respawn Point")]
+    private static void AddOrUpdateRaftRespawnPoint()
+    {
+        Scene scene = SceneManager.GetActiveScene();
+        RaftController raftController = Object.FindFirstObjectByType<RaftController>();
+        if (!scene.IsValid() || raftController == null || raftController.transform.parent == null)
+        {
+            EditorUtility.DisplayDialog(
+                "Raft Respawn Point Setup Failed",
+                "Open the prototype scene containing a RaftController under a RaftArea.",
+                "OK");
+            return;
+        }
+
+        Transform raftParent = raftController.transform.parent;
+        Transform respawnPoint = raftParent.Find("RaftRespawnPoint");
+        if (respawnPoint == null)
+        {
+            GameObject marker = new GameObject("RaftRespawnPoint");
+            respawnPoint = marker.transform;
+            respawnPoint.SetParent(raftParent, false);
+        }
+
+        // Use the raft's authored starting pose. The marker is a sibling, so it stays fixed
+        // while the networked raft moves during play.
+        respawnPoint.localPosition = new Vector3(0f, 2f, 37f);
+        respawnPoint.localRotation = Quaternion.identity;
+        SetObjectReference(raftController, "respawnPoint", respawnPoint);
+        EditorSceneManager.MarkSceneDirty(scene);
+        Selection.activeTransform = respawnPoint;
+        Debug.Log("RaftRespawnPoint added/updated and connected. Save the scene to keep the changes.");
+    }
+
+    [MenuItem("Tools/Prototype/Add Door Puzzle Area To Current Scene")]
+    private static void AddDoorPuzzleAreaToCurrentScene()
+    {
+        Scene scene = SceneManager.GetActiveScene();
+        GameObject level = GameObject.Find("Level");
+        GameStateManager gameStateManager = Object.FindFirstObjectByType<GameStateManager>();
+        RespawnManager respawnManager = Object.FindFirstObjectByType<RespawnManager>();
+
+        if (!scene.IsValid() || level == null || gameStateManager == null || respawnManager == null)
+        {
+            EditorUtility.DisplayDialog(
+                "Door Puzzle Setup Failed",
+                "Open Prototype_01 with Level, GameStateManager, and RespawnManager before adding the door puzzle.",
+                "OK");
+            return;
+        }
+
+        if (level.transform.Find("DoorPuzzleArea") != null)
+        {
+            EditorUtility.DisplayDialog("Door Puzzle Exists", "This scene already has a DoorPuzzleArea.", "OK");
+            return;
+        }
+
+        if (level.transform.Find("RaftArea") == null)
+        {
+            EditorUtility.DisplayDialog(
+                "Add Raft Area First",
+                "Add the RaftArea before the DoorPuzzleArea so the greybox sections connect in order.",
+                "OK");
+            return;
+        }
+
+        CreateDoorPuzzleArea(level.transform, gameStateManager);
+        GameObject doorPuzzleArea = level.transform.Find("DoorPuzzleArea").gameObject;
+        CreateCube("DoorPuzzleExitPlatform", doorPuzzleArea.transform,
+            new Vector3(0f, 2f, 91f), new Vector3(12f, 0.5f, 4f));
+        EnsureRaftToDoorPuzzleConnector(level.transform);
+
+        GameObject bridgeArea = GameObject.Find("BridgeArea");
+        if (bridgeArea != null)
+        {
+            Transform turnPoint = bridgeArea.transform.Find("TurnPoint");
+            if (turnPoint != null)
+            {
+                turnPoint.localPosition = new Vector3(0f, 3f, 96.5f);
+            }
+
+            Transform turnPlatform = bridgeArea.transform.Find("TurnPlatform");
+            if (turnPlatform == null)
+            {
+                CreateCube("TurnPlatform", bridgeArea.transform,
+                    new Vector3(0f, 2f, 95f), new Vector3(12f, 0.5f, 6f));
+            }
+            else
+            {
+                turnPlatform.localPosition = new Vector3(0f, 2f, 95f);
+                turnPlatform.localScale = new Vector3(12f, 0.5f, 6f);
+            }
+        }
+
+        GameObject checkpoints = GameObject.Find("Checkpoints");
+        if (checkpoints == null)
+        {
+            checkpoints = new GameObject("Checkpoints");
+        }
+
+        if (checkpoints.transform.Find("CP_DoorPuzzle") == null)
+        {
+            CreateCheckpoint("CP_DoorPuzzle", checkpoints.transform,
+                new Vector3(0f, 2.3f, 62.5f), new Vector3(12f, 3f, 1f), respawnManager);
+        }
+
+        GameObject killZone = GameObject.Find("KillZone");
+        if (killZone != null)
+        {
+            killZone.transform.position = new Vector3(0f, -8f, 40f);
+            BoxCollider killZoneCollider = killZone.GetComponent<BoxCollider>();
+            if (killZoneCollider != null)
+            {
+                killZoneCollider.size = new Vector3(100f, 1f, 200f);
+            }
+        }
+
+        EditorSceneManager.MarkSceneDirty(scene);
+        Debug.Log("DoorPuzzleArea added. Save the scene to keep the changes.");
+    }
+
+    [MenuItem("Tools/Prototype/Fix Raft To Door Puzzle Gap")]
+    private static void FixRaftToDoorPuzzleGap()
+    {
+        Scene scene = SceneManager.GetActiveScene();
+        GameObject level = GameObject.Find("Level");
+        if (!scene.IsValid() || level == null ||
+            level.transform.Find("RaftArea/RaftExitPlatform") == null ||
+            level.transform.Find("DoorPuzzleArea/PuzzleStartPlatform") == null)
+        {
+            EditorUtility.DisplayDialog(
+                "Path Setup Failed",
+                "Open the scene with RaftArea/RaftExitPlatform and DoorPuzzleArea/PuzzleStartPlatform.",
+                "OK");
+            return;
+        }
+
+        EnsureRaftToDoorPuzzleConnector(level.transform);
+        EditorSceneManager.MarkSceneDirty(scene);
+        Debug.Log("Raft-to-door-puzzle connector added/updated. Save the scene to keep the changes.");
+    }
+
+    private static void EnsureRaftToDoorPuzzleConnector(Transform level)
+    {
+        Transform connector = level.Find("RaftToDoorPuzzleConnector");
+        if (connector == null)
+        {
+            connector = CreateCube("RaftToDoorPuzzleConnector", level,
+                new Vector3(0f, 2f, 58.5f), new Vector3(8.5f, 0.5f, 5.5f)).transform;
+        }
+        else
+        {
+            connector.localPosition = new Vector3(0f, 2f, 58.5f);
+            connector.localRotation = Quaternion.identity;
+            connector.localScale = new Vector3(8.5f, 0.5f, 5.5f);
+        }
+    }
+
     private static bool SaveModifiedScenesBeforeReplacing()
     {
         for (int i = 0; i < SceneManager.sceneCount; i++)
@@ -339,9 +496,14 @@ public static class PrototypeSceneBuilder
 
         CreateCube("RaftExitPlatform", raftArea.transform,
             new Vector3(0f, 2f, 54f), new Vector3(8f, 0.5f, 4f));
+        EnsureRaftToDoorPuzzleConnector(level.transform);
+        CreateDoorPuzzleArea(level.transform, gameStateManager);
+        CreateCube("DoorPuzzleExitPlatform", level.transform,
+            new Vector3(0f, 2f, 91f), new Vector3(12f, 0.5f, 4f));
+
         CreateCube("TurnPlatform", bridgeArea.transform,
-            new Vector3(0f, 2f, 59f), new Vector3(8f, 0.5f, 6f));
-        CreateTrigger("TurnPoint", bridgeArea.transform, new Vector3(0f, 3f, 60.5f),
+            new Vector3(0f, 2f, 95f), new Vector3(12f, 0.5f, 6f));
+        CreateTrigger("TurnPoint", bridgeArea.transform, new Vector3(0f, 3f, 96.5f),
             new Vector3(7f, 4f, 1f));
         TurnPoint turnPoint = bridgeArea.transform.Find("TurnPoint").gameObject.AddComponent<TurnPoint>();
         SetObjectReference(turnPoint, "gameStateManager", gameStateManager);
@@ -357,11 +519,13 @@ public static class PrototypeSceneBuilder
             new Vector3(2.5f, 2f, 0.25f), respawnManager);
         CreateCheckpoint("CP_RaftStart", checkpoints.transform, new Vector3(0f, 2.2f, 33.4f),
             new Vector3(6f, 3f, 1f), respawnManager);
+        CreateCheckpoint("CP_DoorPuzzle", checkpoints.transform, new Vector3(0f, 2.3f, 62.5f),
+            new Vector3(12f, 3f, 1f), respawnManager);
 
         GameObject killZone = new GameObject("KillZone");
-        killZone.transform.position = new Vector3(0f, -8f, 25f);
+        killZone.transform.position = new Vector3(0f, -8f, 40f);
         BoxCollider killZoneCollider = killZone.AddComponent<BoxCollider>();
-        killZoneCollider.size = new Vector3(100f, 1f, 160f);
+        killZoneCollider.size = new Vector3(100f, 1f, 200f);
         killZoneCollider.isTrigger = true;
         killZone.AddComponent<KillZone>();
 
@@ -390,10 +554,16 @@ public static class PrototypeSceneBuilder
         GameObject raft = new GameObject("Raft");
         raft.transform.SetParent(parent, false);
         raft.transform.localPosition = new Vector3(0f, 2f, 37f);
+
+        GameObject raftRespawnPoint = new GameObject("RaftRespawnPoint");
+        raftRespawnPoint.transform.SetParent(parent, false);
+        raftRespawnPoint.transform.localPosition = raft.transform.localPosition;
+
         raft.AddComponent<NetworkObject>();
         raft.AddComponent<NetworkTransform>();
         RaftController raftController = raft.AddComponent<RaftController>();
         SetObjectReference(raftController, "gameStateManager", gameStateManager);
+        SetObjectReference(raftController, "respawnPoint", raftRespawnPoint.transform);
 
         CreateCube("Base", raft.transform, Vector3.zero, new Vector3(5f, 0.5f, 5f));
 
@@ -439,6 +609,117 @@ public static class PrototypeSceneBuilder
             new Vector3(4.5f, 2f, 54f), new Vector3(4f, 0.5f, 4f));
         platformRoute.SetActive(false);
         SetObjectReference(raftController, "competitionPlatformRoute", platformRoute);
+    }
+
+    private static void CreateDoorPuzzleArea(Transform parent, GameStateManager gameStateManager)
+    {
+        GameObject area = new GameObject("DoorPuzzleArea");
+        area.transform.SetParent(parent, false);
+        area.AddComponent<NetworkObject>();
+        DoorPuzzleController controller = area.AddComponent<DoorPuzzleController>();
+        DoorPuzzleUI puzzleUI = area.AddComponent<DoorPuzzleUI>();
+        SetObjectReference(controller, "gameStateManager", gameStateManager);
+        SetObjectReference(controller, "puzzleUI", puzzleUI);
+
+        CreateCube("PuzzleStartPlatform", area.transform,
+            new Vector3(0f, 2f, 63f), new Vector3(12f, 0.5f, 4f));
+        CreateCube("PuzzleHallwayBeforeDoor", area.transform,
+            new Vector3(0f, 2f, 70f), new Vector3(5f, 0.5f, 12f));
+        CreateCube("PuzzleHallwayAfterDoor", area.transform,
+            new Vector3(0f, 2f, 84f), new Vector3(5f, 0.5f, 16f));
+
+        CreateCube("InfoPlatform", area.transform,
+            new Vector3(-5f, 2f, 67f), new Vector3(4f, 0.5f, 4f));
+        CreateCube("InfoConnector", area.transform,
+            new Vector3(-2.75f, 2f, 67f), new Vector3(1.5f, 0.5f, 2.5f));
+        CreateCube("InputPlatform", area.transform,
+            new Vector3(5f, 2f, 67f), new Vector3(4f, 0.5f, 4f));
+        CreateCube("InputConnector", area.transform,
+            new Vector3(2.75f, 2f, 67f), new Vector3(1.5f, 0.5f, 2.5f));
+
+        GameObject infoObject = CreateDoorPuzzleStation(
+            "InfoStation", area.transform, new Vector3(-5f, 2.25f, 67f),
+            DoorPuzzleStationType.Info, controller);
+        GameObject inputObject = CreateDoorPuzzleStation(
+            "InputStation", area.transform, new Vector3(5f, 2.25f, 67f),
+            DoorPuzzleStationType.Input, controller);
+        SetObjectReference(controller, "infoStation", infoObject.transform);
+        SetObjectReference(controller, "inputStation", inputObject.transform);
+
+        GameObject lockedDoor = new GameObject("LockedDoor");
+        lockedDoor.transform.SetParent(area.transform, false);
+        lockedDoor.transform.localPosition = new Vector3(0f, 2f, 78f);
+        GameObject lockedPanel = CreateCube("DoorPanel", lockedDoor.transform,
+            new Vector3(0f, 1.75f, 0f), new Vector3(4.8f, 3.5f, 0.5f));
+        PuzzleDoor sharedDoor = lockedDoor.AddComponent<PuzzleDoor>();
+        SetObjectReference(sharedDoor, "doorPanel", lockedPanel);
+        SetObjectReference(sharedDoor, "blockingCollider", lockedPanel.GetComponent<Collider>());
+        SetObjectReference(controller, "cooperationDoor", sharedDoor);
+
+        GameObject competitionRoute = new GameObject("CompetitionRoute");
+        competitionRoute.transform.SetParent(area.transform, false);
+        CreateSegmentPath("OpenDoorRoute", competitionRoute.transform,
+            new[]
+            {
+                new Vector3(0f, 2f, 68f), new Vector3(-3f, 2f, 72f),
+                new Vector3(-3f, 2f, 76f), new Vector3(0f, 2f, 80f),
+                new Vector3(3f, 2f, 84f), new Vector3(3f, 2f, 88f),
+                new Vector3(0f, 2f, 91f)
+            }, 3.4f, 0.5f);
+
+        GameObject memoryShortcut = new GameObject("MemoryShortcut");
+        memoryShortcut.transform.SetParent(competitionRoute.transform, false);
+        Vector3[] shortcutPlatforms =
+        {
+            new Vector3(5.5f, 2f, 68.5f), new Vector3(5.5f, 2f, 73f),
+            new Vector3(5.5f, 2f, 77.5f), new Vector3(5.5f, 2f, 82f),
+            new Vector3(5.5f, 2f, 86.5f), new Vector3(5.5f, 2f, 91f)
+        };
+        for (int i = 0; i < shortcutPlatforms.Length; i++)
+        {
+            CreateCube($"ShortcutPlatform_{i + 1:00}", memoryShortcut.transform,
+                shortcutPlatforms[i], new Vector3(2.6f, 0.5f, 4.5f));
+        }
+
+        GameObject shortcutPanel = CreateVisualCube("ShortcutPanel", memoryShortcut.transform,
+            new Vector3(5.5f, 3f, 68.5f), new Vector3(2f, 0.3f, 0.35f));
+        SetObjectReference(controller, "shortcutPanelVisual", shortcutPanel);
+
+        GameObject shortcutDoorObject = new GameObject("ShortcutDoor");
+        shortcutDoorObject.transform.SetParent(memoryShortcut.transform, false);
+        shortcutDoorObject.transform.localPosition = new Vector3(5.5f, 2f, 77.5f);
+        GameObject shortcutPanelMesh = CreateCube("DoorPanel", shortcutDoorObject.transform,
+            new Vector3(0f, 1.75f, 0f), new Vector3(2.8f, 3.5f, 0.5f));
+        PuzzleDoor shortcutDoor = shortcutDoorObject.AddComponent<PuzzleDoor>();
+        SetObjectReference(shortcutDoor, "doorPanel", shortcutPanelMesh);
+        SetObjectReference(shortcutDoor, "blockingCollider", shortcutPanelMesh.GetComponent<Collider>());
+        SetObjectReference(controller, "shortcutDoor", shortcutDoor);
+        competitionRoute.SetActive(false);
+    }
+
+    private static GameObject CreateDoorPuzzleStation(
+        string objectName,
+        Transform parent,
+        Vector3 position,
+        DoorPuzzleStationType stationType,
+        DoorPuzzleController controller)
+    {
+        GameObject stationObject = new GameObject(objectName);
+        stationObject.transform.SetParent(parent, false);
+        stationObject.transform.localPosition = position;
+
+        BoxCollider trigger = stationObject.AddComponent<BoxCollider>();
+        trigger.isTrigger = true;
+        trigger.size = new Vector3(2.6f, 2.8f, 2.6f);
+
+        GameObject stationMesh = CreateCube(objectName + "Console", stationObject.transform,
+            new Vector3(0f, 0.55f, 0f), new Vector3(0.8f, 1.1f, 0.5f));
+        Object.DestroyImmediate(stationMesh.GetComponent<Collider>());
+
+        DoorPuzzleStation station = stationObject.AddComponent<DoorPuzzleStation>();
+        SetObjectReference(station, "puzzleController", controller);
+        SetEnumValue(station, "stationType", (int)stationType);
+        return stationObject;
     }
 
     private static GameObject CreateRaftControlPoint(

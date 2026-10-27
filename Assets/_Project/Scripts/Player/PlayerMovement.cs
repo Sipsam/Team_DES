@@ -19,6 +19,7 @@ public sealed class PlayerMovement : NetworkBehaviour
     private CharacterController characterController;
     private RaftController raftController;
     private bool insideRaftControlPoint;
+    private bool puzzleUiInputBlocked;
     private float verticalSpeed;
     private Vector3 externalVelocity;
     private readonly NetworkVariable<float> movementSpeedMultiplier = new NetworkVariable<float>(
@@ -52,7 +53,7 @@ public sealed class PlayerMovement : NetworkBehaviour
             verticalSpeed = -groundedDownForce;
         }
 
-        Vector2 input = ReadMovementInput();
+        Vector2 input = puzzleUiInputBlocked ? Vector2.zero : ReadMovementInput();
         if (insideRaftControlPoint || (raftController != null && raftController.IsLocalPlayerAtControlPoint))
         {
             // W/S operate the raft while assigned to a control point; A/D still let the player leave it.
@@ -71,7 +72,7 @@ public sealed class PlayerMovement : NetworkBehaviour
         }
 
         Keyboard keyboard = Keyboard.current;
-        if (IsGrounded && keyboard != null && keyboard.spaceKey.wasPressedThisFrame)
+        if (!puzzleUiInputBlocked && IsGrounded && keyboard != null && keyboard.spaceKey.wasPressedThisFrame)
         {
             verticalSpeed = Mathf.Sqrt(2f * gravity * jumpHeight);
         }
@@ -170,6 +171,11 @@ public sealed class PlayerMovement : NetworkBehaviour
         {
             insideRaftControlPoint = inside;
         }
+    }
+
+    public void SetPuzzleUiInputBlocked(bool blocked)
+    {
+        puzzleUiInputBlocked = blocked;
     }
 
     [Rpc(SendTo.Owner, InvokePermission = RpcInvokePermission.Server)]

@@ -8,10 +8,16 @@ public sealed class PlayerInteraction : NetworkBehaviour
     [SerializeField] private LayerMask interactionLayers = ~0;
 
     private readonly Collider[] overlapResults = new Collider[32];
+    private bool puzzleUiInputBlocked;
 
     private void Update()
     {
         if (IsSpawned && !IsOwner)
+        {
+            return;
+        }
+
+        if (puzzleUiInputBlocked)
         {
             return;
         }
@@ -34,6 +40,11 @@ public sealed class PlayerInteraction : NetworkBehaviour
     public override void OnNetworkSpawn()
     {
         enabled = IsOwner;
+    }
+
+    public void SetPuzzleUiInputBlocked(bool blocked)
+    {
+        puzzleUiInputBlocked = blocked;
     }
 
     private IInteractable FindClosestInteractable()

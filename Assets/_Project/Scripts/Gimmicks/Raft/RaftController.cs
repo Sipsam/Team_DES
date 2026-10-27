@@ -27,6 +27,7 @@ public sealed class RaftController : NetworkBehaviour
     [SerializeField] private GameStateManager gameStateManager;
     [SerializeField] private Transform leftControlPoint;
     [SerializeField] private Transform rightControlPoint;
+    [SerializeField] private Transform respawnPoint;
     [SerializeField] private Transform raftEnd;
     [SerializeField] private GameObject competitionPlatformRoute;
 
@@ -37,6 +38,9 @@ public sealed class RaftController : NetworkBehaviour
 
     [Header("Server Validation")]
     [SerializeField, Min(0.1f)] private float controlPointValidationRange = 2.5f;
+
+    [Header("Cooperation Recovery")]
+    [SerializeField, Min(0f)] private float emptyRaftResetDelay = 4f;
 
     private readonly NetworkVariable<ulong> leftOccupant = new NetworkVariable<ulong>(
         NoClient, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
@@ -57,6 +61,7 @@ public sealed class RaftController : NetworkBehaviour
     private Vector3 initialPosition;
     private Quaternion initialRotation;
     private bool hasInitialPose;
+    private float emptyRaftTimer;
 
     public ulong LeftOccupantClientId => leftOccupant.Value;
     public ulong RightOccupantClientId => rightOccupant.Value;
@@ -79,8 +84,13 @@ public sealed class RaftController : NetworkBehaviour
 
     private void Awake()
     {
-        initialPosition = transform.position;
-        initialRotation = transform.rotation;
+        CaptureInitialPose();
+    }
+
+    private void CaptureInitialPose()
+    {
+        initialPosition = respawnPoint != null ? respawnPoint.position : transform.position;
+        initialRotation = respawnPoint != null ? respawnPoint.rotation : transform.rotation;
         hasInitialPose = true;
     }
 
@@ -105,13 +115,11 @@ public sealed class RaftController : NetworkBehaviour
         {
             if (!hasInitialPose)
             {
-                initialPosition = transform.position;
-                initialRotation = transform.rotation;
-                hasInitialPose = true;
+                CaptureInitialPose();
             }
 
             // In-scene NetworkObjects keep their runtime Transform after a previous session ends.
-            // Restore the scene-authored pose before this session starts accepting raft input.
+            // Restore the explicit spawn marker before this session accepts raft input.
             transform.SetPositionAndRotation(initialPosition, initialRotation);
             leftOccupant.Value = NoClient;
             rightOccupant.Value = NoClient;
@@ -120,6 +128,7 @@ public sealed class RaftController : NetworkBehaviour
             rightInput = 0f;
             lastLeftInputTime = Time.time;
             lastRightInputTime = Time.time;
+            emptyRaftTimer = 0f;
             SetRaftState(RaftState.Waiting);
             NetworkManager.OnClientDisconnectCallback += HandleClientDisconnected;
         }
@@ -165,13 +174,20 @@ public sealed class RaftController : NetworkBehaviour
         int occupiedCount = GetOccupiedCount();
         if (state == GameState.Finished)
         {
+            emptyRaftTimer = 0f;
             SetRaftState(RaftState.Waiting);
             return;
         }
 
         if (state == GameState.Cooperation && cooperationCompleted.Value)
         {
+            emptyRaftTimer = 0f;
             SetRaftState(RaftState.Completed);
+            return;
+        }
+
+        if (state == GameState.Cooperation && TryRecoverAbandonedRaft())
+        {
             return;
         }
 
@@ -357,6 +373,69 @@ public sealed class RaftController : NetworkBehaviour
         {
             rightInput = 0f;
         }
+    }
+
+    private bool TryRecoverAbandonedRaft()
+    {
+        if (GetOccupiedCount() > 0 || IsAnyPlayerOnRaftDeck())
+        {
+            emptyRaftTimer = 0f;
+            return false;
+        }
+
+        bool raftMovedFromStart =
+            (transform.position - initialPosition).sqrMagnitude > 0.25f ||
+            Quaternion.Angle(transform.rotation, initialRotation) > 5f;
+
+        if (!raftMovedFromStart)
+        {
+            emptyRaftTimer = 0f;
+            return false;
+        }
+
+        emptyRaftTimer += Time.fixedDeltaTime;
+        if (emptyRaftTimer < emptyRaftResetDelay)
+        {
+            SetRaftState(RaftState.Waiting);
+            return true;
+        }
+
+        transform.SetPositionAndRotation(initialPosition, initialRotation);
+        leftInput = 0f;
+        rightInput = 0f;
+        lastLeftInputTime = Time.time;
+        lastRightInputTime = Time.time;
+        emptyRaftTimer = 0f;
+        SetRaftState(RaftState.Waiting);
+        Debug.Log("Both players left the raft. Raft returned to its start position.");
+        return true;
+    }
+
+    private bool IsAnyPlayerOnRaftDeck()
+    {
+        if (NetworkManager == null)
+        {
+            return false;
+        }
+
+        foreach (NetworkClient client in NetworkManager.ConnectedClientsList)
+        {
+            if (client.PlayerObject == null)
+            {
+                continue;
+            }
+
+            Vector3 localPosition = transform.InverseTransformPoint(client.PlayerObject.transform.position);
+            bool overDeck = Mathf.Abs(localPosition.x) <= 2.5f &&
+                            Mathf.Abs(localPosition.z) <= 2.5f &&
+                            localPosition.y >= -0.25f && localPosition.y <= 2.25f;
+            if (overDeck)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private void HandleClientDisconnected(ulong clientId)
