@@ -17,6 +17,8 @@ public sealed class PlayerMovement : NetworkBehaviour
     [SerializeField, Min(0f)] private float externalVelocityDecay = 8f;
 
     private CharacterController characterController;
+    private RaftController raftController;
+    private bool insideRaftControlPoint;
     private float verticalSpeed;
     private Vector3 externalVelocity;
     private readonly NetworkVariable<float> movementSpeedMultiplier = new NetworkVariable<float>(
@@ -51,6 +53,12 @@ public sealed class PlayerMovement : NetworkBehaviour
         }
 
         Vector2 input = ReadMovementInput();
+        if (insideRaftControlPoint || (raftController != null && raftController.IsLocalPlayerAtControlPoint))
+        {
+            // W/S operate the raft while assigned to a control point; A/D still let the player leave it.
+            input.y = 0f;
+        }
+
         Vector3 moveDirection = GetCameraRelativeDirection(input);
 
         if (moveDirection.sqrMagnitude > 0.001f)
@@ -91,6 +99,8 @@ public sealed class PlayerMovement : NetworkBehaviour
         {
             return;
         }
+
+        raftController = FindFirstObjectByType<RaftController>();
 
         Camera mainCamera = Camera.main;
         ThirdPersonCamera thirdPersonCamera = mainCamera != null
@@ -137,6 +147,29 @@ public sealed class PlayerMovement : NetworkBehaviour
         }
 
         movementSpeedMultiplier.Value = grabbed ? Mathf.Clamp01(moveMultiplier) : 1f;
+    }
+
+    public void ApplyMovingPlatformDelta(Vector3 displacement, Quaternion rotationDelta)
+    {
+        if (IsSpawned && !IsOwner)
+        {
+            return;
+        }
+
+        if (characterController != null && characterController.enabled)
+        {
+            characterController.Move(displacement);
+        }
+
+        transform.rotation = rotationDelta * transform.rotation;
+    }
+
+    public void SetInsideRaftControlPoint(bool inside)
+    {
+        if (!IsSpawned || IsOwner)
+        {
+            insideRaftControlPoint = inside;
+        }
     }
 
     [Rpc(SendTo.Owner, InvokePermission = RpcInvokePermission.Server)]

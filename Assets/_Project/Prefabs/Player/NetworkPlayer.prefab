@@ -186,6 +186,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f8a9c9015d524b258d4a72ec4e90b1af, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerCombat
+  ShowTopMostFoldoutHeaderGroup: 1
   pushRange: 2.2
   pushForce: 4
   pushCooldown: 1

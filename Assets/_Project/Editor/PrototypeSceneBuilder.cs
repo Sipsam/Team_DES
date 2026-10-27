@@ -5,6 +5,7 @@ using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using Unity.Netcode;
+using Unity.Netcode.Components;
 using Unity.Netcode.Transports.UTP;
 
 public static class PrototypeSceneBuilder
@@ -49,6 +50,84 @@ public static class PrototypeSceneBuilder
         {
             Debug.LogError($"Failed to save prototype scene: {ScenePath}");
         }
+    }
+
+    [MenuItem("Tools/Prototype/Add Raft Area To Current Scene")]
+    private static void AddRaftAreaToCurrentScene()
+    {
+        Scene scene = SceneManager.GetActiveScene();
+        GameObject level = GameObject.Find("Level");
+        GameStateManager gameStateManager = Object.FindFirstObjectByType<GameStateManager>();
+        RespawnManager respawnManager = Object.FindFirstObjectByType<RespawnManager>();
+
+        if (!scene.IsValid() || level == null || gameStateManager == null || respawnManager == null)
+        {
+            EditorUtility.DisplayDialog(
+                "Raft Setup Failed",
+                "Open Prototype_01 with Level, GameStateManager, and RespawnManager before adding the raft area.",
+                "OK");
+            return;
+        }
+
+        if (level.transform.Find("RaftArea") != null)
+        {
+            EditorUtility.DisplayDialog("Raft Area Exists", "This scene already has a RaftArea.", "OK");
+            return;
+        }
+
+        GameObject raftArea = new GameObject("RaftArea");
+        raftArea.transform.SetParent(level.transform, false);
+        CreateRaftArea(raftArea.transform, gameStateManager);
+        CreateCube("RaftExitPlatform", raftArea.transform,
+            new Vector3(0f, 2f, 54f), new Vector3(8f, 0.5f, 4f));
+
+        Transform oldTurnPlatform = level.transform.Find("BridgeArea/TurnPlatform");
+        if (oldTurnPlatform != null)
+        {
+            oldTurnPlatform.name = "BridgeExitPlatform";
+        }
+
+        GameObject bridgeArea = GameObject.Find("BridgeArea");
+        if (bridgeArea != null)
+        {
+            if (bridgeArea.transform.Find("TurnPlatform") == null)
+            {
+                CreateCube("TurnPlatform", bridgeArea.transform,
+                    new Vector3(0f, 2f, 59f), new Vector3(8f, 0.5f, 6f));
+            }
+
+            Transform turnPoint = bridgeArea.transform.Find("TurnPoint");
+            if (turnPoint != null)
+            {
+                turnPoint.localPosition = new Vector3(0f, 3f, 60.5f);
+            }
+        }
+
+        GameObject checkpointsObject = GameObject.Find("Checkpoints");
+        if (checkpointsObject == null)
+        {
+            checkpointsObject = new GameObject("Checkpoints");
+        }
+
+        if (checkpointsObject.transform.Find("CP_RaftStart") == null)
+        {
+            CreateCheckpoint("CP_RaftStart", checkpointsObject.transform, new Vector3(0f, 2.2f, 33.4f),
+                new Vector3(6f, 3f, 1f), respawnManager);
+        }
+
+        GameObject killZone = GameObject.Find("KillZone");
+        if (killZone != null)
+        {
+            killZone.transform.position = new Vector3(0f, -8f, 25f);
+            BoxCollider killZoneCollider = killZone.GetComponent<BoxCollider>();
+            if (killZoneCollider != null)
+            {
+                killZoneCollider.size = new Vector3(100f, 1f, 160f);
+            }
+        }
+
+        EditorSceneManager.MarkSceneDirty(scene);
+        Debug.Log("RaftArea added. Save the scene to keep the changes.");
     }
 
     private static bool SaveModifiedScenesBeforeReplacing()
@@ -251,8 +330,18 @@ public static class PrototypeSceneBuilder
         CreateBridgeSwitch("BridgeSwitch_B", bridgeArea.transform, new Vector3(2.1f, 0.5f, 1.5f),
             BridgeSwitchId.B, bridgeController);
 
-        CreateCube("TurnPlatform", bridgeArea.transform, new Vector3(0f, 2f, 31f), new Vector3(8f, 0.5f, 6f));
-        CreateTrigger("TurnPoint", bridgeArea.transform, new Vector3(0f, 3f, 33.5f),
+        CreateCube("BridgeExitPlatform", bridgeArea.transform,
+            new Vector3(0f, 2f, 31f), new Vector3(8f, 0.5f, 6f));
+
+        GameObject raftArea = new GameObject("RaftArea");
+        raftArea.transform.SetParent(level.transform, false);
+        CreateRaftArea(raftArea.transform, gameStateManager);
+
+        CreateCube("RaftExitPlatform", raftArea.transform,
+            new Vector3(0f, 2f, 54f), new Vector3(8f, 0.5f, 4f));
+        CreateCube("TurnPlatform", bridgeArea.transform,
+            new Vector3(0f, 2f, 59f), new Vector3(8f, 0.5f, 6f));
+        CreateTrigger("TurnPoint", bridgeArea.transform, new Vector3(0f, 3f, 60.5f),
             new Vector3(7f, 4f, 1f));
         TurnPoint turnPoint = bridgeArea.transform.Find("TurnPoint").gameObject.AddComponent<TurnPoint>();
         SetObjectReference(turnPoint, "gameStateManager", gameStateManager);
@@ -266,11 +355,13 @@ public static class PrototypeSceneBuilder
             new Vector3(5f, 2f, 0.25f), respawnManager);
         CreateCheckpoint("CP_01", checkpoints.transform, new Vector3(2f, 2.6f, 10f),
             new Vector3(2.5f, 2f, 0.25f), respawnManager);
+        CreateCheckpoint("CP_RaftStart", checkpoints.transform, new Vector3(0f, 2.2f, 33.4f),
+            new Vector3(6f, 3f, 1f), respawnManager);
 
         GameObject killZone = new GameObject("KillZone");
-        killZone.transform.position = new Vector3(0f, -8f, 5f);
+        killZone.transform.position = new Vector3(0f, -8f, 25f);
         BoxCollider killZoneCollider = killZone.AddComponent<BoxCollider>();
-        killZoneCollider.size = new Vector3(100f, 1f, 100f);
+        killZoneCollider.size = new Vector3(100f, 1f, 160f);
         killZoneCollider.isTrigger = true;
         killZone.AddComponent<KillZone>();
 
@@ -278,6 +369,101 @@ public static class PrototypeSceneBuilder
         Light lightComponent = directionalLight.AddComponent<Light>();
         lightComponent.type = LightType.Directional;
         directionalLight.transform.rotation = Quaternion.Euler(50f, -30f, 0f);
+    }
+
+    private static void CreateRaftArea(Transform parent, GameStateManager gameStateManager)
+    {
+        GameObject water = GameObject.CreatePrimitive(PrimitiveType.Plane);
+        water.name = "WaterArea";
+        water.transform.SetParent(parent, false);
+        water.transform.localPosition = new Vector3(0f, -1f, 44f);
+        water.transform.localScale = new Vector3(1.8f, 1f, 2.4f);
+        Object.DestroyImmediate(water.GetComponent<Collider>());
+
+        GameObject raftStart = new GameObject("RaftStart");
+        raftStart.transform.SetParent(parent, false);
+        raftStart.transform.localPosition = new Vector3(0f, 2f, 34.5f);
+        BoxCollider startTrigger = raftStart.AddComponent<BoxCollider>();
+        startTrigger.isTrigger = true;
+        startTrigger.size = new Vector3(7f, 3f, 2f);
+
+        GameObject raft = new GameObject("Raft");
+        raft.transform.SetParent(parent, false);
+        raft.transform.localPosition = new Vector3(0f, 2f, 37f);
+        raft.AddComponent<NetworkObject>();
+        raft.AddComponent<NetworkTransform>();
+        RaftController raftController = raft.AddComponent<RaftController>();
+        SetObjectReference(raftController, "gameStateManager", gameStateManager);
+
+        CreateCube("Base", raft.transform, Vector3.zero, new Vector3(5f, 0.5f, 5f));
+
+        GameObject leftPoint = CreateRaftControlPoint(
+            "LeftControlPoint", raft.transform, new Vector3(-1.5f, 0.25f, 0f), RaftControlSide.Left,
+            raftController);
+        GameObject rightPoint = CreateRaftControlPoint(
+            "RightControlPoint", raft.transform, new Vector3(1.5f, 0.25f, 0f), RaftControlSide.Right,
+            raftController);
+        SetObjectReference(raftController, "leftControlPoint", leftPoint.transform);
+        SetObjectReference(raftController, "rightControlPoint", rightPoint.transform);
+
+        GameObject standArea = new GameObject("PlayerStandArea");
+        standArea.transform.SetParent(raft.transform, false);
+        standArea.transform.localPosition = new Vector3(0f, 0.95f, 0f);
+        BoxCollider standTrigger = standArea.AddComponent<BoxCollider>();
+        standTrigger.isTrigger = true;
+        standTrigger.size = new Vector3(4.8f, 1f, 4.8f);
+        RaftMovingPlatform movingPlatform = standArea.AddComponent<RaftMovingPlatform>();
+        SetObjectReference(movingPlatform, "raftTransform", raft.transform);
+
+        GameObject raftEnd = new GameObject("RaftEnd");
+        raftEnd.transform.SetParent(parent, false);
+        raftEnd.transform.localPosition = new Vector3(0f, 2f, 53f);
+        BoxCollider endTrigger = raftEnd.AddComponent<BoxCollider>();
+        endTrigger.isTrigger = true;
+        endTrigger.size = new Vector3(7f, 2.5f, 3f);
+        SetObjectReference(raftController, "raftEnd", raftEnd.transform);
+
+        GameObject platformRoute = new GameObject("CompetitionPlatformRoute");
+        platformRoute.transform.SetParent(parent, false);
+        CreateCube("Platform_Start", platformRoute.transform,
+            new Vector3(4.5f, 2f, 35f), new Vector3(4f, 0.5f, 4f));
+        CreateCube("Platform_01", platformRoute.transform,
+            new Vector3(6f, 2f, 39f), new Vector3(3.5f, 0.5f, 3.5f));
+        CreateCube("Platform_02", platformRoute.transform,
+            new Vector3(6f, 2f, 43f), new Vector3(3.5f, 0.5f, 3.5f));
+        CreateCube("Platform_03", platformRoute.transform,
+            new Vector3(6f, 2f, 47f), new Vector3(3.5f, 0.5f, 3.5f));
+        CreateCube("Platform_04", platformRoute.transform,
+            new Vector3(6f, 2f, 51f), new Vector3(3.5f, 0.5f, 3.5f));
+        CreateCube("Platform_End", platformRoute.transform,
+            new Vector3(4.5f, 2f, 54f), new Vector3(4f, 0.5f, 4f));
+        platformRoute.SetActive(false);
+        SetObjectReference(raftController, "competitionPlatformRoute", platformRoute);
+    }
+
+    private static GameObject CreateRaftControlPoint(
+        string objectName,
+        Transform parent,
+        Vector3 position,
+        RaftControlSide side,
+        RaftController raftController)
+    {
+        GameObject point = new GameObject(objectName);
+        point.transform.SetParent(parent, false);
+        point.transform.localPosition = position;
+
+        BoxCollider trigger = point.AddComponent<BoxCollider>();
+        trigger.isTrigger = true;
+        trigger.size = new Vector3(1.7f, 2f, 1.7f);
+
+        GameObject marker = CreateCube("ControlMarker", point.transform,
+            new Vector3(0f, -0.1f, 0f), new Vector3(0.65f, 0.2f, 0.65f));
+        Object.DestroyImmediate(marker.GetComponent<Collider>());
+
+        RaftControlPoint controlPoint = point.AddComponent<RaftControlPoint>();
+        SetObjectReference(controlPoint, "raftController", raftController);
+        SetEnumValue(controlPoint, "side", (int)side);
+        return point;
     }
 
     private static GameObject CreatePath(string pathName, Transform parent, Vector3[] positions, Vector3 pieceSize)
