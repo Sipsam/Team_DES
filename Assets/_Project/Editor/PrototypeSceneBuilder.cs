@@ -250,6 +250,95 @@ public static class PrototypeSceneBuilder
         Debug.Log("DoorPuzzleArea added. Save the scene to keep the changes.");
     }
 
+    [MenuItem("Tools/Prototype/Add Jump Puzzle Area To Current Scene")]
+    private static void AddJumpPuzzleAreaToCurrentScene()
+    {
+        Scene scene = SceneManager.GetActiveScene();
+        GameObject level = GameObject.Find("Level");
+        GameStateManager gameStateManager = Object.FindFirstObjectByType<GameStateManager>();
+        RespawnManager respawnManager = Object.FindFirstObjectByType<RespawnManager>();
+        if (!scene.IsValid() || level == null || gameStateManager == null || respawnManager == null)
+        {
+            EditorUtility.DisplayDialog("Jump Puzzle Setup Failed",
+                "Open Prototype_01 with Level, GameStateManager, and RespawnManager.", "OK");
+            return;
+        }
+
+        if (level.transform.Find("JumpPuzzleArea") != null)
+        {
+            EditorUtility.DisplayDialog("Jump Puzzle Exists",
+                "This scene already has a JumpPuzzleArea.", "OK");
+            return;
+        }
+
+        if (level.transform.Find("DoorPuzzleArea") == null)
+        {
+            EditorUtility.DisplayDialog("Add Door Puzzle First",
+                "Add the DoorPuzzleArea before the JumpPuzzleArea.", "OK");
+            return;
+        }
+
+        EnsurePlatform("DoorPuzzleToJumpConnector", level.transform,
+            new Vector3(0f, 2f, 94.5f), new Vector3(12f, 0.5f, 3f));
+        CreateJumpPuzzleArea(level.transform, gameStateManager);
+        EnsurePlatform("JumpPuzzleToTurnConnector", level.transform,
+            new Vector3(0f, 2f, 138f), new Vector3(8f, 0.5f, 6f));
+        GameObject checkpoints = GameObject.Find("Checkpoints");
+        if (checkpoints == null) checkpoints = new GameObject("Checkpoints");
+        if (checkpoints.transform.Find("CP_JumpStart") == null)
+        {
+            CreateCheckpoint("CP_JumpStart", checkpoints.transform,
+                new Vector3(0f, 2.3f, 96f), new Vector3(12f, 3f, 1f), respawnManager);
+        }
+
+        Transform turnPlatform = level.transform.Find("BridgeArea/TurnPlatform");
+        if (turnPlatform != null)
+        {
+            turnPlatform.localPosition = new Vector3(0f, 2f, 145f);
+            turnPlatform.localScale = new Vector3(12f, 0.5f, 8f);
+        }
+        Transform turnPoint = level.transform.Find("BridgeArea/TurnPoint");
+        if (turnPoint != null) turnPoint.localPosition = new Vector3(0f, 3f, 146f);
+
+        GameObject killZone = GameObject.Find("KillZone");
+        if (killZone != null)
+        {
+            BoxCollider killCollider = killZone.GetComponent<BoxCollider>();
+            if (killCollider != null) killCollider.size = new Vector3(100f, 1f, 250f);
+        }
+
+        EditorSceneManager.MarkSceneDirty(scene);
+        Debug.Log("JumpPuzzleArea added and TurnPoint moved to its far side. Save the scene to keep the changes.");
+    }
+
+    [MenuItem("Tools/Prototype/Update Jump Puzzle Path And TurnPoint")]
+    private static void UpdateJumpPuzzlePathAndTurnPoint()
+    {
+        Scene scene = SceneManager.GetActiveScene();
+        GameObject level = GameObject.Find("Level");
+        if (!scene.IsValid() || level == null || level.transform.Find("JumpPuzzleArea") == null)
+        {
+            EditorUtility.DisplayDialog("Jump Puzzle Path Update Failed",
+                "Open a scene containing Level/JumpPuzzleArea.", "OK");
+            return;
+        }
+
+        EnsurePlatform("DoorPuzzleToJumpConnector", level.transform,
+            new Vector3(0f, 2f, 94.5f), new Vector3(12f, 0.5f, 3f));
+        EnsurePlatform("JumpPuzzleToTurnConnector", level.transform,
+            new Vector3(0f, 2f, 138f), new Vector3(8f, 0.5f, 6f));
+        Transform turnPlatform = level.transform.Find("BridgeArea/TurnPlatform");
+        if (turnPlatform != null)
+        {
+            turnPlatform.localPosition = new Vector3(0f, 2f, 145f);
+            turnPlatform.localScale = new Vector3(12f, 0.5f, 8f);
+        }
+        Transform turnPoint = level.transform.Find("BridgeArea/TurnPoint");
+        if (turnPoint != null) turnPoint.localPosition = new Vector3(0f, 3f, 146f);
+        EditorSceneManager.MarkSceneDirty(scene);
+        Debug.Log("Jump puzzle connection and return point updated. Save the scene.");
+    }
+
     [MenuItem("Tools/Prototype/Fix Raft To Door Puzzle Gap")]
     private static void FixRaftToDoorPuzzleGap()
     {
@@ -500,10 +589,13 @@ public static class PrototypeSceneBuilder
         CreateDoorPuzzleArea(level.transform, gameStateManager);
         CreateCube("DoorPuzzleExitPlatform", level.transform,
             new Vector3(0f, 2f, 91f), new Vector3(12f, 0.5f, 4f));
+        EnsurePlatform("DoorPuzzleToJumpConnector", level.transform,
+            new Vector3(0f, 2f, 94.5f), new Vector3(12f, 0.5f, 3f));
+        CreateJumpPuzzleArea(level.transform, gameStateManager);
 
         CreateCube("TurnPlatform", bridgeArea.transform,
-            new Vector3(0f, 2f, 95f), new Vector3(12f, 0.5f, 6f));
-        CreateTrigger("TurnPoint", bridgeArea.transform, new Vector3(0f, 3f, 96.5f),
+            new Vector3(0f, 2f, 145f), new Vector3(12f, 0.5f, 8f));
+        CreateTrigger("TurnPoint", bridgeArea.transform, new Vector3(0f, 3f, 146f),
             new Vector3(7f, 4f, 1f));
         TurnPoint turnPoint = bridgeArea.transform.Find("TurnPoint").gameObject.AddComponent<TurnPoint>();
         SetObjectReference(turnPoint, "gameStateManager", gameStateManager);
@@ -521,11 +613,13 @@ public static class PrototypeSceneBuilder
             new Vector3(6f, 3f, 1f), respawnManager);
         CreateCheckpoint("CP_DoorPuzzle", checkpoints.transform, new Vector3(0f, 2.3f, 62.5f),
             new Vector3(12f, 3f, 1f), respawnManager);
+        CreateCheckpoint("CP_JumpStart", checkpoints.transform, new Vector3(0f, 2.3f, 96f),
+            new Vector3(12f, 3f, 1f), respawnManager);
 
         GameObject killZone = new GameObject("KillZone");
         killZone.transform.position = new Vector3(0f, -8f, 40f);
         BoxCollider killZoneCollider = killZone.AddComponent<BoxCollider>();
-        killZoneCollider.size = new Vector3(100f, 1f, 200f);
+        killZoneCollider.size = new Vector3(100f, 1f, 250f);
         killZoneCollider.isTrigger = true;
         killZone.AddComponent<KillZone>();
 
@@ -609,6 +703,143 @@ public static class PrototypeSceneBuilder
             new Vector3(4.5f, 2f, 54f), new Vector3(4f, 0.5f, 4f));
         platformRoute.SetActive(false);
         SetObjectReference(raftController, "competitionPlatformRoute", platformRoute);
+    }
+
+    private static void CreateJumpPuzzleArea(Transform level, GameStateManager gameStateManager)
+    {
+        GameObject area = new GameObject("JumpPuzzleArea");
+        area.transform.SetParent(level, false);
+        // Keep this NetworkBehaviour on the existing GameManager NetworkObject.
+        // NGO does not support nested NetworkObjects, while MovingPlatform has its own.
+        JumpPuzzleController controller = gameStateManager.gameObject.AddComponent<JumpPuzzleController>();
+        SetObjectReference(controller, "gameStateManager", gameStateManager);
+
+        CreateCube("StartPlatform", area.transform,
+            new Vector3(0f, 2f, 98f), new Vector3(12f, 0.5f, 5f));
+
+        GameObject switchA = CreateJumpHoldSwitch("ControlSwitch_A", area.transform,
+            new Vector3(-3f, 2.7f, 99f), 0, controller);
+        GameObject switchB = CreateJumpHoldSwitch("ControlSwitch_B", area.transform,
+            new Vector3(0f, 2.7f, 114.5f), 1, controller);
+        SetObjectReference(controller, "switchAPoint", switchA.transform);
+        SetObjectReference(controller, "switchBPoint", switchB.transform);
+
+        Transform startPoint = CreateSpawnPoint(area.transform, "MovingPlatformPoint_A",
+            new Vector3(0f, 2f, 102f));
+        Transform endPoint = CreateSpawnPoint(area.transform, "MovingPlatformPoint_B",
+            new Vector3(0f, 2f, 111f));
+        GameObject movingPlatform = CreateCube("MovingPlatform", area.transform,
+            startPoint.localPosition, new Vector3(3.2f, 0.5f, 3.2f));
+        movingPlatform.AddComponent<NetworkObject>();
+        movingPlatform.AddComponent<NetworkTransform>();
+        MovingPlatform movingController = movingPlatform.AddComponent<MovingPlatform>();
+        SetObjectReference(movingController, "puzzleController", controller);
+        SetObjectReference(movingController, "startPoint", startPoint);
+        SetObjectReference(movingController, "endPoint", endPoint);
+
+        GameObject riderTriggerObject = new GameObject("RiderTrigger",
+            typeof(BoxCollider), typeof(RaftMovingPlatform));
+        riderTriggerObject.transform.SetParent(movingPlatform.transform, false);
+        riderTriggerObject.transform.localPosition = new Vector3(0f, 0.35f, 0f);
+        BoxCollider riderTrigger = riderTriggerObject.GetComponent<BoxCollider>();
+        riderTrigger.isTrigger = true;
+        riderTrigger.size = new Vector3(3.1f, 1.1f, 3.1f);
+        SetObjectReference(riderTriggerObject.GetComponent<RaftMovingPlatform>(),
+            "raftTransform", movingPlatform.transform);
+
+        GameObject cooperativePlatforms = new GameObject("CooperativePlatforms");
+        cooperativePlatforms.transform.SetParent(area.transform, false);
+        CreateCube("CoopPlatform_01", cooperativePlatforms.transform,
+            new Vector3(2f, 2f, 118f), new Vector3(3.2f, 0.5f, 3.2f));
+        CreateCube("CoopPlatform_02", cooperativePlatforms.transform,
+            new Vector3(-1.5f, 2f, 121.3f), new Vector3(3.2f, 0.5f, 3.2f));
+        CreateCube("CoopPlatform_03", cooperativePlatforms.transform,
+            new Vector3(2f, 2f, 124.6f), new Vector3(3.2f, 0.5f, 3.2f));
+        CreateCube("CoopPlatform_04", cooperativePlatforms.transform,
+            new Vector3(0f, 2f, 127.5f), new Vector3(4f, 0.5f, 3.2f));
+        CreateCube("ControlSwitchBApproach", area.transform,
+            new Vector3(0f, 2f, 114.5f), new Vector3(3.2f, 0.5f, 3.2f));
+        cooperativePlatforms.SetActive(false);
+        SetObjectReference(controller, "cooperativePlatforms", cooperativePlatforms);
+
+        GameObject endPlatform = CreateCube("EndPlatform", area.transform,
+            new Vector3(0f, 2f, 131f), new Vector3(12f, 0.5f, 8f));
+        GameObject endTriggerObject = new GameObject("EndArrivalTrigger", typeof(BoxCollider));
+        endTriggerObject.transform.SetParent(endPlatform.transform, false);
+        endTriggerObject.transform.localPosition = new Vector3(0f, 1.1f, 0f);
+        BoxCollider endTrigger = endTriggerObject.GetComponent<BoxCollider>();
+        endTrigger.isTrigger = true;
+        endTrigger.size = new Vector3(11.5f, 3.5f, 7.5f);
+        JumpPuzzleEndTrigger arrival = endTriggerObject.AddComponent<JumpPuzzleEndTrigger>();
+        SetObjectReference(arrival, "puzzleController", controller);
+        SetObjectReference(controller, "endPlatformTrigger", endTrigger);
+
+        GameObject safeRoute = new GameObject("SafeRoute");
+        safeRoute.transform.SetParent(area.transform, false);
+        float[] safeZ = { 101.1f, 103.9f, 106.7f, 109.5f, 112.3f,
+            115.1f, 117.9f, 120.7f, 123.5f, 126.3f };
+        for (int i = 0; i < safeZ.Length; i++)
+        {
+            CreateCube($"SafePlatform_{i + 1:00}", safeRoute.transform,
+                new Vector3(i % 2 == 0 ? 1.5f : 3.3f, 2f, safeZ[i]),
+                new Vector3(4.2f, 0.5f, 3.6f));
+        }
+
+        GameObject riskRoute = new GameObject("RiskRoute");
+        riskRoute.transform.SetParent(area.transform, false);
+        Vector3[] riskPositions =
+        {
+            new Vector3(-3.5f, 2f, 101.8f), new Vector3(-3.5f, 2f, 107.4f),
+            new Vector3(-3.5f, 2f, 113f), new Vector3(-3.5f, 2f, 118.6f),
+            new Vector3(-3.5f, 2f, 124.2f), new Vector3(-2.5f, 2f, 129.8f)
+        };
+        for (int i = 0; i < riskPositions.Length; i++)
+        {
+            CreateCube($"RiskPlatform_{i + 1:00}", riskRoute.transform,
+                riskPositions[i], new Vector3(1.45f, 0.5f, 3f));
+        }
+
+        safeRoute.SetActive(false);
+        riskRoute.SetActive(false);
+        SetObjectReference(controller, "safeRoute", safeRoute);
+        SetObjectReference(controller, "riskRoute", riskRoute);
+    }
+
+    private static GameObject CreateJumpHoldSwitch(
+        string objectName, Transform parent, Vector3 position, int switchId, JumpPuzzleController controller)
+    {
+        GameObject switchObject = new GameObject(objectName);
+        switchObject.transform.SetParent(parent, false);
+        switchObject.transform.localPosition = position;
+        BoxCollider trigger = switchObject.AddComponent<BoxCollider>();
+        trigger.isTrigger = true;
+        trigger.size = new Vector3(2.4f, 2.8f, 2.4f);
+        HoldSwitch holdSwitch = switchObject.AddComponent<HoldSwitch>();
+        SetObjectReference(holdSwitch, "puzzleController", controller);
+        SetIntValue(holdSwitch, "switchId", switchId);
+        GameObject visual = CreateCube(objectName + "Visual", switchObject.transform,
+            new Vector3(0f, -0.325f, 0f), new Vector3(0.9f, 0.25f, 0.9f));
+        Object.DestroyImmediate(visual.GetComponent<Collider>());
+        return switchObject;
+    }
+
+    private static GameObject EnsurePlatform(
+        string objectName, Transform parent, Vector3 position, Vector3 scale)
+    {
+        Transform existing = parent.Find(objectName);
+        if (existing == null)
+        {
+            return CreateCube(objectName, parent, position, scale);
+        }
+
+        existing.localPosition = position;
+        existing.localRotation = Quaternion.identity;
+        existing.localScale = scale;
+        if (existing.GetComponent<Collider>() == null)
+        {
+            existing.gameObject.AddComponent<BoxCollider>();
+        }
+        return existing.gameObject;
     }
 
     private static void CreateDoorPuzzleArea(Transform parent, GameStateManager gameStateManager)
@@ -901,6 +1132,20 @@ public static class PrototypeSceneBuilder
         }
 
         property.enumValueIndex = value;
+        serializedObject.ApplyModifiedPropertiesWithoutUndo();
+    }
+
+    private static void SetIntValue(Object target, string propertyName, int value)
+    {
+        SerializedObject serializedObject = new SerializedObject(target);
+        SerializedProperty property = serializedObject.FindProperty(propertyName);
+        if (property == null)
+        {
+            Debug.LogError($"Serialized field '{propertyName}' was not found on {target.GetType().Name}.");
+            return;
+        }
+
+        property.intValue = value;
         serializedObject.ApplyModifiedPropertiesWithoutUndo();
     }
 
