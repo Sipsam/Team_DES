@@ -6,6 +6,16 @@ public sealed class HoldSwitch : MonoBehaviour
 {
     [SerializeField] private JumpPuzzleController puzzleController;
     [SerializeField, Range(0, 1)] private int switchId;
+    private float nextRequestTime;
+
+    private void OnTriggerStay(Collider other)
+    {
+        PlayerMovement player = other.GetComponentInParent<PlayerMovement>();
+        if (player == null || !player.IsSpawned || !player.IsOwner) return;
+        if (Time.time < nextRequestTime) return;
+        nextRequestTime = Time.time + 0.25f;
+        SetHeld(other, true);
+    }
 
     private void Reset()
     {

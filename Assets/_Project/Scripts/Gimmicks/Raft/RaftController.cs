@@ -35,6 +35,8 @@ public sealed class RaftController : NetworkBehaviour
     [SerializeField, Min(0f)] private float moveSpeed = 3f;
     [SerializeField, Min(0f)] private float turnSpeed = 30f;
     [SerializeField, Min(0.1f)] private float completionRadius = 2f;
+    [SerializeField] private bool reverseDriveInCompetition;
+    [SerializeField, Min(1f)] private float competitionSpeedMultiplier = 1f;
 
     [Header("Server Validation")]
     [SerializeField, Min(0.1f)] private float controlPointValidationRange = 2.5f;
@@ -163,12 +165,14 @@ public sealed class RaftController : NetworkBehaviour
 
     private void FixedUpdate()
     {
-        if (!IsServer)
+        if (!IsServer || !IsSpawned)
         {
             return;
         }
 
         ClearStaleInputs();
+        ValidateOccupants();
+        if (gameStateManager == null || !gameStateManager.CanPlay) return;
 
         GameState state = CurrentGameState;
         int occupiedCount = GetOccupiedCount();
@@ -219,8 +223,10 @@ public sealed class RaftController : NetworkBehaviour
         }
 
         SetRaftState(RaftState.Moving);
+        if (state == GameState.Competition && reverseDriveInCompetition) drive = -drive;
         transform.Rotate(0f, steer * turnSpeed * Time.fixedDeltaTime, 0f, Space.World);
-        transform.position += transform.forward * (drive * moveSpeed * Time.fixedDeltaTime);
+        float speed = moveSpeed * (state == GameState.Competition ? competitionSpeedMultiplier : 1f);
+        transform.position += transform.forward * (drive * speed * Time.fixedDeltaTime);
 
         if (state == GameState.Cooperation && raftEnd != null &&
             Vector3.Distance(transform.position, raftEnd.position) <= completionRadius)
@@ -236,7 +242,8 @@ public sealed class RaftController : NetworkBehaviour
     [Rpc(SendTo.Server, InvokePermission = RpcInvokePermission.Everyone)]
     public void RequestControlPointServerRpc(int sideValue, RpcParams rpcParams = default)
     {
-        if (!IsServer || sideValue < (int)RaftControlSide.Left || sideValue > (int)RaftControlSide.Right)
+        if (!IsServer || gameStateManager == null || !gameStateManager.CanPlay ||
+            sideValue < (int)RaftControlSide.Left || sideValue > (int)RaftControlSide.Right)
         {
             return;
         }
@@ -372,6 +379,26 @@ public sealed class RaftController : NetworkBehaviour
         if (rightOccupant.Value == NoClient || Time.time - lastRightInputTime > InputTimeout)
         {
             rightInput = 0f;
+        }
+    }
+
+    private void ValidateOccupants()
+    {
+        ValidateOccupant(RaftControlSide.Left);
+        ValidateOccupant(RaftControlSide.Right);
+    }
+
+    private void ValidateOccupant(RaftControlSide side)
+    {
+        ulong id = GetOccupant(side);
+        if (id == NoClient) return;
+        Transform point = GetControlPoint(side);
+        if (point == null || !NetworkManager.ConnectedClients.TryGetValue(id, out NetworkClient client) ||
+            client.PlayerObject == null || Vector3.Distance(client.PlayerObject.transform.position, point.position) >
+            controlPointValidationRange + 0.75f)
+        {
+            SetOccupant(side, NoClient);
+            SetInput(side, 0f);
         }
     }
 

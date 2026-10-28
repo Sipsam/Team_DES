@@ -15,19 +15,9 @@ public static class PrototypeSceneBuilder
     private const string PlayerPrefabDirectory = "Assets/_Project/Prefabs/Player";
     private const string PlayerPrefabPath = PlayerPrefabDirectory + "/NetworkPlayer.prefab";
 
-    [MenuItem("Tools/Prototype/Create Prototype Scene")]
+    [MenuItem("Tools/Prototype/Create New Prototype Scene")]
     private static void CreatePrototypeScene()
     {
-        if (File.Exists(ScenePath) &&
-            !EditorUtility.DisplayDialog(
-                "Overwrite Prototype Scene?",
-                "Prototype_01 already exists. Do you want to replace it?",
-                "Overwrite",
-                "Cancel"))
-        {
-            return;
-        }
-
         if (!SaveModifiedScenesBeforeReplacing())
         {
             return;
@@ -37,14 +27,15 @@ public static class PrototypeSceneBuilder
         AssetDatabase.Refresh();
 
         Scene scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+        string scenePath = AssetDatabase.GenerateUniqueAssetPath(ScenePath);
         BuildScene();
         EditorSceneManager.MarkSceneDirty(scene);
 
-        if (EditorSceneManager.SaveScene(scene, ScenePath))
+        if (EditorSceneManager.SaveScene(scene, scenePath))
         {
-            AddSceneToBuildSettings(ScenePath);
+            AddSceneToBuildSettings(scenePath);
             AssetDatabase.Refresh();
-            Debug.Log($"Prototype scene created: {ScenePath}");
+            Debug.Log($"Prototype scene created: {scenePath}");
         }
         else
         {
@@ -376,7 +367,7 @@ public static class PrototypeSceneBuilder
         }
     }
 
-    private static bool SaveModifiedScenesBeforeReplacing()
+    internal static bool SaveModifiedScenesBeforeReplacing()
     {
         for (int i = 0; i < SceneManager.sceneCount; i++)
         {
@@ -433,52 +424,56 @@ public static class PrototypeSceneBuilder
         return true;
     }
 
-    private static void BuildScene()
+    internal static void BuildScene()
     {
         GameObject gameManager = new GameObject("GameManager");
         gameManager.AddComponent<NetworkObject>();
         RespawnManager respawnManager = gameManager.AddComponent<RespawnManager>();
         GameStateManager gameStateManager = gameManager.AddComponent<GameStateManager>();
 
-        GameObject player = new GameObject("Player");
-        player.tag = "Player";
-        player.transform.position = new Vector3(0f, 0.5f, 0f);
-
-        CharacterController characterController = player.AddComponent<CharacterController>();
-        characterController.height = 2f;
-        characterController.radius = 0.45f;
-        characterController.center = new Vector3(0f, 1f, 0f);
-        characterController.stepOffset = 0.3f;
-
-        GameObject capsuleMesh = GameObject.CreatePrimitive(PrimitiveType.Capsule);
-        capsuleMesh.name = "Capsule Mesh";
-        capsuleMesh.transform.SetParent(player.transform, false);
-        capsuleMesh.transform.localPosition = Vector3.up;
-        Object.DestroyImmediate(capsuleMesh.GetComponent<Collider>());
-
-        GameObject cameraTarget = new GameObject("CameraTarget");
-        cameraTarget.transform.SetParent(player.transform, false);
-        cameraTarget.transform.localPosition = new Vector3(0f, 1.4f, 0f);
-
-        player.AddComponent<NetworkObject>();
-        OwnerNetworkTransform networkTransform = player.AddComponent<OwnerNetworkTransform>();
-        networkTransform.AuthorityMode = Unity.Netcode.Components.NetworkTransform.AuthorityModes.Owner;
-        PlayerMovement playerMovement = player.AddComponent<PlayerMovement>();
-        player.AddComponent<PlayerInteraction>();
-        player.AddComponent<PlayerCombat>();
-
-        // A scene camera cannot be referenced from a prefab. The owning client binds it at spawn time.
-        SetObjectReference(playerMovement, "cameraTransform", null);
-
-        Directory.CreateDirectory(PlayerPrefabDirectory);
-        AssetDatabase.Refresh();
-        GameObject networkPlayerPrefab = PrefabUtility.SaveAsPrefabAsset(player, PlayerPrefabPath);
+        GameObject networkPlayerPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(PlayerPrefabPath);
         if (networkPlayerPrefab == null)
         {
-            Debug.LogError($"Failed to save network player prefab: {PlayerPrefabPath}");
-            return;
+            GameObject player = new GameObject("Player");
+            player.tag = "Player";
+            player.transform.position = new Vector3(0f, 0.5f, 0f);
+
+            CharacterController characterController = player.AddComponent<CharacterController>();
+            characterController.height = 2f;
+            characterController.radius = 0.45f;
+            characterController.center = new Vector3(0f, 1f, 0f);
+            characterController.stepOffset = 0.3f;
+
+            GameObject capsuleMesh = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+            capsuleMesh.name = "Capsule Mesh";
+            capsuleMesh.transform.SetParent(player.transform, false);
+            capsuleMesh.transform.localPosition = Vector3.up;
+            Object.DestroyImmediate(capsuleMesh.GetComponent<Collider>());
+
+            GameObject cameraTarget = new GameObject("CameraTarget");
+            cameraTarget.transform.SetParent(player.transform, false);
+            cameraTarget.transform.localPosition = new Vector3(0f, 1.4f, 0f);
+
+            player.AddComponent<NetworkObject>();
+            OwnerNetworkTransform networkTransform = player.AddComponent<OwnerNetworkTransform>();
+            networkTransform.AuthorityMode = Unity.Netcode.Components.NetworkTransform.AuthorityModes.Owner;
+            PlayerMovement playerMovement = player.AddComponent<PlayerMovement>();
+            player.AddComponent<PlayerInteraction>();
+            player.AddComponent<PlayerCombat>();
+
+            // A scene camera cannot be referenced from a prefab. The owning client binds it at spawn time.
+            SetObjectReference(playerMovement, "cameraTransform", null);
+
+            Directory.CreateDirectory(PlayerPrefabDirectory);
+            AssetDatabase.Refresh();
+            networkPlayerPrefab = PrefabUtility.SaveAsPrefabAsset(player, PlayerPrefabPath);
+            if (networkPlayerPrefab == null)
+            {
+                Debug.LogError($"Failed to save network player prefab: {PlayerPrefabPath}");
+                return;
+            }
+            Object.DestroyImmediate(player);
         }
-        Object.DestroyImmediate(player);
 
         GameObject mainCamera = new GameObject("Main Camera", typeof(Camera), typeof(AudioListener));
         mainCamera.tag = "MainCamera";
@@ -593,6 +588,9 @@ public static class PrototypeSceneBuilder
             new Vector3(0f, 2f, 94.5f), new Vector3(12f, 0.5f, 3f));
         CreateJumpPuzzleArea(level.transform, gameStateManager);
 
+        EnsurePlatform("JumpPuzzleToTurnConnector", level.transform,
+            new Vector3(0f, 2f, 138f), new Vector3(8f, 0.5f, 6f));
+
         CreateCube("TurnPlatform", bridgeArea.transform,
             new Vector3(0f, 2f, 145f), new Vector3(12f, 0.5f, 8f));
         CreateTrigger("TurnPoint", bridgeArea.transform, new Vector3(0f, 3f, 146f),
@@ -629,7 +627,7 @@ public static class PrototypeSceneBuilder
         directionalLight.transform.rotation = Quaternion.Euler(50f, -30f, 0f);
     }
 
-    private static void CreateRaftArea(Transform parent, GameStateManager gameStateManager)
+    internal static void CreateRaftArea(Transform parent, GameStateManager gameStateManager)
     {
         GameObject water = GameObject.CreatePrimitive(PrimitiveType.Plane);
         water.name = "WaterArea";
@@ -705,7 +703,7 @@ public static class PrototypeSceneBuilder
         SetObjectReference(raftController, "competitionPlatformRoute", platformRoute);
     }
 
-    private static void CreateJumpPuzzleArea(Transform level, GameStateManager gameStateManager)
+    internal static void CreateJumpPuzzleArea(Transform level, GameStateManager gameStateManager)
     {
         GameObject area = new GameObject("JumpPuzzleArea");
         area.transform.SetParent(level, false);
@@ -728,8 +726,10 @@ public static class PrototypeSceneBuilder
             new Vector3(0f, 2f, 102f));
         Transform endPoint = CreateSpawnPoint(area.transform, "MovingPlatformPoint_B",
             new Vector3(0f, 2f, 111f));
-        GameObject movingPlatform = CreateCube("MovingPlatform", area.transform,
-            startPoint.localPosition, new Vector3(3.2f, 0.5f, 3.2f));
+        GameObject movingPlatform = new GameObject("MovingPlatform");
+        movingPlatform.transform.SetParent(area.transform, false);
+        movingPlatform.transform.localPosition = startPoint.localPosition;
+        CreateCube("Base", movingPlatform.transform, Vector3.zero, new Vector3(3.2f, 0.5f, 3.2f));
         movingPlatform.AddComponent<NetworkObject>();
         movingPlatform.AddComponent<NetworkTransform>();
         MovingPlatform movingController = movingPlatform.AddComponent<MovingPlatform>();
@@ -765,8 +765,8 @@ public static class PrototypeSceneBuilder
         GameObject endPlatform = CreateCube("EndPlatform", area.transform,
             new Vector3(0f, 2f, 131f), new Vector3(12f, 0.5f, 8f));
         GameObject endTriggerObject = new GameObject("EndArrivalTrigger", typeof(BoxCollider));
-        endTriggerObject.transform.SetParent(endPlatform.transform, false);
-        endTriggerObject.transform.localPosition = new Vector3(0f, 1.1f, 0f);
+        endTriggerObject.transform.SetParent(area.transform, false);
+        endTriggerObject.transform.localPosition = new Vector3(0f, 3.1f, 131f);
         BoxCollider endTrigger = endTriggerObject.GetComponent<BoxCollider>();
         endTrigger.isTrigger = true;
         endTrigger.size = new Vector3(11.5f, 3.5f, 7.5f);
@@ -842,7 +842,7 @@ public static class PrototypeSceneBuilder
         return existing.gameObject;
     }
 
-    private static void CreateDoorPuzzleArea(Transform parent, GameStateManager gameStateManager)
+    internal static void CreateDoorPuzzleArea(Transform parent, GameStateManager gameStateManager)
     {
         GameObject area = new GameObject("DoorPuzzleArea");
         area.transform.SetParent(parent, false);
@@ -889,6 +889,7 @@ public static class PrototypeSceneBuilder
 
         GameObject competitionRoute = new GameObject("CompetitionRoute");
         competitionRoute.transform.SetParent(area.transform, false);
+        SetObjectReference(controller, "competitionRoute", competitionRoute);
         CreateSegmentPath("OpenDoorRoute", competitionRoute.transform,
             new[]
             {

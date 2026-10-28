@@ -5,6 +5,11 @@ public sealed class TurnPoint : MonoBehaviour
 {
     [SerializeField] private GameStateManager gameStateManager;
 
+    private void OnTriggerStay(Collider other)
+    {
+        OnTriggerEnter(other);
+    }
+
     private void Reset()
     {
         GetComponent<Collider>().isTrigger = true;

@@ -92,7 +92,8 @@ public sealed class PlayerCombat : NetworkBehaviour
 
     private void ReadLocalInput()
     {
-        if (NetworkManager == null || NetworkManager.ConnectedClientsIds.Count < 2 ||
+        if (NetworkManager == null || gameStateManager == null || !gameStateManager.CanPlay ||
+            DoorPuzzleUI.IsPanelVisible ||
             Cursor.lockState != CursorLockMode.Locked)
         {
             return;
@@ -289,8 +290,7 @@ public sealed class PlayerCombat : NetworkBehaviour
 
     private bool CanInteractInCurrentState()
     {
-        return IsServer && NetworkManager != null && NetworkManager.ConnectedClientsIds.Count >= 2 &&
-               CurrentGameState != GameState.Finished;
+        return IsServer && gameStateManager != null && gameStateManager.CanPlay;
     }
 
     private GameState CurrentGameState

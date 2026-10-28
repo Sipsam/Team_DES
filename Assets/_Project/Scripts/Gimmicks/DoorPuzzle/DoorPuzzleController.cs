@@ -16,6 +16,8 @@ public sealed class DoorPuzzleController : NetworkBehaviour
     [SerializeField] private PuzzleDoor shortcutDoor;
     [SerializeField] private GameObject competitionRoute;
     [SerializeField] private GameObject shortcutPanelVisual;
+    [SerializeField] private Transform shortcutStation;
+    [SerializeField] private GameObject cooperationFloor;
 
     [Header("Server Validation")]
     [SerializeField, Min(0.1f)] private float stationValidationRange = 3.5f;
@@ -36,6 +38,7 @@ public sealed class DoorPuzzleController : NetworkBehaviour
     private float nextOccupancyValidationTime;
 
     public bool IsDoorOpen => doorOpened.Value;
+    public bool HasDedicatedShortcutStation => shortcutStation != null;
     public GameState CurrentGameState => gameStateManager != null
         ? gameStateManager.CurrentState
         : GameState.Finished;
@@ -152,9 +155,10 @@ public sealed class DoorPuzzleController : NetworkBehaviour
     }
 
     [Rpc(SendTo.Server, InvokePermission = RpcInvokePermission.Everyone)]
-    public void RequestStationServerRpc(int stationValue, RpcParams rpcParams = default)
+    public void RequestStationServerRpc(int stationValue, bool shortcut = false, RpcParams rpcParams = default)
     {
-        if (!IsServer || stationValue < (int)DoorPuzzleStationType.Info ||
+        if (!IsServer || gameStateManager == null || !gameStateManager.CanPlay ||
+            stationValue < (int)DoorPuzzleStationType.Info ||
             stationValue > (int)DoorPuzzleStationType.Input)
         {
             return;
@@ -171,8 +175,9 @@ public sealed class DoorPuzzleController : NetworkBehaviour
         DoorPuzzleStationType stationType = (DoorPuzzleStationType)stationValue;
         if (CurrentGameState == GameState.Competition)
         {
-            if (stationType != DoorPuzzleStationType.Input || IsShortcutUnlocked(clientId) ||
-                !IsPlayerNearStation(client.PlayerObject.transform.position, inputStation))
+            Transform point = shortcutStation != null ? shortcutStation : inputStation;
+            if ((shortcutStation != null && !shortcut) || stationType != DoorPuzzleStationType.Input ||
+                IsShortcutUnlocked(clientId) || !IsPlayerNearStation(client.PlayerObject.transform.position, point))
             {
                 return;
             }
@@ -181,7 +186,7 @@ public sealed class DoorPuzzleController : NetworkBehaviour
             return;
         }
 
-        if (CurrentGameState != GameState.Cooperation || doorOpened.Value)
+        if (shortcut || CurrentGameState != GameState.Cooperation || doorOpened.Value)
         {
             return;
         }
@@ -245,7 +250,8 @@ public sealed class DoorPuzzleController : NetworkBehaviour
     public void SubmitCooperationCodeServerRpc(string submittedCode, RpcParams rpcParams = default)
     {
         ulong clientId = rpcParams.Receive.SenderClientId;
-        if (!IsServer || CurrentGameState != GameState.Cooperation || doorOpened.Value ||
+        if (!IsServer || gameStateManager == null || !gameStateManager.CanPlay ||
+            CurrentGameState != GameState.Cooperation || doorOpened.Value ||
             inputOccupant.Value != clientId || infoOccupant.Value == NoClient ||
             infoOccupant.Value == clientId || !IsClientNearStation(clientId, inputStation) ||
             !IsClientNearStation(infoOccupant.Value, infoStation))
@@ -269,8 +275,9 @@ public sealed class DoorPuzzleController : NetworkBehaviour
     public void SubmitShortcutCodeServerRpc(string submittedCode, RpcParams rpcParams = default)
     {
         ulong clientId = rpcParams.Receive.SenderClientId;
-        if (!IsServer || CurrentGameState != GameState.Competition || IsShortcutUnlocked(clientId) ||
-            !IsClientNearStation(clientId, inputStation))
+        if (!IsServer || gameStateManager == null || !gameStateManager.CanPlay ||
+            CurrentGameState != GameState.Competition || IsShortcutUnlocked(clientId) ||
+            !IsClientNearStation(clientId, shortcutStation != null ? shortcutStation : inputStation))
         {
             return;
         }
@@ -377,7 +384,7 @@ public sealed class DoorPuzzleController : NetworkBehaviour
 
     private void UpdateInputStatus(string status)
     {
-        if (inputOccupant.Value == NoClient || NetworkManager == null ||
+        if (!IsServer || inputOccupant.Value == NoClient || NetworkManager == null ||
             !NetworkManager.ConnectedClients.ContainsKey(inputOccupant.Value))
         {
             return;
@@ -461,6 +468,7 @@ public sealed class DoorPuzzleController : NetworkBehaviour
     private void ApplyGameState(GameState state)
     {
         bool competition = state == GameState.Competition;
+        if (cooperationFloor != null) cooperationFloor.SetActive(state == GameState.Cooperation);
         if (competitionRoute != null)
         {
             competitionRoute.SetActive(competition);

@@ -42,9 +42,9 @@ public sealed class MovingPlatform : NetworkBehaviour
             return;
         }
 
-        bool shouldMove = moveWhenEitherSwitchHeld
+        bool shouldMove = puzzleController.CanOperate && (moveWhenEitherSwitchHeld
             ? puzzleController.IsAnyHoldSwitchActive
-            : puzzleController.IsSwitchAActive && puzzleController.IsSwitchBActive;
+            : puzzleController.IsSwitchAActive && puzzleController.IsSwitchBActive);
         if (!shouldMove)
         {
             waitTimer = 0f;

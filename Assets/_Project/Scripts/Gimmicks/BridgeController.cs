@@ -31,8 +31,10 @@ public sealed class BridgeController : NetworkBehaviour
     public event Action<BridgeSwitchId, bool> SwitchStateChanged;
 
     public BridgeState CurrentState => bridgeState.Value;
+    public bool IsCooperationCompleted => switchAActivated.Value && switchBActivated.Value;
     public bool CanActivateSwitch => IsSpawned && IsServer && CurrentState == BridgeState.Incomplete &&
-                                     (gameStateManager == null || gameStateManager.CurrentState == GameState.Cooperation);
+                                     (gameStateManager == null || (gameStateManager.CanPlay &&
+                                         gameStateManager.CurrentState == GameState.Cooperation));
 
     public bool IsSwitchActivated(BridgeSwitchId id)
     {

@@ -15,6 +15,17 @@ public sealed class GameStateManager : NetworkBehaviour
 {
     public event Action<GameState, GameState> StateChanged;
 
+    [Header("Integrated Course (optional for older scenes)")]
+    [SerializeField] private bool requireAllGimmicks;
+    [SerializeField] private BridgeController bridge;
+    [SerializeField] private RaftController raft;
+    [SerializeField] private DoorPuzzleController door;
+    [SerializeField] private JumpPuzzleController jump;
+
+    private readonly NetworkVariable<int> connectedPlayerCount = new NetworkVariable<int>(0);
+    private readonly NetworkVariable<double> courseStartedAt = new NetworkVariable<double>(-1d);
+    private readonly NetworkVariable<double> courseFinishedAt = new NetworkVariable<double>(-1d);
+
     private readonly NetworkVariable<GameState> currentState = new NetworkVariable<GameState>(
         GameState.Cooperation, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
     private readonly NetworkVariable<int> turnPointArrivalCount = new NetworkVariable<int>(
@@ -28,6 +39,32 @@ public sealed class GameStateManager : NetworkBehaviour
     public int TurnPointArrivalCount => turnPointArrivalCount.Value;
     public ulong WinnerClientId => winnerClientId.Value;
     public bool HasWinner => winnerClientId.Value != ulong.MaxValue;
+    public int ConnectedPlayerCount => connectedPlayerCount.Value;
+    public bool IsGameReady => IsSpawned && connectedPlayerCount.Value == 2;
+    public bool CanPlay => IsGameReady && CurrentState != GameState.Finished;
+    public bool AllGimmicksCompleted => !requireAllGimmicks ||
+        (bridge != null && bridge.IsCooperationCompleted &&
+         raft != null && raft.IsCooperationCompleted &&
+         door != null && door.IsDoorOpen && jump != null && jump.IsCooperationCompleted);
+    public double ElapsedSeconds => courseStartedAt.Value < 0d || !IsSpawned ? 0d :
+        Math.Max(0d, (courseFinishedAt.Value >= 0d ? courseFinishedAt.Value : NetworkManager.ServerTime.Time) -
+                    courseStartedAt.Value);
+
+    private void Update()
+    {
+        if (!IsSpawned || !IsServer) return;
+        int count = 0;
+        foreach (NetworkClient client in NetworkManager.ConnectedClientsList)
+        {
+            if (client.PlayerObject != null && client.PlayerObject.IsSpawned) count++;
+        }
+        connectedPlayerCount.Value = count;
+        if (count == 2 && courseStartedAt.Value < 0d)
+        {
+            courseStartedAt.Value = NetworkManager.ServerTime.Time;
+            Debug.Log("Game ready. Cooperation started.");
+        }
+    }
 
     public override void OnNetworkSpawn()
     {
@@ -39,6 +76,9 @@ public sealed class GameStateManager : NetworkBehaviour
             turnPointArrivalCount.Value = 0;
             winnerClientId.Value = ulong.MaxValue;
             currentState.Value = GameState.Cooperation;
+            connectedPlayerCount.Value = 0;
+            courseStartedAt.Value = -1d;
+            courseFinishedAt.Value = -1d;
         }
         if (IsServer && NetworkManager != null)
         {
@@ -58,7 +98,7 @@ public sealed class GameStateManager : NetworkBehaviour
 
     public bool TryTransitionTo(GameState nextState)
     {
-        if (!IsServer || !IsValidTransition(currentState.Value, nextState))
+        if (!IsServer || !IsGameReady || !IsValidTransition(currentState.Value, nextState))
         {
             return false;
         }
@@ -69,7 +109,7 @@ public sealed class GameStateManager : NetworkBehaviour
 
     public bool RegisterTurnPointArrival(ulong clientId)
     {
-        if (!IsServer || currentState.Value != GameState.Cooperation ||
+        if (!IsServer || !IsGameReady || !AllGimmicksCompleted || currentState.Value != GameState.Cooperation ||
             !NetworkManager.ConnectedClients.ContainsKey(clientId) || !arrivedClientIds.Add(clientId))
         {
             return false;
@@ -97,6 +137,8 @@ public sealed class GameStateManager : NetworkBehaviour
             winnerClientId.Value = ulong.MaxValue;
             return false;
         }
+
+        courseFinishedAt.Value = NetworkManager.ServerTime.Time;
 
         return true;
     }

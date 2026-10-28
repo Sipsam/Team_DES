@@ -26,12 +26,38 @@ public sealed class JumpPuzzleController : NetworkBehaviour
     private readonly NetworkVariable<bool> cooperativeRouteUnlocked = new NetworkVariable<bool>(
         false, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
     private readonly HashSet<ulong> arrivedPlayers = new HashSet<ulong>();
+    private readonly NetworkVariable<int> arrivalCount = new NetworkVariable<int>(0);
+    private float nextValidationTime;
 
     public bool IsAnyHoldSwitchActive =>
         switchAOccupant.Value != EmptyClient || switchBOccupant.Value != EmptyClient;
     public bool IsSwitchAActive => switchAOccupant.Value != EmptyClient;
     public bool IsSwitchBActive => switchBOccupant.Value != EmptyClient;
     public bool IsCooperationCompleted => cooperationCompleted.Value;
+    public int ArrivalCount => arrivalCount.Value;
+    public bool CanOperate => gameStateManager != null && gameStateManager.CanPlay &&
+        CurrentGameState == GameState.Cooperation;
+
+    private void Update()
+    {
+        if (!IsServer || !IsSpawned || Time.time < nextValidationTime) return;
+        nextValidationTime = Time.time + 0.2f;
+        ValidateOccupant(switchAOccupant, switchAPoint);
+        ValidateOccupant(switchBOccupant, switchBPoint);
+        if (CanOperate && cooperativeRouteUnlocked.Value && !cooperationCompleted.Value)
+        {
+            foreach (NetworkClient client in NetworkManager.ConnectedClientsList)
+                TryRegisterArrival(client.ClientId);
+        }
+    }
+
+    private void ValidateOccupant(NetworkVariable<ulong> occupant, Transform point)
+    {
+        if (occupant.Value == EmptyClient) return;
+        if (point == null || !NetworkManager.ConnectedClients.TryGetValue(occupant.Value, out NetworkClient client) ||
+            client.PlayerObject == null || Vector3.Distance(point.position, client.PlayerObject.transform.position) >
+            switchValidationRange + 0.5f) occupant.Value = EmptyClient;
+    }
     public GameState CurrentGameState => gameStateManager != null
         ? gameStateManager.CurrentState
         : GameState.Finished;
@@ -67,6 +93,7 @@ public sealed class JumpPuzzleController : NetworkBehaviour
             cooperationCompleted.Value = false;
             cooperativeRouteUnlocked.Value = false;
             arrivedPlayers.Clear();
+            arrivalCount.Value = 0;
             NetworkManager.OnClientDisconnectCallback += HandleClientDisconnected;
         }
 
@@ -94,7 +121,7 @@ public sealed class JumpPuzzleController : NetworkBehaviour
     [Rpc(SendTo.Server, InvokePermission = RpcInvokePermission.Everyone)]
     public void RequestHoldSwitchServerRpc(int switchId, bool active, RpcParams rpcParams = default)
     {
-        if (!IsServer || CurrentGameState != GameState.Cooperation ||
+        if (!IsServer || !CanOperate ||
             switchId < 0 || switchId > 1)
         {
             return;
@@ -111,6 +138,7 @@ public sealed class JumpPuzzleController : NetworkBehaviour
         Transform switchPoint = switchId == 0 ? switchAPoint : switchBPoint;
         if (active)
         {
+            if (occupant.Value == clientId) return;
             if (switchPoint == null || Vector3.Distance(
                     client.PlayerObject.transform.position, switchPoint.position) > switchValidationRange)
             {
@@ -144,12 +172,16 @@ public sealed class JumpPuzzleController : NetworkBehaviour
     [Rpc(SendTo.Server, InvokePermission = RpcInvokePermission.Everyone)]
     public void RequestEndArrivalServerRpc(RpcParams rpcParams = default)
     {
-        if (!IsServer || CurrentGameState != GameState.Cooperation || cooperationCompleted.Value)
+        TryRegisterArrival(rpcParams.Receive.SenderClientId);
+    }
+
+    private void TryRegisterArrival(ulong clientId)
+    {
+        if (!IsServer || !CanOperate || !cooperativeRouteUnlocked.Value || cooperationCompleted.Value)
         {
             return;
         }
 
-        ulong clientId = rpcParams.Receive.SenderClientId;
         if (!NetworkManager.ConnectedClients.TryGetValue(clientId, out NetworkClient client) ||
             client.PlayerObject == null || endPlatformTrigger == null ||
             !endPlatformTrigger.bounds.Contains(client.PlayerObject.transform.position))
@@ -157,7 +189,8 @@ public sealed class JumpPuzzleController : NetworkBehaviour
             return;
         }
 
-        arrivedPlayers.Add(clientId);
+        if (!arrivedPlayers.Add(clientId)) return;
+        arrivalCount.Value = arrivedPlayers.Count;
         RefreshDebugState();
         if (NetworkManager.ConnectedClientsIds.Count >= 2 &&
             arrivedPlayers.Count >= NetworkManager.ConnectedClientsIds.Count)
@@ -193,6 +226,7 @@ public sealed class JumpPuzzleController : NetworkBehaviour
         if (switchAOccupant.Value == clientId) switchAOccupant.Value = EmptyClient;
         if (switchBOccupant.Value == clientId) switchBOccupant.Value = EmptyClient;
         arrivedPlayers.Remove(clientId);
+        arrivalCount.Value = arrivedPlayers.Count;
         RefreshDebugState();
     }
 

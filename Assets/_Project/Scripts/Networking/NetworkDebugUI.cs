@@ -6,13 +6,16 @@ using Unity.Netcode;
 
 public sealed class NetworkDebugUI : MonoBehaviour
 {
-    private static readonly Rect MenuRect = new Rect(0f, 0f, 600f, 720f);
     private static NetworkDebugUI activeInstance;
 
     [SerializeField] private NetworkManager networkManager;
     [SerializeField] private GameStateManager gameStateManager;
     [SerializeField] private BridgeController bridgeController;
     [SerializeField] private MultiplayerSessionManager sessionManager;
+    [SerializeField] private RaftController raftController;
+    [SerializeField] private DoorPuzzleController doorController;
+    [SerializeField] private JumpPuzzleController jumpController;
+    private RectTransform menuPanel;
 
     private Text joinCodeText;
     private Text statusText;
@@ -28,6 +31,9 @@ public sealed class NetworkDebugUI : MonoBehaviour
         if (networkManager == null) networkManager = FindFirstObjectByType<NetworkManager>();
         if (gameStateManager == null) gameStateManager = FindFirstObjectByType<GameStateManager>();
         if (bridgeController == null) bridgeController = FindFirstObjectByType<BridgeController>();
+        if (raftController == null) raftController = FindFirstObjectByType<RaftController>();
+        if (doorController == null) doorController = FindFirstObjectByType<DoorPuzzleController>();
+        if (jumpController == null) jumpController = FindFirstObjectByType<JumpPuzzleController>();
         if (sessionManager == null) sessionManager = GetComponent<MultiplayerSessionManager>();
         if (sessionManager == null) sessionManager = gameObject.AddComponent<MultiplayerSessionManager>();
 
@@ -59,24 +65,23 @@ public sealed class NetworkDebugUI : MonoBehaviour
             return;
         }
 
-        int connectedPlayers = networkManager != null && networkManager.IsListening
-            ? networkManager.ConnectedClientsIds.Count
-            : 0;
-        string gameState = gameStateManager != null ? gameStateManager.CurrentState.ToString() : "Unavailable";
+        int connectedPlayers = gameStateManager != null && gameStateManager.IsSpawned ? gameStateManager.ConnectedPlayerCount : 0;
+        string gameState = gameStateManager != null && gameStateManager.IsSpawned ? gameStateManager.CurrentState.ToString() : "Offline";
         string turnPoint = gameStateManager != null
             ? $"TurnPoint: {gameStateManager.TurnPointArrivalCount}/{connectedPlayers}"
             : "TurnPoint: Unavailable";
         string winner = gameStateManager != null && gameStateManager.HasWinner
             ? $"Winner: Player {gameStateManager.WinnerClientId + 1} (Client {gameStateManager.WinnerClientId})"
             : "Winner: None";
-        string bridge = bridgeController != null ? bridgeController.CurrentState.ToString() : "Unavailable";
-        string switchA = bridgeController != null && bridgeController.IsSwitchActivated(BridgeSwitchId.A)
-            ? "Active" : "Inactive";
-        string switchB = bridgeController != null && bridgeController.IsSwitchActivated(BridgeSwitchId.B)
-            ? "Active" : "Inactive";
-
-        gameDebugText.text =
-            $"Game State: {gameState}\n{turnPoint}\n{winner}\nBridge: {bridge}\nSwitch A: {switchA}   Switch B: {switchB}";
+        string ready = gameStateManager != null && gameStateManager.IsGameReady ? "Game ready" : "Waiting for player...";
+        string completed = $"Bridge: {bridgeController != null && bridgeController.IsCooperationCompleted}  " +
+            $"Raft: {raftController != null && raftController.IsCooperationCompleted}\n" +
+            $"Door: {doorController != null && doorController.IsDoorOpen}  " +
+            $"Jump: {jumpController != null && jumpController.IsCooperationCompleted}";
+        double elapsed = gameStateManager != null ? gameStateManager.ElapsedSeconds : 0d;
+        gameDebugText.text = $"Game State: {gameState}  |  Players: {connectedPlayers}/2\n{ready}\n" +
+            $"Completed:\n{completed}\n{turnPoint}\n{winner}\n" +
+            $"Time: {(int)elapsed / 60:00}:{(int)elapsed % 60:00}";
 
         bool sessionActive = sessionManager != null && sessionManager.HasSession;
         bool busy = sessionManager != null && sessionManager.IsBusy;
@@ -93,8 +98,8 @@ public sealed class NetworkDebugUI : MonoBehaviour
             return false;
         }
 
-        Vector2 guiPosition = new Vector2(screenPosition.x, Screen.height - screenPosition.y);
-        return MenuRect.Contains(guiPosition);
+        return activeInstance.menuPanel != null && RectTransformUtility.RectangleContainsScreenPoint(
+            activeInstance.menuPanel, screenPosition);
     }
 
     private void CreateMenuCanvas()
@@ -115,7 +120,8 @@ public sealed class NetworkDebugUI : MonoBehaviour
 
         GameObject panel = CreateUiObject("NetworkMenu", canvasObject.transform, typeof(Image));
         RectTransform panelRect = panel.GetComponent<RectTransform>();
-        SetTopLeftRect(panelRect, new Vector2(12f, 12f), new Vector2(460f, 560f));
+        menuPanel = panelRect;
+        SetTopLeftRect(panelRect, new Vector2(12f, 12f), new Vector2(460f, 635f));
         panel.GetComponent<Image>().color = new Color(0.08f, 0.1f, 0.13f, 0.94f);
 
         CreateText(panel.transform, "NetworkMenuTitle", "Relay Multiplayer", 28, 16f, 16f, 420f, 40f);
@@ -134,7 +140,7 @@ public sealed class NetworkDebugUI : MonoBehaviour
 
         CreateText(panel.transform, "CursorHintText", "Press Esc to unlock the cursor and use this menu.",
             14, 18f, 388f, 424f, 28f);
-        gameDebugText = CreateText(panel.transform, "GameDebugText", string.Empty, 16, 18f, 432f, 424f, 116f);
+        gameDebugText = CreateText(panel.transform, "GameDebugText", string.Empty, 16, 18f, 432f, 424f, 192f);
     }
 
     private static void EnsureEventSystem()
@@ -171,6 +177,7 @@ public sealed class NetworkDebugUI : MonoBehaviour
         text.horizontalOverflow = HorizontalWrapMode.Wrap;
         text.verticalOverflow = VerticalWrapMode.Overflow;
         text.text = value;
+        text.raycastTarget = false;
         return text;
     }
 
@@ -184,6 +191,7 @@ public sealed class NetworkDebugUI : MonoBehaviour
         image.color = new Color(0.18f, 0.38f, 0.56f, 1f);
         Button button = buttonObject.GetComponent<Button>();
         button.targetGraphic = image;
+        button.navigation = new Navigation { mode = Navigation.Mode.None };
         button.colors = new ColorBlock
         {
             normalColor = image.color,

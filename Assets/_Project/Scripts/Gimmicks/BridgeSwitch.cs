@@ -27,6 +27,7 @@ public sealed class BridgeSwitch : MonoBehaviour, IInteractable
 
     private void OnEnable()
     {
+        UpdateVisual();
         if (bridgeController != null)
         {
             bridgeController.SwitchStateChanged += HandleSwitchStateChanged;

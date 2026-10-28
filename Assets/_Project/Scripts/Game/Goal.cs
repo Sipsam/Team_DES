@@ -4,6 +4,16 @@ using UnityEngine;
 public sealed class Goal : MonoBehaviour
 {
     [SerializeField] private GameStateManager gameStateManager;
+    [SerializeField] private GameObject goalVisual;
+
+    private void Update()
+    {
+        if (gameStateManager == null) gameStateManager = FindFirstObjectByType<GameStateManager>();
+        bool active = gameStateManager != null && gameStateManager.CanPlay &&
+            gameStateManager.CurrentState == GameState.Competition;
+        GetComponent<Collider>().enabled = active;
+        if (goalVisual != null) goalVisual.SetActive(active);
+    }
 
     private void Reset()
     {

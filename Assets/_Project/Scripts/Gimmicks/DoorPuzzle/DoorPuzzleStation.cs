@@ -13,6 +13,7 @@ public sealed class DoorPuzzleStation : MonoBehaviour
     [SerializeField] private DoorPuzzleController puzzleController;
     [SerializeField] private DoorPuzzleStationType stationType;
     [SerializeField, Min(0.05f)] private float retryInterval = 0.3f;
+    [SerializeField] private bool competitionOnly;
 
     private float nextRetryTime;
 
@@ -65,6 +66,10 @@ public sealed class DoorPuzzleStation : MonoBehaviour
             return;
         }
 
+        if ((competitionOnly && puzzleController.CurrentGameState != GameState.Competition) ||
+            (!competitionOnly && puzzleController.HasDedicatedShortcutStation &&
+             puzzleController.CurrentGameState == GameState.Competition)) return;
+
         if ((puzzleController.CurrentGameState == GameState.Cooperation &&
              (puzzleController.IsDoorOpen || puzzleController.IsStationOccupied(stationType))) ||
             puzzleController.IsLocalPlayerAssignedToAnyStation())
@@ -78,6 +83,6 @@ public sealed class DoorPuzzleStation : MonoBehaviour
         }
 
         nextRetryTime = Time.time + retryInterval;
-        puzzleController.RequestStationServerRpc((int)stationType);
+        puzzleController.RequestStationServerRpc((int)stationType, competitionOnly);
     }
 }

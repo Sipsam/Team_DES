@@ -7,12 +7,19 @@ public sealed class PuzzleDoor : MonoBehaviour
 
     private Vector3 closedLocalPosition;
     private bool localDoorOpen;
+    private bool hasClosedPose;
 
     private void Awake()
     {
-        if (doorPanel != null)
+        CaptureClosedPose();
+    }
+
+    private void CaptureClosedPose()
+    {
+        if (!hasClosedPose && doorPanel != null)
         {
             closedLocalPosition = doorPanel.transform.localPosition;
+            hasClosedPose = true;
         }
     }
 
@@ -30,6 +37,7 @@ public sealed class PuzzleDoor : MonoBehaviour
 
     private void ApplyState()
     {
+        CaptureClosedPose(); // Shortcut may receive its state while its parent is inactive.
         if (blockingCollider != null)
         {
             blockingCollider.enabled = !localDoorOpen;

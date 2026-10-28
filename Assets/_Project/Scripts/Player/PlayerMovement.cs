@@ -20,6 +20,7 @@ public sealed class PlayerMovement : NetworkBehaviour
     private RaftController raftController;
     private bool insideRaftControlPoint;
     private bool puzzleUiInputBlocked;
+    private GameStateManager gameStateManager;
     private float verticalSpeed;
     private Vector3 externalVelocity;
     private readonly NetworkVariable<float> movementSpeedMultiplier = new NetworkVariable<float>(
@@ -41,10 +42,8 @@ public sealed class PlayerMovement : NetworkBehaviour
             return;
         }
 
-        if (IsSpawned && NetworkManager != null && NetworkManager.ConnectedClientsIds.Count < 2)
-        {
-            return;
-        }
+        bool canReadInput = !puzzleUiInputBlocked && (!IsSpawned ||
+            (gameStateManager != null && gameStateManager.CanPlay));
 
         IsGrounded = characterController.isGrounded;
 
@@ -53,7 +52,7 @@ public sealed class PlayerMovement : NetworkBehaviour
             verticalSpeed = -groundedDownForce;
         }
 
-        Vector2 input = puzzleUiInputBlocked ? Vector2.zero : ReadMovementInput();
+        Vector2 input = canReadInput ? ReadMovementInput() : Vector2.zero;
         if (insideRaftControlPoint || (raftController != null && raftController.IsLocalPlayerAtControlPoint))
         {
             // W/S operate the raft while assigned to a control point; A/D still let the player leave it.
@@ -72,7 +71,7 @@ public sealed class PlayerMovement : NetworkBehaviour
         }
 
         Keyboard keyboard = Keyboard.current;
-        if (!puzzleUiInputBlocked && IsGrounded && keyboard != null && keyboard.spaceKey.wasPressedThisFrame)
+        if (canReadInput && IsGrounded && keyboard != null && keyboard.spaceKey.wasPressedThisFrame)
         {
             verticalSpeed = Mathf.Sqrt(2f * gravity * jumpHeight);
         }
@@ -90,6 +89,7 @@ public sealed class PlayerMovement : NetworkBehaviour
 
     public override void OnNetworkSpawn()
     {
+        gameStateManager = FindFirstObjectByType<GameStateManager>();
         if (IsServer)
         {
             initialSpawnPose = new Pose(transform.position, transform.rotation);
@@ -205,6 +205,8 @@ public sealed class PlayerMovement : NetworkBehaviour
         }
 
         transform.SetPositionAndRotation(position, rotation);
+        GetComponent<OwnerNetworkTransform>()?.Teleport(position, rotation, transform.localScale);
+        insideRaftControlPoint = false;
         ResetVerticalVelocity();
 
         if (controllerWasEnabled)
@@ -225,8 +227,7 @@ public sealed class PlayerMovement : NetworkBehaviour
         Checkpoint[] availableCheckpoints = FindObjectsByType<Checkpoint>(FindObjectsSortMode.None);
         foreach (Checkpoint checkpoint in availableCheckpoints)
         {
-            if (checkpoint.gameObject.name != checkpointName ||
-                Vector3.Distance(transform.position, checkpoint.transform.position) > 4f)
+            if (checkpoint.gameObject.name != checkpointName || !checkpoint.CanRegister(this))
             {
                 continue;
             }

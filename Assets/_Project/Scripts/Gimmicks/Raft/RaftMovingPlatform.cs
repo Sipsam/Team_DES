@@ -54,6 +54,15 @@ public sealed class RaftMovingPlatform : MonoBehaviour
         Quaternion currentRotation = raftTransform.rotation;
         Quaternion rotationDelta = currentRotation * Quaternion.Inverse(previousRotation);
 
+        // A reset/respawn is a teleport, not a movement delta for old riders.
+        if ((currentPosition - previousPosition).sqrMagnitude > 4f)
+        {
+            riders.Clear();
+            previousPosition = currentPosition;
+            previousRotation = currentRotation;
+            return;
+        }
+
         if ((currentPosition - previousPosition).sqrMagnitude > 0.000001f ||
             Quaternion.Angle(previousRotation, currentRotation) > 0.001f)
         {
@@ -63,6 +72,10 @@ public sealed class RaftMovingPlatform : MonoBehaviour
                 {
                     continue;
                 }
+
+                Bounds riderBounds = GetComponent<Collider>().bounds;
+                riderBounds.Expand(0.5f);
+                if (!riderBounds.Intersects(rider.GetComponent<CharacterController>().bounds)) continue;
 
                 Vector3 localOffset = Quaternion.Inverse(previousRotation) *
                                       (rider.transform.position - previousPosition);

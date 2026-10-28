@@ -9,6 +9,7 @@ public sealed class PlayerInteraction : NetworkBehaviour
 
     private readonly Collider[] overlapResults = new Collider[32];
     private bool puzzleUiInputBlocked;
+    private GameStateManager gameStateManager;
 
     private void Update()
     {
@@ -22,7 +23,7 @@ public sealed class PlayerInteraction : NetworkBehaviour
             return;
         }
 
-        if (IsSpawned && NetworkManager != null && NetworkManager.ConnectedClientsIds.Count < 2)
+        if (IsSpawned && (gameStateManager == null || !gameStateManager.CanPlay))
         {
             return;
         }
@@ -39,6 +40,7 @@ public sealed class PlayerInteraction : NetworkBehaviour
 
     public override void OnNetworkSpawn()
     {
+        gameStateManager = FindFirstObjectByType<GameStateManager>();
         enabled = IsOwner;
     }
 
