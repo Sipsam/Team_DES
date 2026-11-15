@@ -41,3 +41,30 @@ list.txt
 
 # Git
 .git/
+
+# Local repository inspection outputs (root only)
+/tree.txt
+/tree-*.txt
+/list-*.txt
+
+# Additional Unity/IDE generated data
+/[Mm]emoryCaptures/
+/[Rr]ecordings/
+/.utmp/
+*.csproj.user
+*.slnx
+*.opendb
+*.VC.db
+*.pidb.meta
+*.pdb.meta
+*.mdb.meta
+
+# Unity crash reports
+/[Cc]rashReports/
+/[Cc]rashes/
+/unity_crash.*
+/mono_crash.*
+
+# Local-only versioned development documents and preserved legacy report
+/Docs/Development/
+/Assets/_Project/Docs/IntegrationValidation.md

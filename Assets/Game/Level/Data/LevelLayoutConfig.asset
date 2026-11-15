@@ -1,0 +1,79 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fbafc4b07fba682428a5677eb6b2c743, type: 3}
+  m_Name: LevelLayoutConfig
+  m_EditorClassIdentifier: Assembly-CSharp::TwinEdge.Levels.LevelLayoutConfig
+  origin: {x: 0, y: 0, z: 0}
+  seed: 1126
+  temporaryTraversal: 1
+  worldSize: {x: 320, y: 240, z: 1600}
+  playerHeight: 2
+  playerRadius: 0.45
+  moveSpeed: 5
+  jumpHeight: 1.5
+  gravity: 20
+  slopeLimit: 45
+  clearanceMargin: 0.15
+  pathWidth: 8
+  bridgeWidth: 8
+  bridgeSpan: 40
+  markerOverrides: []
+  terrainResolution: 513
+  terrainDepth: 80
+  terrainHeight: 220
+  gorgeDepth: 55
+  riverWidth: 24
+  riverDepth: 5
+  bankWidth: 10
+  riverPath:
+  - {x: 0, y: 20, z: 0}
+  - {x: 45, y: 23, z: 160}
+  - {x: -35, y: 26, z: 360}
+  - {x: 0, y: 30, z: 580}
+  roomWidth: 14
+  roomLength: 26
+  roomHeight: 8
+  doorwayWidth: 4
+  sewerWidth: 5
+  sewerDepth: 8
+  jumpLaneWidth: 4
+  jumpPlatformLength: 4
+  jumpGap: 1.5
+  undergroundHeight: 12
+  sections:
+  - id: 0
+    position: {x: 0, y: 0, z: 0}
+    yaw: 0
+    size: {x: 220, y: 180, z: 300}
+  - id: 1
+    position: {x: 0, y: 65, z: 280}
+    yaw: 0
+    size: {x: 80, y: 80, z: 90}
+  - id: 2
+    position: {x: 0, y: 0, z: 370}
+    yaw: 0
+    size: {x: 140, y: 60, z: 580}
+  - id: 3
+    position: {x: 0, y: 34, z: 1000}
+    yaw: 0
+    size: {x: 56, y: 24, z: 160}
+  - id: 4
+    position: {x: 0, y: -15, z: 1250}
+    yaw: 0
+    size: {x: 36, y: 20, z: 100}
+  mountainPath:
+  - {x: 0, y: 60, z: 0}
+  - {x: -22, y: 80, z: 55}
+  - {x: 0, y: 100, z: 110}
+  - {x: 0, y: 92, z: 160}
+  - {x: 15, y: 85, z: 200}
+  - {x: 0, y: 65, z: 280}
