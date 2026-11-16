@@ -45,6 +45,16 @@ public sealed class PlayerMovement : NetworkBehaviour
             return;
         }
 
+        if (IsSpawned && TwinEdge.Gameplay.CooperativePole.Current != null &&
+            TwinEdge.Gameplay.CooperativePole.Current.IsAttached(OwnerClientId))
+        {
+            ResetVerticalVelocity();
+            return;
+        }
+
+        // A pole release/respawn can arrive before its LateUpdate restores the controller.
+        if (!characterController.enabled) return;
+
         bool canReadInput = (gameplayInput == null || gameplayInput.AcceptsInput) && !puzzleUiInputBlocked && (!IsSpawned ||
             (gameStateManager != null && gameStateManager.CanPlay));
 
@@ -200,6 +210,8 @@ public sealed class PlayerMovement : NetworkBehaviour
         {
             return;
         }
+
+        GetComponent<TwinEdge.Gameplay.PoleMotor>()?.SuspendForRespawn();
 
         bool controllerWasEnabled = characterController != null && characterController.enabled;
         if (controllerWasEnabled)

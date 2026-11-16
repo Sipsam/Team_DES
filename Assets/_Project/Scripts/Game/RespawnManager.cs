@@ -80,6 +80,8 @@ public sealed class RespawnManager : NetworkBehaviour
             return;
         lastRespawnTimes[player.OwnerClientId] = Time.time;
 
+        TwinEdge.Gameplay.CooperativePole.Current?.BeforeRespawnServer(player.OwnerClientId);
+
         player.GetComponent<PlayerCombat>()?.ForceEndGrabServer();
 
         if (!checkpoints.TryGetValue(player.OwnerClientId, out Pose checkpoint))

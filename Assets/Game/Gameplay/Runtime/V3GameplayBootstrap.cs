@@ -17,6 +17,7 @@ namespace TwinEdge.Gameplay
         public Transform[] spawnPoints;
         public Transform interactionSample;
         public Camera standbyCamera;
+        public CooperativePole cooperativePole;
         bool ready, debug;
         string code = "";
         string error;
@@ -27,6 +28,7 @@ namespace TwinEdge.Gameplay
             var start = FindObjectsByType<LevelMarker>(FindObjectsSortMode.None).SingleOrDefault(m => m.id == "Mountain.V3.Start");
             if (start == null) { error = "V3 start marker missing. Session disabled."; yield break; }
             Physics.SyncTransforms();
+            if (cooperativePole != null) cooperativePole.ConfigureHome(start.transform.position);
             for (int i = 0; i < spawnPoints.Length; i++)
             {
                 spawnPoints[i].SetPositionAndRotation(SafeGround(start.transform.position + start.transform.right * (i == 0 ? -1.5f : 1.5f)), start.transform.rotation);

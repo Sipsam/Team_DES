@@ -20,6 +20,9 @@ public sealed class PlayerInteraction : NetworkBehaviour
             return;
         }
 
+        if (IsSpawned && TwinEdge.Gameplay.CooperativePole.Current != null &&
+            TwinEdge.Gameplay.CooperativePole.Current.IsAttached(OwnerClientId)) return;
+
         if (gameplayInput != null && Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame)
         {
             foreach (var target in FindObjectsByType<TwinEdge.Gameplay.NetworkInteractionTarget>(FindObjectsSortMode.None)) target.Cancel(this);
