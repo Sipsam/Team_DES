@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using UnityEditor;
 using UnityEditor.SceneManagement;
@@ -14,18 +14,25 @@ namespace TwinEdge.Levels.Testing.Editor
         static int stage;
         static MountainTraversalTest test;
         static TraversalSmoke(){if(SessionState.GetBool("TraversalSmoke",false))EditorApplication.update+=Tick;}
+        [MenuItem("Tools/Twin Edge/V3 Traversal/Run Automated Play Smoke")]
         public static void Run()
         {
             Directory.CreateDirectory("Docs/Development/Level/V3/TraversalTests");
             EditorSceneManager.OpenScene(TraversalSetup.ScenePath);
+            stage=0;test=null;deadline=0;
+            EditorApplication.update-=Tick;EditorApplication.update+=Tick;
             SessionState.SetBool("TraversalSmoke",true);EditorApplication.isPlaying=true;
         }
         static void Tick()
         {
             if(!EditorApplication.isPlaying||EditorApplication.isCompiling)return;
             try {
-                if(test==null){test=UnityEngine.Object.FindFirstObjectByType<MountainTraversalTest>();deadline=EditorApplication.timeSinceStartup+12;return;}
-                var player=test.GetComponentInChildren<CharacterController>();if(player==null)return;
+                if(deadline==0)deadline=EditorApplication.timeSinceStartup+30;
+                if(test==null)test=UnityEngine.Object.FindFirstObjectByType<MountainTraversalTest>();
+                if(test==null||!test.Initialized){if(EditorApplication.timeSinceStartup>deadline)throw new Exception("Traversal initialization timed out (including runtime camera)");return;}
+                var camera=test.RuntimeCamera;
+                Require(camera!=null&&camera.isActiveAndEnabled&&camera==Camera.main&&camera.cullingMask!=0&&camera.targetTexture==null,"Active MainCamera renders to Game View");
+                var player=test.GetComponentInChildren<CharacterController>();Require(player!=null&&player.enabled&&player.gameObject.activeInHierarchy,"Active test player");
                 if(stage==0) {
                     if(!player.isGrounded){if(EditorApplication.timeSinceStartup>deadline)throw new Exception("Spawn did not ground");return;}
                     test.SetPreset(0);Require(test.nodes.Count==17,"Sparse count");test.SetPreset(1);Require(test.nodes.Count==22,"Balanced count");test.SetPreset(2);Require(test.nodes.Count==29,"Dense count");
@@ -45,9 +52,15 @@ namespace TwinEdge.Levels.Testing.Editor
                     // Do not pass automated attempts off as human data.
                     foreach(var record in test.records)record.evidence="Automated runtime smoke; not human play";test.Save();
                     File.WriteAllText("Docs/Development/Level/V3/TraversalTests/RuntimeSmoke.txt","PASS: runtime spawn grounding, preset 15/20/27, fall respawn, collision-controller arc termination, JSON persistence.\nArc result: "+test.records[0].result+"\nNo human input, camera usability, official mechanic, multiplayer or balance acceptance.\n");
-                    Capture(test);SessionState.SetBool("TraversalSmoke",false);EditorApplication.update-=Tick;EditorApplication.Exit(0);
+                    Capture(test);SessionState.SetBool("TraversalSmoke",false);EditorApplication.update-=Tick;Complete(0);
                 }
-            }catch(Exception e){SessionState.SetBool("TraversalSmoke",false);Debug.LogException(e);File.WriteAllText("Docs/Development/Level/V3/TraversalTests/RuntimeSmoke.txt","FAIL: "+e);EditorApplication.Exit(1);}
+            }catch(Exception e){SessionState.SetBool("TraversalSmoke",false);Debug.LogException(e);File.WriteAllText("Docs/Development/Level/V3/TraversalTests/RuntimeSmoke.txt","FAIL: "+e);Complete(1);}
+        }
+        static void Complete(int code)
+        {
+            SessionState.SetBool("TraversalSmoke",false);EditorApplication.update-=Tick;
+            if(Application.isBatchMode)EditorApplication.Exit(code);
+            else EditorApplication.isPlaying=false;
         }
         static void Capture(MountainTraversalTest test)
         {
@@ -58,4 +71,3 @@ namespace TwinEdge.Levels.Testing.Editor
         static void Require(bool condition,string message){if(!condition)throw new Exception(message);}
     }
 }
-

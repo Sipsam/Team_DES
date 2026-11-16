@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.Rendering.Universal;
 
 namespace TwinEdge.Levels.Testing
 {
@@ -62,7 +63,10 @@ namespace TwinEdge.Levels.Testing
         public string status="Ready", savedPath;
         public int targetIndex=1, sourceIndex;
         CharacterController player;
-        Camera view;
+        [SerializeField] Camera view;
+        public Camera RuntimeCamera => view;
+        public bool Initialized { get; private set; }
+        string initializationError;
         Transform body;
         LineRenderer line;
         float yaw,pitch=15,vertical,flightTime,flightStart,sessionStart,unsupported;
@@ -75,15 +79,41 @@ namespace TwinEdge.Levels.Testing
         bool oldVisible;
         public string PresetName => presets[presetIndex].name;
 
+        void Awake()
+        {
+            try {
+                if(view==null)view=GetComponentInChildren<Camera>(true);
+                if(view==null) {
+                    var go=new GameObject("TestCamera");go.transform.SetParent(transform,false);
+                    view=go.AddComponent<Camera>();
+                }
+                view.gameObject.SetActive(true);view.enabled=true;view.tag="MainCamera";
+                view.cullingMask=~0;view.targetTexture=null;view.targetDisplay=0;view.rect=new Rect(0,0,1,1);
+                view.nearClipPlane=.1f;view.farClipPlane=3000;
+                var data=view.GetUniversalAdditionalCameraData();data.renderType=CameraRenderType.Base;data.SetRenderer(-1);
+                if(view.GetComponent<AudioListener>()==null)view.gameObject.AddComponent<AudioListener>();
+                if(!view.isActiveAndEnabled)throw new InvalidOperationException("Test camera is inactive");
+            }catch(Exception e){ReportInitializationFailure(e);}
+        }
+        void ReportInitializationFailure(Exception e)
+        {
+            Initialized=false;initializationError="Traversal initialization failed: "+e.Message;
+            status=initializationError;Debug.LogError(initializationError+"\n"+e,this);
+        }
         void Start()
         {
             oldLock=Cursor.lockState;oldVisible=Cursor.visible;sessionStart=Time.realtimeSinceStartup;
+            if(initializationError!=null)return;
+            try {
+            if(view==null||!view.isActiveAndEnabled)throw new InvalidOperationException("No active runtime camera");
             var go=new GameObject("TestPlayer_2m_x_0.9m");go.transform.SetParent(transform);go.layer=2;
             player=go.AddComponent<CharacterController>();ApplyCapsule();
             var visual=GameObject.CreatePrimitive(PrimitiveType.Capsule);visual.name="Scale reference";visual.transform.SetParent(go.transform,false);visual.transform.localPosition=Vector3.up;visual.transform.localScale=new Vector3(parameters.radius*2,parameters.height/2,parameters.radius*2);Destroy(visual.GetComponent<Collider>());visual.layer=2;body=visual.transform;
-            var cam=new GameObject("TestCamera");cam.transform.SetParent(transform);view=cam.AddComponent<Camera>();view.farClipPlane=3000;cam.AddComponent<AudioListener>();
             var path=new GameObject("HypothesisArc");path.transform.SetParent(transform);line=path.AddComponent<LineRenderer>();line.widthMultiplier=.16f;line.material=new Material(Shader.Find("Sprites/Default"));line.startColor=Color.yellow;line.endColor=Color.cyan;
-            SetPreset(presetIndex);Lock(true);
+            SetPreset(presetIndex);
+            if(!nodes[0].hasLanding)throw new InvalidOperationException("Start summit has no safe spawn");
+            Initialized=true;LateUpdate();Lock(true);
+            }catch(Exception e){ReportInitializationFailure(e);}
         }
         void ApplyCapsule()
         {
@@ -141,7 +171,7 @@ namespace TwinEdge.Levels.Testing
         }
         void Update()
         {
-            if(player==null)return;
+            if(!Initialized)return;
             var kb=Keyboard.current;var mouse=Mouse.current;
             if(kb!=null) {
                 if(kb.escapeKey.wasPressedThisFrame)Lock(false);
@@ -195,7 +225,7 @@ namespace TwinEdge.Levels.Testing
         }
         void LateUpdate()
         {
-            if(view==null)return;body.gameObject.SetActive(!firstPerson);
+            if(!Initialized||view==null||player==null||body==null)return;body.gameObject.SetActive(!firstPerson);
             var rotation=Quaternion.Euler(pitch,yaw,0);var eye=player.transform.position+Vector3.up*(parameters.height*.85f);
             var position=eye;
             if(!firstPerson) {
@@ -223,7 +253,8 @@ namespace TwinEdge.Levels.Testing
         void OnDisable(){if(player!=null){if(flight)Finish("TestStopped");Save();Cursor.lockState=oldLock;Cursor.visible=oldVisible;}if(line!=null)Destroy(line.material);}
         void OnGUI()
         {
-            if(player==null)return;
+            if(initializationError!=null){GUI.Box(new Rect(10,10,700,65),initializationError);return;}
+            if(!Initialized)return;
             GUILayout.BeginArea(new Rect(10,10,440,Screen.height-20),GUI.skin.box);scroll=GUILayout.BeginScrollView(scroll);
             GUILayout.Label("V3 Mountain / "+PresetName+" / HYPOTHESIS ONLY");
             GUILayout.Label("WASD / Space / Mouse / Q view / Esc menu / RMB capture\nTab target / Enter arc / R safe / Shift+R start / F5 save");
