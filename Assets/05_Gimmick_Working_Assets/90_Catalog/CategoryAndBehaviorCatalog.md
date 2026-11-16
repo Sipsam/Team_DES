@@ -1,0 +1,214 @@
+﻿# 현재 작업용 에셋 66개
+
+필수·선택 구분 없이 기믹 단계별로 합쳤습니다. 프리팹 GUID는 유지했습니다.
+
+## 00_Shared_Characters — 4개
+
+- 캐릭터 (`CHAR_PLAYER_BASE_01`)
+  - 파일: Assets/05_Gimmick_Working_Assets/00_Shared_Characters/CHAR_PLAYER_BASE_01.prefab
+  - 동작: 고정 외형 / 기존 파티클·수면 효과 유지
+- 출발깃발 (`FIX_START_FLAG_01`)
+  - 파일: Assets/05_Gimmick_Working_Assets/00_Shared_Characters/FIX_START_FLAG_01.prefab
+  - 동작: 고정 외형 / 기존 파티클·수면 효과 유지
+- 탈출깃발 (`FIX_FINISH_FLAG_01`)
+  - 파일: Assets/05_Gimmick_Working_Assets/00_Shared_Characters/FIX_FINISH_FLAG_01.prefab
+  - 동작: 고정 외형 / 기존 파티클·수면 효과 유지
+- 두번째캐릭터_파랑망토 (`CHAR_PLAYER_BASE_02`)
+  - 파일: Assets/05_Gimmick_Working_Assets/00_Shared_Characters/CHAR_PLAYER_BASE_02.prefab
+  - 동작: 고정 외형 / 기존 파티클·수면 효과 유지
+## 01_Bridge_Building — 7개
+
+- 막대 (`MOV_BRIDGE_POLE_01`)
+  - 파일: Assets/05_Gimmick_Working_Assets/01_Bridge_Building/MOV_BRIDGE_POLE_01.prefab
+  - 동작: 고정 외형 / 기존 파티클·수면 효과 유지
+- 널빤지 (`MOV_BRIDGE_PLANK_01`)
+  - 파일: Assets/05_Gimmick_Working_Assets/01_Bridge_Building/MOV_BRIDGE_PLANK_01.prefab
+  - 동작: 고정 외형 / 기존 파티클·수면 효과 유지
+- 목재상자 (`FIX_BRIDGE_WOOD_CRATE_01`)
+  - 파일: Assets/05_Gimmick_Working_Assets/01_Bridge_Building/FIX_BRIDGE_WOOD_CRATE_01.prefab
+  - 동작: 고정 외형 / 기존 파티클·수면 효과 유지
+- 다리틀_설치위치포함 (`FIX_BRIDGE_FRAME_01`)
+  - 파일: Assets/05_Gimmick_Working_Assets/01_Bridge_Building/FIX_BRIDGE_FRAME_01.prefab
+  - 동작: 고정 외형 / 기존 파티클·수면 효과 유지
+- 수집용목재더미 (`FIX_BRIDGE_WOOD_PILE_01`)
+  - 파일: Assets/05_Gimmick_Working_Assets/01_Bridge_Building/FIX_BRIDGE_WOOD_PILE_01.prefab
+  - 동작: 고정 외형 / 기존 파티클·수면 효과 유지
+- 썩은판자 (`MOV_BRIDGE_ROTTEN_PLANK_01`)
+  - 파일: Assets/05_Gimmick_Working_Assets/01_Bridge_Building/MOV_BRIDGE_ROTTEN_PLANK_01.prefab
+  - 동작: fall 시각 미리보기 (입력·피해 판정 없음)
+- 파손판자 (`MOV_BRIDGE_BROKEN_PLANK_01`)
+  - 파일: Assets/05_Gimmick_Working_Assets/01_Bridge_Building/MOV_BRIDGE_BROKEN_PLANK_01.prefab
+  - 동작: 고정 외형 / 기존 파티클·수면 효과 유지
+## 02_Raft_Traversal — 14개
+
+- 연결형뗏목 (`MOV_RAFT_SHARED_01`)
+  - 파일: Assets/05_Gimmick_Working_Assets/02_Raft_Traversal/MOV_RAFT_SHARED_01.prefab
+  - 동작: raft 시각 미리보기 (입력·피해 판정 없음)
+- 말린밧줄 (`MOV_RAFT_ROPE_01`)
+  - 파일: Assets/05_Gimmick_Working_Assets/02_Raft_Traversal/MOV_RAFT_ROPE_01.prefab
+  - 동작: 고정 외형 / 기존 파티클·수면 효과 유지
+- 노 (`MOV_RAFT_OAR_01`)
+  - 파일: Assets/05_Gimmick_Working_Assets/02_Raft_Traversal/MOV_RAFT_OAR_01.prefab
+  - 동작: oar 시각 미리보기 (입력·피해 판정 없음)
+- 표류목더미 (`MOV_RIVER_DRIFTWOOD_01`)
+  - 파일: Assets/05_Gimmick_Working_Assets/02_Raft_Traversal/MOV_RIVER_DRIFTWOOD_01.prefab
+  - 동작: float 시각 미리보기 (입력·피해 판정 없음)
+- 괴물물고기_정적상어 (`MOV_RIVER_MONSTER_FISH_01`)
+  - 파일: Assets/05_Gimmick_Working_Assets/02_Raft_Traversal/MOV_RIVER_MONSTER_FISH_01.prefab
+  - 동작: swim 시각 미리보기 (입력·피해 판정 없음)
+- 악어_정적 (`MOV_RIVER_CROCODILE_01`)
+  - 파일: Assets/05_Gimmick_Working_Assets/02_Raft_Traversal/MOV_RIVER_CROCODILE_01.prefab
+  - 동작: swim 시각 미리보기 (입력·피해 판정 없음)
+- 소용돌이_외형 (`VFX_RIVER_WHIRLPOOL_01`)
+  - 파일: Assets/05_Gimmick_Working_Assets/02_Raft_Traversal/VFX_RIVER_WHIRLPOOL_01.prefab
+  - 동작: spin 시각 미리보기 (입력·피해 판정 없음)
+- 고정바위 (`FIX_RIVER_ROCK_01`)
+  - 파일: Assets/05_Gimmick_Working_Assets/02_Raft_Traversal/FIX_RIVER_ROCK_01.prefab
+  - 동작: 고정 외형 / 기존 파티클·수면 효과 유지
+- 일인용통나무뗏목 (`MOV_RAFT_SOLO_01`)
+  - 파일: Assets/05_Gimmick_Working_Assets/02_Raft_Traversal/MOV_RAFT_SOLO_01.prefab
+  - 동작: float 시각 미리보기 (입력·피해 판정 없음)
+- 두뗏목결속밧줄 (`MOV_RAFT_BINDING_01`)
+  - 파일: Assets/05_Gimmick_Working_Assets/02_Raft_Traversal/MOV_RAFT_BINDING_01.prefab
+  - 동작: 고정 외형 / 기존 파티클·수면 효과 유지
+- 복로분리뗏목세트 (`MOV_RAFT_RETURN_SPLIT_01`)
+  - 파일: Assets/05_Gimmick_Working_Assets/02_Raft_Traversal/MOV_RAFT_RETURN_SPLIT_01.prefab
+  - 동작: 고정 외형 / 기존 파티클·수면 효과 유지
+- 목재선착장 (`FIX_RIVER_DOCK_01`)
+  - 파일: Assets/05_Gimmick_Working_Assets/02_Raft_Traversal/FIX_RIVER_DOCK_01.prefab
+  - 동작: 고정 외형 / 기존 파티클·수면 효과 유지
+- 선착장계단 (`FIX_RIVER_DOCK_STAIRS_01`)
+  - 파일: Assets/05_Gimmick_Working_Assets/02_Raft_Traversal/FIX_RIVER_DOCK_STAIRS_01.prefab
+  - 동작: 고정 외형 / 기존 파티클·수면 효과 유지
+- 강물표면 (`ENV_RIVER_WATER_01`)
+  - 파일: Assets/05_Gimmick_Working_Assets/02_Raft_Traversal/ENV_RIVER_WATER_01.prefab
+  - 동작: 고정 외형 / 기존 파티클·수면 효과 유지
+## 03_Information_Sharing_Doors — 18개
+
+- 목재성문 (`MOV_CASTLE_GATE_LEAF_01`)
+  - 파일: Assets/05_Gimmick_Working_Assets/03_Information_Sharing_Doors/MOV_CASTLE_GATE_LEAF_01.prefab
+  - 동작: gate 시각 미리보기 (입력·피해 판정 없음)
+- 문양돌세트 (`MOV_DOOR_SYMBOL_01`)
+  - 파일: Assets/05_Gimmick_Working_Assets/03_Information_Sharing_Doors/MOV_DOOR_SYMBOL_01.prefab
+  - 동작: 고정 외형 / 기존 파티클·수면 효과 유지
+- 열쇠 (`ITEM_DOOR_KEY_01`)
+  - 파일: Assets/05_Gimmick_Working_Assets/03_Information_Sharing_Doors/ITEM_DOOR_KEY_01.prefab
+  - 동작: gem 시각 미리보기 (입력·피해 판정 없음)
+- 불가시돌함정_외형세트 (`MOV_TRAP_SPIKE_01`)
+  - 파일: Assets/05_Gimmick_Working_Assets/03_Information_Sharing_Doors/MOV_TRAP_SPIKE_01.prefab
+  - 동작: 고정 외형 / 기존 파티클·수면 효과 유지
+- 문양전달레일 (`MOV_DOOR_TRANSFER_STONE_01`)
+  - 파일: Assets/05_Gimmick_Working_Assets/03_Information_Sharing_Doors/MOV_DOOR_TRANSFER_STONE_01.prefab
+  - 동작: slide 시각 미리보기 (입력·피해 판정 없음)
+- 벽면정보교환창틀 (`FIX_DOOR_INFO_WINDOW_01`)
+  - 파일: Assets/05_Gimmick_Working_Assets/03_Information_Sharing_Doors/FIX_DOOR_INFO_WINDOW_01.prefab
+  - 동작: 고정 외형 / 기존 파티클·수면 효과 유지
+- 불문양돌 (`MOV_DOOR_SYMBOL_FIRE_01`)
+  - 파일: Assets/05_Gimmick_Working_Assets/03_Information_Sharing_Doors/MOV_DOOR_SYMBOL_FIRE_01.prefab
+  - 동작: 고정 외형 / 기존 파티클·수면 효과 유지
+- 바위문양돌 (`MOV_DOOR_SYMBOL_ROCK_01`)
+  - 파일: Assets/05_Gimmick_Working_Assets/03_Information_Sharing_Doors/MOV_DOOR_SYMBOL_ROCK_01.prefab
+  - 동작: 고정 외형 / 기존 파티클·수면 효과 유지
+- 가시문양돌 (`MOV_DOOR_SYMBOL_SPIKE_01`)
+  - 파일: Assets/05_Gimmick_Working_Assets/03_Information_Sharing_Doors/MOV_DOOR_SYMBOL_SPIKE_01.prefab
+  - 동작: 고정 외형 / 기존 파티클·수면 효과 유지
+- 성내부벽 (`FIX_CASTLE_WALL_01`)
+  - 파일: Assets/05_Gimmick_Working_Assets/03_Information_Sharing_Doors/FIX_CASTLE_WALL_01.prefab
+  - 동작: 고정 외형 / 기존 파티클·수면 효과 유지
+- 성벽모서리 (`FIX_CASTLE_WALL_CORNER_01`)
+  - 파일: Assets/05_Gimmick_Working_Assets/03_Information_Sharing_Doors/FIX_CASTLE_WALL_CORNER_01.prefab
+  - 동작: 고정 외형 / 기존 파티클·수면 효과 유지
+- 성내부계단 (`FIX_CASTLE_STAIRS_01`)
+  - 파일: Assets/05_Gimmick_Working_Assets/03_Information_Sharing_Doors/FIX_CASTLE_STAIRS_01.prefab
+  - 동작: 고정 외형 / 기존 파티클·수면 효과 유지
+- 석재문틀 (`FIX_DOOR_FRAME_01`)
+  - 파일: Assets/05_Gimmick_Working_Assets/03_Information_Sharing_Doors/FIX_DOOR_FRAME_01.prefab
+  - 동작: 고정 외형 / 기존 파티클·수면 효과 유지
+- 성회랑바닥 (`FIX_CASTLE_FLOOR_01`)
+  - 파일: Assets/05_Gimmick_Working_Assets/03_Information_Sharing_Doors/FIX_CASTLE_FLOOR_01.prefab
+  - 동작: 고정 외형 / 기존 파티클·수면 효과 유지
+- 화염분출구_효과포함 (`FIX_TRAP_FIRE_NOZZLE_01`)
+  - 파일: Assets/05_Gimmick_Working_Assets/03_Information_Sharing_Doors/FIX_TRAP_FIRE_NOZZLE_01.prefab
+  - 동작: 고정 외형 / 기존 파티클·수면 효과 유지
+- 벽면화살발사구 (`FIX_TRAP_ARROW_LAUNCHER_01`)
+  - 파일: Assets/05_Gimmick_Working_Assets/03_Information_Sharing_Doors/FIX_TRAP_ARROW_LAUNCHER_01.prefab
+  - 동작: 고정 외형 / 기존 파티클·수면 효과 유지
+- 진자망치후보 (`MOV_TRAP_HAMMER_01`)
+  - 파일: Assets/05_Gimmick_Working_Assets/03_Information_Sharing_Doors/MOV_TRAP_HAMMER_01.prefab
+  - 동작: 고정 외형 / 기존 파티클·수면 효과 유지
+- 구르는바위함정 (`MOV_DOOR_ROLLING_ROCK_01`)
+  - 파일: Assets/05_Gimmick_Working_Assets/03_Information_Sharing_Doors/MOV_DOOR_ROLLING_ROCK_01.prefab
+  - 동작: swim 시각 미리보기 (입력·피해 판정 없음)
+## 04_Jump_Map_Treasure — 18개
+
+- 힌트명판 (`FIX_DOOR_HINT_STONE_01`)
+  - 파일: Assets/05_Gimmick_Working_Assets/04_Jump_Map_Treasure/FIX_DOOR_HINT_STONE_01.prefab
+  - 동작: 고정 외형 / 기존 파티클·수면 효과 유지
+- 돌발판 (`FIX_JUMP_STONE_PLATFORM_01`)
+  - 파일: Assets/05_Gimmick_Working_Assets/04_Jump_Map_Treasure/FIX_JUMP_STONE_PLATFORM_01.prefab
+  - 동작: 고정 외형 / 기존 파티클·수면 효과 유지
+- 보석과제단 (`ITEM_GEM_01`)
+  - 파일: Assets/05_Gimmick_Working_Assets/04_Jump_Map_Treasure/ITEM_GEM_01.prefab
+  - 동작: 고정 외형 / 기존 파티클·수면 효과 유지
+- 이동소멸발판_외형 (`MOV_JUMP_PLATFORM_01`)
+  - 파일: Assets/05_Gimmick_Working_Assets/04_Jump_Map_Treasure/MOV_JUMP_PLATFORM_01.prefab
+  - 동작: 고정 외형 / 기존 파티클·수면 효과 유지
+- 화살 (`MOV_TRAP_ARROW_01`)
+  - 파일: Assets/05_Gimmick_Working_Assets/04_Jump_Map_Treasure/MOV_TRAP_ARROW_01.prefab
+  - 동작: arrow 시각 미리보기 (입력·피해 판정 없음)
+- 석재압력판 (`MOV_JUMP_SWITCH_01`)
+  - 파일: Assets/05_Gimmick_Working_Assets/04_Jump_Map_Treasure/MOV_JUMP_SWITCH_01.prefab
+  - 동작: press 시각 미리보기 (입력·피해 판정 없음)
+- 목재레버 (`MOV_JUMP_SWITCH_02`)
+  - 파일: Assets/05_Gimmick_Working_Assets/04_Jump_Map_Treasure/MOV_JUMP_SWITCH_02.prefab
+  - 동작: 고정 외형 / 기존 파티클·수면 효과 유지
+- 점프맵화염분출구 (`FIX_JUMP_FIRE_NOZZLE_01`)
+  - 파일: Assets/05_Gimmick_Working_Assets/04_Jump_Map_Treasure/FIX_JUMP_FIRE_NOZZLE_01.prefab
+  - 동작: 고정 외형 / 기존 파티클·수면 효과 유지
+- 점프맵화살발사구 (`FIX_JUMP_ARROW_LAUNCHER_01`)
+  - 파일: Assets/05_Gimmick_Working_Assets/04_Jump_Map_Treasure/FIX_JUMP_ARROW_LAUNCHER_01.prefab
+  - 동작: 고정 외형 / 기존 파티클·수면 효과 유지
+- 용암표면 (`ENV_JUMP_LAVA_01`)
+  - 파일: Assets/05_Gimmick_Working_Assets/04_Jump_Map_Treasure/ENV_JUMP_LAVA_01.prefab
+  - 동작: 고정 외형 / 기존 파티클·수면 효과 유지
+- 점프맵출발발판 (`FIX_JUMP_START_01`)
+  - 파일: Assets/05_Gimmick_Working_Assets/04_Jump_Map_Treasure/FIX_JUMP_START_01.prefab
+  - 동작: 고정 외형 / 기존 파티클·수면 효과 유지
+- 점프맵도착발판 (`FIX_JUMP_END_01`)
+  - 파일: Assets/05_Gimmick_Working_Assets/04_Jump_Map_Treasure/FIX_JUMP_END_01.prefab
+  - 동작: 고정 외형 / 기존 파티클·수면 효과 유지
+- 이동발판_경로지점포함 (`MOV_JUMP_MOVING_PLATFORM_01`)
+  - 파일: Assets/05_Gimmick_Working_Assets/04_Jump_Map_Treasure/MOV_JUMP_MOVING_PLATFORM_01.prefab
+  - 동작: move 시각 미리보기 (입력·피해 판정 없음)
+- 소멸발판_균열외형 (`MOV_JUMP_VANISH_PLATFORM_01`)
+  - 파일: Assets/05_Gimmick_Working_Assets/04_Jump_Map_Treasure/MOV_JUMP_VANISH_PLATFORM_01.prefab
+  - 동작: vanish 시각 미리보기 (입력·피해 판정 없음)
+- 보석제단_단독 (`FIX_GEM_ALTAR_01`)
+  - 파일: Assets/05_Gimmick_Working_Assets/04_Jump_Map_Treasure/FIX_GEM_ALTAR_01.prefab
+  - 동작: 고정 외형 / 기존 파티클·수면 효과 유지
+- 목표보석_단독 (`ITEM_GEM_SINGLE_01`)
+  - 파일: Assets/05_Gimmick_Working_Assets/04_Jump_Map_Treasure/ITEM_GEM_SINGLE_01.prefab
+  - 동작: gem 시각 미리보기 (입력·피해 판정 없음)
+- 보물봉인기둥 (`MOV_GEM_SEAL_01`)
+  - 파일: Assets/05_Gimmick_Working_Assets/04_Jump_Map_Treasure/MOV_GEM_SEAL_01.prefab
+  - 동작: 고정 외형 / 기존 파티클·수면 효과 유지
+- 독립가시함정 (`MOV_JUMP_SPIKES_01`)
+  - 파일: Assets/05_Gimmick_Working_Assets/04_Jump_Map_Treasure/MOV_JUMP_SPIKES_01.prefab
+  - 동작: press 시각 미리보기 (입력·피해 판정 없음)
+## 05_Shared_Environment — 5개
+
+- 초원나무 (`ENV_FIELD_TREE_01`)
+  - 파일: Assets/05_Gimmick_Working_Assets/05_Shared_Environment/ENV_FIELD_TREE_01.prefab
+  - 동작: 고정 외형 / 기존 파티클·수면 효과 유지
+- 큰초원나무 (`ENV_FIELD_TREE_02`)
+  - 파일: Assets/05_Gimmick_Working_Assets/05_Shared_Environment/ENV_FIELD_TREE_02.prefab
+  - 동작: 고정 외형 / 기존 파티클·수면 효과 유지
+- 풀더미 (`ENV_FIELD_GRASS_01`)
+  - 파일: Assets/05_Gimmick_Working_Assets/05_Shared_Environment/ENV_FIELD_GRASS_01.prefab
+  - 동작: 고정 외형 / 기존 파티클·수면 효과 유지
+- 협곡암벽 (`ENV_CLIFF_ROCK_01`)
+  - 파일: Assets/05_Gimmick_Working_Assets/05_Shared_Environment/ENV_CLIFF_ROCK_01.prefab
+  - 동작: 고정 외형 / 기존 파티클·수면 효과 유지
+- 초원지형블록 (`ENV_FIELD_GROUND_01`)
+  - 파일: Assets/05_Gimmick_Working_Assets/05_Shared_Environment/ENV_FIELD_GROUND_01.prefab
+  - 동작: 고정 외형 / 기존 파티클·수면 효과 유지

@@ -1,6 +1,6 @@
 # Development architecture
 
-The latest integrated design in `Docs/GameDesign/양날의검_최신_게임기획_통합정리.pdf` takes priority. V2 SpatialDesign/Review document the implemented spatial assumptions and remaining traversal risks. V2 is a blockout, not a completed current-design runtime game.
+The latest integrated design in `Docs/GameDesign/TwinEdge_Latest_GamePlanning_IntegratedSummary.pdf` takes priority. V2 SpatialDesign/Review document the implemented spatial assumptions and remaining traversal risks. V2 is a blockout, not a completed current-design runtime game.
 
 | Path | Ownership / purpose |
 | --- | --- |

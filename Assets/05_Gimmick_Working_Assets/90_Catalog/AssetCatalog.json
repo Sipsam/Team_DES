@@ -1,0 +1,598 @@
+﻿{
+  "items": [
+    {
+      "group": "00_Shared_Characters",
+      "name": "CHAR_PLAYER_BASE_01",
+      "label": "CHAR_PLAYER_BASE_01",
+      "path": "Assets/05_Gimmick_Working_Assets/00_Shared_Characters/CHAR_PLAYER_BASE_01.prefab",
+      "source": "기존 중세 검토 프리팹 재사용",
+      "remaining": "고정 외형 / 기존 파티클·수면 효과 유지",
+      "originalNumber": 1
+    },
+    {
+      "group": "01_Bridge_Building",
+      "name": "MOV_BRIDGE_POLE_01",
+      "label": "MOV_BRIDGE_POLE_01",
+      "path": "Assets/05_Gimmick_Working_Assets/01_Bridge_Building/MOV_BRIDGE_POLE_01.prefab",
+      "source": "기존 중세 검토 프리팹 재사용",
+      "remaining": "고정 외형 / 기존 파티클·수면 효과 유지",
+      "originalNumber": 2
+    },
+    {
+      "group": "01_Bridge_Building",
+      "name": "MOV_BRIDGE_PLANK_01",
+      "label": "MOV_BRIDGE_PLANK_01",
+      "path": "Assets/05_Gimmick_Working_Assets/01_Bridge_Building/MOV_BRIDGE_PLANK_01.prefab",
+      "source": "기존 중세 검토 프리팹 재사용",
+      "remaining": "고정 외형 / 기존 파티클·수면 효과 유지",
+      "originalNumber": 3
+    },
+    {
+      "group": "01_Bridge_Building",
+      "name": "FIX_BRIDGE_WOOD_CRATE_01",
+      "label": "FIX_BRIDGE_WOOD_CRATE_01",
+      "path": "Assets/05_Gimmick_Working_Assets/01_Bridge_Building/FIX_BRIDGE_WOOD_CRATE_01.prefab",
+      "source": "기존 중세 검토 프리팹 재사용",
+      "remaining": "고정 외형 / 기존 파티클·수면 효과 유지",
+      "originalNumber": 4
+    },
+    {
+      "group": "02_Raft_Traversal",
+      "name": "MOV_RAFT_SHARED_01",
+      "label": "MOV_RAFT_SHARED_01",
+      "path": "Assets/05_Gimmick_Working_Assets/02_Raft_Traversal/MOV_RAFT_SHARED_01.prefab",
+      "source": "기존 중세 검토 프리팹 재사용",
+      "remaining": "raft 시각 미리보기 (입력·피해 판정 없음)",
+      "originalNumber": 5
+    },
+    {
+      "group": "02_Raft_Traversal",
+      "name": "MOV_RAFT_ROPE_01",
+      "label": "MOV_RAFT_ROPE_01",
+      "path": "Assets/05_Gimmick_Working_Assets/02_Raft_Traversal/MOV_RAFT_ROPE_01.prefab",
+      "source": "기존 중세 검토 프리팹 재사용",
+      "remaining": "고정 외형 / 기존 파티클·수면 효과 유지",
+      "originalNumber": 6
+    },
+    {
+      "group": "02_Raft_Traversal",
+      "name": "MOV_RAFT_OAR_01",
+      "label": "MOV_RAFT_OAR_01",
+      "path": "Assets/05_Gimmick_Working_Assets/02_Raft_Traversal/MOV_RAFT_OAR_01.prefab",
+      "source": "기존 중세 검토 프리팹 재사용",
+      "remaining": "oar 시각 미리보기 (입력·피해 판정 없음)",
+      "originalNumber": 7
+    },
+    {
+      "group": "02_Raft_Traversal",
+      "name": "MOV_RIVER_DRIFTWOOD_01",
+      "label": "MOV_RIVER_DRIFTWOOD_01",
+      "path": "Assets/05_Gimmick_Working_Assets/02_Raft_Traversal/MOV_RIVER_DRIFTWOOD_01.prefab",
+      "source": "기존 중세 검토 프리팹 재사용",
+      "remaining": "float 시각 미리보기 (입력·피해 판정 없음)",
+      "originalNumber": 8
+    },
+    {
+      "group": "02_Raft_Traversal",
+      "name": "MOV_RIVER_MONSTER_FISH_01",
+      "label": "MOV_RIVER_MONSTER_FISH_01",
+      "path": "Assets/05_Gimmick_Working_Assets/02_Raft_Traversal/MOV_RIVER_MONSTER_FISH_01.prefab",
+      "source": "기존 중세 검토 프리팹 재사용",
+      "remaining": "swim 시각 미리보기 (입력·피해 판정 없음)",
+      "originalNumber": 9
+    },
+    {
+      "group": "02_Raft_Traversal",
+      "name": "MOV_RIVER_CROCODILE_01",
+      "label": "MOV_RIVER_CROCODILE_01",
+      "path": "Assets/05_Gimmick_Working_Assets/02_Raft_Traversal/MOV_RIVER_CROCODILE_01.prefab",
+      "source": "기존 중세 검토 프리팹 재사용",
+      "remaining": "swim 시각 미리보기 (입력·피해 판정 없음)",
+      "originalNumber": 10
+    },
+    {
+      "group": "02_Raft_Traversal",
+      "name": "VFX_RIVER_WHIRLPOOL_01",
+      "label": "VFX_RIVER_WHIRLPOOL_01",
+      "path": "Assets/05_Gimmick_Working_Assets/02_Raft_Traversal/VFX_RIVER_WHIRLPOOL_01.prefab",
+      "source": "기존 중세 검토 프리팹 재사용",
+      "remaining": "spin 시각 미리보기 (입력·피해 판정 없음)",
+      "originalNumber": 11
+    },
+    {
+      "group": "02_Raft_Traversal",
+      "name": "FIX_RIVER_ROCK_01",
+      "label": "FIX_RIVER_ROCK_01",
+      "path": "Assets/05_Gimmick_Working_Assets/02_Raft_Traversal/FIX_RIVER_ROCK_01.prefab",
+      "source": "기존 중세 검토 프리팹 재사용",
+      "remaining": "고정 외형 / 기존 파티클·수면 효과 유지",
+      "originalNumber": 12
+    },
+    {
+      "group": "03_Information_Sharing_Doors",
+      "name": "MOV_CASTLE_GATE_LEAF_01",
+      "label": "MOV_CASTLE_GATE_LEAF_01",
+      "path": "Assets/05_Gimmick_Working_Assets/03_Information_Sharing_Doors/MOV_CASTLE_GATE_LEAF_01.prefab",
+      "source": "기존 중세 검토 프리팹 재사용",
+      "remaining": "gate 시각 미리보기 (입력·피해 판정 없음)",
+      "originalNumber": 13
+    },
+    {
+      "group": "03_Information_Sharing_Doors",
+      "name": "MOV_DOOR_SYMBOL_01",
+      "label": "MOV_DOOR_SYMBOL_01",
+      "path": "Assets/05_Gimmick_Working_Assets/03_Information_Sharing_Doors/MOV_DOOR_SYMBOL_01.prefab",
+      "source": "기존 중세 검토 프리팹 재사용",
+      "remaining": "고정 외형 / 기존 파티클·수면 효과 유지",
+      "originalNumber": 14
+    },
+    {
+      "group": "03_Information_Sharing_Doors",
+      "name": "ITEM_DOOR_KEY_01",
+      "label": "ITEM_DOOR_KEY_01",
+      "path": "Assets/05_Gimmick_Working_Assets/03_Information_Sharing_Doors/ITEM_DOOR_KEY_01.prefab",
+      "source": "기존 중세 검토 프리팹 재사용",
+      "remaining": "gem 시각 미리보기 (입력·피해 판정 없음)",
+      "originalNumber": 15
+    },
+    {
+      "group": "03_Information_Sharing_Doors",
+      "name": "MOV_TRAP_SPIKE_01",
+      "label": "MOV_TRAP_SPIKE_01",
+      "path": "Assets/05_Gimmick_Working_Assets/03_Information_Sharing_Doors/MOV_TRAP_SPIKE_01.prefab",
+      "source": "기존 중세 검토 프리팹 재사용",
+      "remaining": "고정 외형 / 기존 파티클·수면 효과 유지",
+      "originalNumber": 16
+    },
+    {
+      "group": "04_Jump_Map_Treasure",
+      "name": "FIX_DOOR_HINT_STONE_01",
+      "label": "FIX_DOOR_HINT_STONE_01",
+      "path": "Assets/05_Gimmick_Working_Assets/04_Jump_Map_Treasure/FIX_DOOR_HINT_STONE_01.prefab",
+      "source": "기존 중세 검토 프리팹 재사용",
+      "remaining": "고정 외형 / 기존 파티클·수면 효과 유지",
+      "originalNumber": 17
+    },
+    {
+      "group": "04_Jump_Map_Treasure",
+      "name": "FIX_JUMP_STONE_PLATFORM_01",
+      "label": "FIX_JUMP_STONE_PLATFORM_01",
+      "path": "Assets/05_Gimmick_Working_Assets/04_Jump_Map_Treasure/FIX_JUMP_STONE_PLATFORM_01.prefab",
+      "source": "기존 중세 검토 프리팹 재사용",
+      "remaining": "고정 외형 / 기존 파티클·수면 효과 유지",
+      "originalNumber": 18
+    },
+    {
+      "group": "04_Jump_Map_Treasure",
+      "name": "ITEM_GEM_01",
+      "label": "ITEM_GEM_01",
+      "path": "Assets/05_Gimmick_Working_Assets/04_Jump_Map_Treasure/ITEM_GEM_01.prefab",
+      "source": "기존 중세 검토 프리팹 재사용",
+      "remaining": "고정 외형 / 기존 파티클·수면 효과 유지",
+      "originalNumber": 19
+    },
+    {
+      "group": "04_Jump_Map_Treasure",
+      "name": "MOV_JUMP_PLATFORM_01",
+      "label": "MOV_JUMP_PLATFORM_01",
+      "path": "Assets/05_Gimmick_Working_Assets/04_Jump_Map_Treasure/MOV_JUMP_PLATFORM_01.prefab",
+      "source": "기존 중세 검토 프리팹 재사용",
+      "remaining": "고정 외형 / 기존 파티클·수면 효과 유지",
+      "originalNumber": 20
+    },
+    {
+      "group": "04_Jump_Map_Treasure",
+      "name": "MOV_TRAP_ARROW_01",
+      "label": "MOV_TRAP_ARROW_01",
+      "path": "Assets/05_Gimmick_Working_Assets/04_Jump_Map_Treasure/MOV_TRAP_ARROW_01.prefab",
+      "source": "기존 중세 검토 프리팹 재사용",
+      "remaining": "arrow 시각 미리보기 (입력·피해 판정 없음)",
+      "originalNumber": 21
+    },
+    {
+      "group": "02_Raft_Traversal",
+      "name": "MOV_RAFT_SOLO_01",
+      "label": "MOV_RAFT_SOLO_01",
+      "path": "Assets/05_Gimmick_Working_Assets/02_Raft_Traversal/MOV_RAFT_SOLO_01.prefab",
+      "source": "연결형 뗏목의 왼쪽 통나무 뗏목",
+      "remaining": "float 시각 미리보기 (입력·피해 판정 없음)",
+      "originalNumber": 0
+    },
+    {
+      "group": "02_Raft_Traversal",
+      "name": "MOV_RAFT_BINDING_01",
+      "label": "MOV_RAFT_BINDING_01",
+      "path": "Assets/05_Gimmick_Working_Assets/02_Raft_Traversal/MOV_RAFT_BINDING_01.prefab",
+      "source": "연결형 뗏목의 가운데 결속 부분",
+      "remaining": "고정 외형 / 기존 파티클·수면 효과 유지",
+      "originalNumber": 0
+    },
+    {
+      "group": "02_Raft_Traversal",
+      "name": "MOV_RAFT_RETURN_SPLIT_01",
+      "label": "MOV_RAFT_RETURN_SPLIT_01",
+      "path": "Assets/05_Gimmick_Working_Assets/02_Raft_Traversal/MOV_RAFT_RETURN_SPLIT_01.prefab",
+      "source": "연결형 프리팹 분리 상태",
+      "remaining": "고정 외형 / 기존 파티클·수면 효과 유지",
+      "originalNumber": 0
+    },
+    {
+      "group": "04_Jump_Map_Treasure",
+      "name": "MOV_JUMP_SWITCH_01",
+      "label": "MOV_JUMP_SWITCH_01",
+      "path": "Assets/05_Gimmick_Working_Assets/04_Jump_Map_Treasure/MOV_JUMP_SWITCH_01.prefab",
+      "source": "직접 제작한 목재 상판·석재 받침 OBJ",
+      "remaining": "press 시각 미리보기 (입력·피해 판정 없음)",
+      "originalNumber": 0
+    },
+    {
+      "group": "04_Jump_Map_Treasure",
+      "name": "MOV_JUMP_SWITCH_02",
+      "label": "MOV_JUMP_SWITCH_02",
+      "path": "Assets/05_Gimmick_Working_Assets/04_Jump_Map_Treasure/MOV_JUMP_SWITCH_02.prefab",
+      "source": "직접 제작한 돌 받침·나무 레버 OBJ",
+      "remaining": "고정 외형 / 기존 파티클·수면 효과 유지",
+      "originalNumber": 0
+    },
+    {
+      "group": "01_Bridge_Building",
+      "name": "FIX_BRIDGE_FRAME_01",
+      "label": "FIX_BRIDGE_FRAME_01",
+      "path": "Assets/05_Gimmick_Working_Assets/01_Bridge_Building/FIX_BRIDGE_FRAME_01.prefab",
+      "source": "직접 제작",
+      "remaining": "고정 외형 / 기존 파티클·수면 효과 유지",
+      "originalNumber": 0
+    },
+    {
+      "group": "01_Bridge_Building",
+      "name": "FIX_BRIDGE_WOOD_PILE_01",
+      "label": "FIX_BRIDGE_WOOD_PILE_01",
+      "path": "Assets/05_Gimmick_Working_Assets/01_Bridge_Building/FIX_BRIDGE_WOOD_PILE_01.prefab",
+      "source": "기존 통나무 모델 조합",
+      "remaining": "고정 외형 / 기존 파티클·수면 효과 유지",
+      "originalNumber": 0
+    },
+    {
+      "group": "01_Bridge_Building",
+      "name": "MOV_BRIDGE_ROTTEN_PLANK_01",
+      "label": "MOV_BRIDGE_ROTTEN_PLANK_01",
+      "path": "Assets/05_Gimmick_Working_Assets/01_Bridge_Building/MOV_BRIDGE_ROTTEN_PLANK_01.prefab",
+      "source": "직접 제작",
+      "remaining": "fall 시각 미리보기 (입력·피해 판정 없음)",
+      "originalNumber": 0
+    },
+    {
+      "group": "01_Bridge_Building",
+      "name": "MOV_BRIDGE_BROKEN_PLANK_01",
+      "label": "MOV_BRIDGE_BROKEN_PLANK_01",
+      "path": "Assets/05_Gimmick_Working_Assets/01_Bridge_Building/MOV_BRIDGE_BROKEN_PLANK_01.prefab",
+      "source": "직접 제작",
+      "remaining": "고정 외형 / 기존 파티클·수면 효과 유지",
+      "originalNumber": 0
+    },
+    {
+      "group": "02_Raft_Traversal",
+      "name": "FIX_RIVER_DOCK_01",
+      "label": "FIX_RIVER_DOCK_01",
+      "path": "Assets/05_Gimmick_Working_Assets/02_Raft_Traversal/FIX_RIVER_DOCK_01.prefab",
+      "source": "기존 Quaternius 선착장 모델",
+      "remaining": "고정 외형 / 기존 파티클·수면 효과 유지",
+      "originalNumber": 0
+    },
+    {
+      "group": "02_Raft_Traversal",
+      "name": "FIX_RIVER_DOCK_STAIRS_01",
+      "label": "FIX_RIVER_DOCK_STAIRS_01",
+      "path": "Assets/05_Gimmick_Working_Assets/02_Raft_Traversal/FIX_RIVER_DOCK_STAIRS_01.prefab",
+      "source": "기존 Quaternius 계단 모델",
+      "remaining": "고정 외형 / 기존 파티클·수면 효과 유지",
+      "originalNumber": 0
+    },
+    {
+      "group": "02_Raft_Traversal",
+      "name": "ENV_RIVER_WATER_01",
+      "label": "ENV_RIVER_WATER_01",
+      "path": "Assets/05_Gimmick_Working_Assets/02_Raft_Traversal/ENV_RIVER_WATER_01.prefab",
+      "source": "직접 제작한 Built-in 애니메이션 셰이더와 평면",
+      "remaining": "고정 외형 / 기존 파티클·수면 효과 유지",
+      "originalNumber": 0
+    },
+    {
+      "group": "03_Information_Sharing_Doors",
+      "name": "MOV_DOOR_TRANSFER_STONE_01",
+      "label": "MOV_DOOR_TRANSFER_STONE_01",
+      "path": "Assets/05_Gimmick_Working_Assets/03_Information_Sharing_Doors/MOV_DOOR_TRANSFER_STONE_01.prefab",
+      "source": "직접 제작",
+      "remaining": "slide 시각 미리보기 (입력·피해 판정 없음)",
+      "originalNumber": 0
+    },
+    {
+      "group": "03_Information_Sharing_Doors",
+      "name": "FIX_DOOR_INFO_WINDOW_01",
+      "label": "FIX_DOOR_INFO_WINDOW_01",
+      "path": "Assets/05_Gimmick_Working_Assets/03_Information_Sharing_Doors/FIX_DOOR_INFO_WINDOW_01.prefab",
+      "source": "직접 제작",
+      "remaining": "고정 외형 / 기존 파티클·수면 효과 유지",
+      "originalNumber": 0
+    },
+    {
+      "group": "03_Information_Sharing_Doors",
+      "name": "MOV_DOOR_SYMBOL_FIRE_01",
+      "label": "MOV_DOOR_SYMBOL_FIRE_01",
+      "path": "Assets/05_Gimmick_Working_Assets/03_Information_Sharing_Doors/MOV_DOOR_SYMBOL_FIRE_01.prefab",
+      "source": "기존 문양돌 세트 분리",
+      "remaining": "고정 외형 / 기존 파티클·수면 효과 유지",
+      "originalNumber": 0
+    },
+    {
+      "group": "03_Information_Sharing_Doors",
+      "name": "MOV_DOOR_SYMBOL_ROCK_01",
+      "label": "MOV_DOOR_SYMBOL_ROCK_01",
+      "path": "Assets/05_Gimmick_Working_Assets/03_Information_Sharing_Doors/MOV_DOOR_SYMBOL_ROCK_01.prefab",
+      "source": "기존 문양돌 세트 분리",
+      "remaining": "고정 외형 / 기존 파티클·수면 효과 유지",
+      "originalNumber": 0
+    },
+    {
+      "group": "03_Information_Sharing_Doors",
+      "name": "MOV_DOOR_SYMBOL_SPIKE_01",
+      "label": "MOV_DOOR_SYMBOL_SPIKE_01",
+      "path": "Assets/05_Gimmick_Working_Assets/03_Information_Sharing_Doors/MOV_DOOR_SYMBOL_SPIKE_01.prefab",
+      "source": "기존 문양돌 세트 분리",
+      "remaining": "고정 외형 / 기존 파티클·수면 효과 유지",
+      "originalNumber": 0
+    },
+    {
+      "group": "03_Information_Sharing_Doors",
+      "name": "FIX_CASTLE_WALL_01",
+      "label": "FIX_CASTLE_WALL_01",
+      "path": "Assets/05_Gimmick_Working_Assets/03_Information_Sharing_Doors/FIX_CASTLE_WALL_01.prefab",
+      "source": "KayKit 던전 모듈",
+      "remaining": "고정 외형 / 기존 파티클·수면 효과 유지",
+      "originalNumber": 0
+    },
+    {
+      "group": "03_Information_Sharing_Doors",
+      "name": "FIX_CASTLE_WALL_CORNER_01",
+      "label": "FIX_CASTLE_WALL_CORNER_01",
+      "path": "Assets/05_Gimmick_Working_Assets/03_Information_Sharing_Doors/FIX_CASTLE_WALL_CORNER_01.prefab",
+      "source": "KayKit 던전 모듈",
+      "remaining": "고정 외형 / 기존 파티클·수면 효과 유지",
+      "originalNumber": 0
+    },
+    {
+      "group": "03_Information_Sharing_Doors",
+      "name": "FIX_CASTLE_STAIRS_01",
+      "label": "FIX_CASTLE_STAIRS_01",
+      "path": "Assets/05_Gimmick_Working_Assets/03_Information_Sharing_Doors/FIX_CASTLE_STAIRS_01.prefab",
+      "source": "KayKit 던전 모듈",
+      "remaining": "고정 외형 / 기존 파티클·수면 효과 유지",
+      "originalNumber": 0
+    },
+    {
+      "group": "03_Information_Sharing_Doors",
+      "name": "FIX_DOOR_FRAME_01",
+      "label": "FIX_DOOR_FRAME_01",
+      "path": "Assets/05_Gimmick_Working_Assets/03_Information_Sharing_Doors/FIX_DOOR_FRAME_01.prefab",
+      "source": "KayKit 던전 모듈",
+      "remaining": "고정 외형 / 기존 파티클·수면 효과 유지",
+      "originalNumber": 0
+    },
+    {
+      "group": "03_Information_Sharing_Doors",
+      "name": "FIX_CASTLE_FLOOR_01",
+      "label": "FIX_CASTLE_FLOOR_01",
+      "path": "Assets/05_Gimmick_Working_Assets/03_Information_Sharing_Doors/FIX_CASTLE_FLOOR_01.prefab",
+      "source": "기존 석재 바닥 모듈 재사용",
+      "remaining": "고정 외형 / 기존 파티클·수면 효과 유지",
+      "originalNumber": 0
+    },
+    {
+      "group": "03_Information_Sharing_Doors",
+      "name": "FIX_TRAP_FIRE_NOZZLE_01",
+      "label": "FIX_TRAP_FIRE_NOZZLE_01",
+      "path": "Assets/05_Gimmick_Working_Assets/03_Information_Sharing_Doors/FIX_TRAP_FIRE_NOZZLE_01.prefab",
+      "source": "직접 제작한 석재·철제 분출구와 파티클",
+      "remaining": "고정 외형 / 기존 파티클·수면 효과 유지",
+      "originalNumber": 0
+    },
+    {
+      "group": "04_Jump_Map_Treasure",
+      "name": "FIX_JUMP_FIRE_NOZZLE_01",
+      "label": "FIX_JUMP_FIRE_NOZZLE_01",
+      "path": "Assets/05_Gimmick_Working_Assets/04_Jump_Map_Treasure/FIX_JUMP_FIRE_NOZZLE_01.prefab",
+      "source": "직접 제작한 석재·철제 분출구와 파티클 재사용",
+      "remaining": "고정 외형 / 기존 파티클·수면 효과 유지",
+      "originalNumber": 0
+    },
+    {
+      "group": "03_Information_Sharing_Doors",
+      "name": "FIX_TRAP_ARROW_LAUNCHER_01",
+      "label": "FIX_TRAP_ARROW_LAUNCHER_01",
+      "path": "Assets/05_Gimmick_Working_Assets/03_Information_Sharing_Doors/FIX_TRAP_ARROW_LAUNCHER_01.prefab",
+      "source": "직접 제작",
+      "remaining": "고정 외형 / 기존 파티클·수면 효과 유지",
+      "originalNumber": 0
+    },
+    {
+      "group": "04_Jump_Map_Treasure",
+      "name": "FIX_JUMP_ARROW_LAUNCHER_01",
+      "label": "FIX_JUMP_ARROW_LAUNCHER_01",
+      "path": "Assets/05_Gimmick_Working_Assets/04_Jump_Map_Treasure/FIX_JUMP_ARROW_LAUNCHER_01.prefab",
+      "source": "직접 제작 재사용",
+      "remaining": "고정 외형 / 기존 파티클·수면 효과 유지",
+      "originalNumber": 0
+    },
+    {
+      "group": "03_Information_Sharing_Doors",
+      "name": "MOV_TRAP_HAMMER_01",
+      "label": "MOV_TRAP_HAMMER_01",
+      "path": "Assets/05_Gimmick_Working_Assets/03_Information_Sharing_Doors/MOV_TRAP_HAMMER_01.prefab",
+      "source": "Quaternius 망치 모델",
+      "remaining": "고정 외형 / 기존 파티클·수면 효과 유지",
+      "originalNumber": 0
+    },
+    {
+      "group": "04_Jump_Map_Treasure",
+      "name": "ENV_JUMP_LAVA_01",
+      "label": "ENV_JUMP_LAVA_01",
+      "path": "Assets/05_Gimmick_Working_Assets/04_Jump_Map_Treasure/ENV_JUMP_LAVA_01.prefab",
+      "source": "직접 제작한 Built-in 애니메이션 셰이더와 평면",
+      "remaining": "고정 외형 / 기존 파티클·수면 효과 유지",
+      "originalNumber": 0
+    },
+    {
+      "group": "04_Jump_Map_Treasure",
+      "name": "FIX_JUMP_START_01",
+      "label": "FIX_JUMP_START_01",
+      "path": "Assets/05_Gimmick_Working_Assets/04_Jump_Map_Treasure/FIX_JUMP_START_01.prefab",
+      "source": "기존 석재 바닥 재사용",
+      "remaining": "고정 외형 / 기존 파티클·수면 효과 유지",
+      "originalNumber": 0
+    },
+    {
+      "group": "04_Jump_Map_Treasure",
+      "name": "FIX_JUMP_END_01",
+      "label": "FIX_JUMP_END_01",
+      "path": "Assets/05_Gimmick_Working_Assets/04_Jump_Map_Treasure/FIX_JUMP_END_01.prefab",
+      "source": "기존 석재 바닥 재사용",
+      "remaining": "고정 외형 / 기존 파티클·수면 효과 유지",
+      "originalNumber": 0
+    },
+    {
+      "group": "04_Jump_Map_Treasure",
+      "name": "MOV_JUMP_MOVING_PLATFORM_01",
+      "label": "MOV_JUMP_MOVING_PLATFORM_01",
+      "path": "Assets/05_Gimmick_Working_Assets/04_Jump_Map_Treasure/MOV_JUMP_MOVING_PLATFORM_01.prefab",
+      "source": "기존 돌발판 재사용",
+      "remaining": "move 시각 미리보기 (입력·피해 판정 없음)",
+      "originalNumber": 0
+    },
+    {
+      "group": "04_Jump_Map_Treasure",
+      "name": "MOV_JUMP_VANISH_PLATFORM_01",
+      "label": "MOV_JUMP_VANISH_PLATFORM_01",
+      "path": "Assets/05_Gimmick_Working_Assets/04_Jump_Map_Treasure/MOV_JUMP_VANISH_PLATFORM_01.prefab",
+      "source": "깨진 석재 발판 모델",
+      "remaining": "vanish 시각 미리보기 (입력·피해 판정 없음)",
+      "originalNumber": 0
+    },
+    {
+      "group": "04_Jump_Map_Treasure",
+      "name": "FIX_GEM_ALTAR_01",
+      "label": "FIX_GEM_ALTAR_01",
+      "path": "Assets/05_Gimmick_Working_Assets/04_Jump_Map_Treasure/FIX_GEM_ALTAR_01.prefab",
+      "source": "기존 직접 제작 제단",
+      "remaining": "고정 외형 / 기존 파티클·수면 효과 유지",
+      "originalNumber": 0
+    },
+    {
+      "group": "04_Jump_Map_Treasure",
+      "name": "ITEM_GEM_SINGLE_01",
+      "label": "ITEM_GEM_SINGLE_01",
+      "path": "Assets/05_Gimmick_Working_Assets/04_Jump_Map_Treasure/ITEM_GEM_SINGLE_01.prefab",
+      "source": "Quaternius 보석 재사용",
+      "remaining": "gem 시각 미리보기 (입력·피해 판정 없음)",
+      "originalNumber": 0
+    },
+    {
+      "group": "04_Jump_Map_Treasure",
+      "name": "MOV_GEM_SEAL_01",
+      "label": "MOV_GEM_SEAL_01",
+      "path": "Assets/05_Gimmick_Working_Assets/04_Jump_Map_Treasure/MOV_GEM_SEAL_01.prefab",
+      "source": "직접 제작",
+      "remaining": "고정 외형 / 기존 파티클·수면 효과 유지",
+      "originalNumber": 0
+    },
+    {
+      "group": "05_Shared_Environment",
+      "name": "ENV_FIELD_TREE_01",
+      "label": "ENV_FIELD_TREE_01",
+      "path": "Assets/05_Gimmick_Working_Assets/05_Shared_Environment/ENV_FIELD_TREE_01.prefab",
+      "source": "기존 Kenney·Quaternius 자연 모델",
+      "remaining": "고정 외형 / 기존 파티클·수면 효과 유지",
+      "originalNumber": 0
+    },
+    {
+      "group": "05_Shared_Environment",
+      "name": "ENV_FIELD_TREE_02",
+      "label": "ENV_FIELD_TREE_02",
+      "path": "Assets/05_Gimmick_Working_Assets/05_Shared_Environment/ENV_FIELD_TREE_02.prefab",
+      "source": "기존 Kenney·Quaternius 자연 모델",
+      "remaining": "고정 외형 / 기존 파티클·수면 효과 유지",
+      "originalNumber": 0
+    },
+    {
+      "group": "05_Shared_Environment",
+      "name": "ENV_FIELD_GRASS_01",
+      "label": "ENV_FIELD_GRASS_01",
+      "path": "Assets/05_Gimmick_Working_Assets/05_Shared_Environment/ENV_FIELD_GRASS_01.prefab",
+      "source": "기존 Kenney·Quaternius 자연 모델",
+      "remaining": "고정 외형 / 기존 파티클·수면 효과 유지",
+      "originalNumber": 0
+    },
+    {
+      "group": "05_Shared_Environment",
+      "name": "ENV_CLIFF_ROCK_01",
+      "label": "ENV_CLIFF_ROCK_01",
+      "path": "Assets/05_Gimmick_Working_Assets/05_Shared_Environment/ENV_CLIFF_ROCK_01.prefab",
+      "source": "기존 Kenney·Quaternius 자연 모델",
+      "remaining": "고정 외형 / 기존 파티클·수면 효과 유지",
+      "originalNumber": 0
+    },
+    {
+      "group": "05_Shared_Environment",
+      "name": "ENV_FIELD_GROUND_01",
+      "label": "ENV_FIELD_GROUND_01",
+      "path": "Assets/05_Gimmick_Working_Assets/05_Shared_Environment/ENV_FIELD_GROUND_01.prefab",
+      "source": "직접 제작",
+      "remaining": "고정 외형 / 기존 파티클·수면 효과 유지",
+      "originalNumber": 0
+    },
+    {
+      "group": "00_Shared_Characters",
+      "name": "FIX_START_FLAG_01",
+      "label": "FIX_START_FLAG_01",
+      "path": "Assets/05_Gimmick_Working_Assets/00_Shared_Characters/FIX_START_FLAG_01.prefab",
+      "source": "직접 제작",
+      "remaining": "고정 외형 / 기존 파티클·수면 효과 유지",
+      "originalNumber": 0
+    },
+    {
+      "group": "00_Shared_Characters",
+      "name": "FIX_FINISH_FLAG_01",
+      "label": "FIX_FINISH_FLAG_01",
+      "path": "Assets/05_Gimmick_Working_Assets/00_Shared_Characters/FIX_FINISH_FLAG_01.prefab",
+      "source": "직접 제작",
+      "remaining": "고정 외형 / 기존 파티클·수면 효과 유지",
+      "originalNumber": 0
+    },
+    {
+      "group": "00_Shared_Characters",
+      "name": "CHAR_PLAYER_BASE_02",
+      "label": "CHAR_PLAYER_BASE_02",
+      "path": "Assets/05_Gimmick_Working_Assets/00_Shared_Characters/CHAR_PLAYER_BASE_02.prefab",
+      "source": "기존 캐릭터 프리팹 색 변형",
+      "remaining": "고정 외형 / 기존 파티클·수면 효과 유지",
+      "originalNumber": 0
+    },
+    {
+      "group": "04_Jump_Map_Treasure",
+      "name": "MOV_JUMP_SPIKES_01",
+      "label": "MOV_JUMP_SPIKES_01",
+      "path": "Assets/05_Gimmick_Working_Assets/04_Jump_Map_Treasure/MOV_JUMP_SPIKES_01.prefab",
+      "source": "Spikes",
+      "remaining": "press 시각 미리보기 (입력·피해 판정 없음)",
+      "originalNumber": 0
+    },
+    {
+      "group": "03_Information_Sharing_Doors",
+      "name": "MOV_DOOR_ROLLING_ROCK_01",
+      "label": "MOV_DOOR_ROLLING_ROCK_01",
+      "path": "Assets/05_Gimmick_Working_Assets/03_Information_Sharing_Doors/MOV_DOOR_ROLLING_ROCK_01.prefab",
+      "source": "RollingRock",
+      "remaining": "swim 시각 미리보기 (입력·피해 판정 없음)",
+      "originalNumber": 0
+    }
+  ]
+}
