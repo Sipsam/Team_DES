@@ -9,6 +9,8 @@ public sealed class PlayerInteraction : NetworkBehaviour
 
     private readonly Collider[] overlapResults = new Collider[32];
     private bool puzzleUiInputBlocked;
+    public IInteractable CurrentTarget { get; private set; }
+    private TwinEdge.Gameplay.GameplayInput gameplayInput;
     private GameStateManager gameStateManager;
 
     private void Update()
@@ -18,7 +20,11 @@ public sealed class PlayerInteraction : NetworkBehaviour
             return;
         }
 
-        if (puzzleUiInputBlocked)
+        if (gameplayInput != null && Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame)
+        {
+            foreach (var target in FindObjectsByType<TwinEdge.Gameplay.NetworkInteractionTarget>(FindObjectsSortMode.None)) target.Cancel(this);
+        }
+        if (puzzleUiInputBlocked || (gameplayInput != null && !gameplayInput.AcceptsInput))
         {
             return;
         }
@@ -28,19 +34,22 @@ public sealed class PlayerInteraction : NetworkBehaviour
             return;
         }
 
+        if (!(CurrentTarget is TwinEdge.Gameplay.NetworkInteractionTarget busy && busy.IsInteracting(this)))
+            CurrentTarget = FindClosestInteractable();
         Keyboard keyboard = Keyboard.current;
-        if (keyboard == null || !keyboard.eKey.wasPressedThisFrame)
+        if (gameplayInput != null ? gameplayInput.Interact == null || !gameplayInput.Interact.WasPressedThisFrame() : keyboard == null || !keyboard.eKey.wasPressedThisFrame)
         {
             return;
         }
 
-        IInteractable interactable = FindClosestInteractable();
+        IInteractable interactable = CurrentTarget;
         interactable?.Interact(this);
     }
 
     public override void OnNetworkSpawn()
     {
         gameStateManager = FindFirstObjectByType<GameStateManager>();
+        gameplayInput = GetComponent<TwinEdge.Gameplay.GameplayInput>();
         enabled = IsOwner;
     }
 

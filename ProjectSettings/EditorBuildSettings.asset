@@ -20,6 +20,12 @@ EditorBuildSettings:
   - enabled: 0
     path: Assets/Scenes/SampleScene.unity
     guid: 99c9720ab356a0642a771bea13969a05
+  - enabled: 1
+    path: Assets/Game/Gameplay/Scenes/V3Gameplay.unity
+    guid: ab784e5794f510242acaf674e5e44375
+  - enabled: 1
+    path: Assets/Game/Level/Scenes/LevelBlockoutV3.unity
+    guid: a537b25c40f13eb4fadb9724b3d4fa09
   m_configObjects:
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 052faaac586de48259a63d0c4782560b, type: 3}
   m_UseUCBPForAssetBundles: 0

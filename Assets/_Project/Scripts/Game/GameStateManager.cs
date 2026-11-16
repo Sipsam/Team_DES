@@ -10,9 +10,34 @@ public enum GameState
     Finished
 }
 
+public enum FoundationPhase { WaitingForPlayers, Preparing, Outbound, SealPending, Return, Finished }
+
 [RequireComponent(typeof(NetworkObject))]
 public sealed class GameStateManager : NetworkBehaviour
 {
+    public bool foundationMode;
+    readonly NetworkVariable<FoundationPhase> foundationPhase = new(FoundationPhase.WaitingForPlayers);
+    public string FoundationPhaseLabel => foundationMode ? foundationPhase.Value.ToString() : CurrentState.ToString();
+    public event Action<FoundationPhase, FoundationPhase> FoundationPhaseChanged;
+    public void StartFoundation()
+    {
+        if (IsServer && foundationMode && IsGameReady && foundationPhase.Value == FoundationPhase.Preparing)
+            foundationPhase.Value = FoundationPhase.Outbound;
+    }
+    // Trusted server hook only. Gem, seal and winner rules deliberately remain in future modules.
+    public bool AdvanceFoundation(FoundationPhase next)
+    {
+        if (!IsServer || !foundationMode || !IsGameReady ||
+            !((foundationPhase.Value == FoundationPhase.Outbound && next == FoundationPhase.SealPending) ||
+              (foundationPhase.Value == FoundationPhase.SealPending && next == FoundationPhase.Return) ||
+              (foundationPhase.Value == FoundationPhase.Return && next == FoundationPhase.Finished))) return false;
+        foundationPhase.Value = next;
+        if (next == FoundationPhase.Return) currentState.Value = GameState.Competition;
+        if (next == FoundationPhase.Finished) currentState.Value = GameState.Finished;
+        return true;
+    }
+    void OnFoundationChanged(FoundationPhase before, FoundationPhase after) => FoundationPhaseChanged?.Invoke(before, after);
+
     public event Action<GameState, GameState> StateChanged;
 
     [Header("Integrated Course (optional for older scenes)")]
@@ -41,7 +66,7 @@ public sealed class GameStateManager : NetworkBehaviour
     public bool HasWinner => winnerClientId.Value != ulong.MaxValue;
     public int ConnectedPlayerCount => connectedPlayerCount.Value;
     public bool IsGameReady => IsSpawned && connectedPlayerCount.Value == 2;
-    public bool CanPlay => IsGameReady && CurrentState != GameState.Finished;
+    public bool CanPlay => IsGameReady && CurrentState != GameState.Finished && (!foundationMode || foundationPhase.Value >= FoundationPhase.Outbound);
     public bool AllGimmicksCompleted => !requireAllGimmicks ||
         (bridge != null && bridge.IsCooperationCompleted &&
          raft != null && raft.IsCooperationCompleted &&
@@ -59,6 +84,11 @@ public sealed class GameStateManager : NetworkBehaviour
             if (client.PlayerObject != null && client.PlayerObject.IsSpawned) count++;
         }
         connectedPlayerCount.Value = count;
+        if (foundationMode)
+        {
+            if (count < 2) foundationPhase.Value = FoundationPhase.WaitingForPlayers;
+            else if (foundationPhase.Value == FoundationPhase.WaitingForPlayers) foundationPhase.Value = FoundationPhase.Preparing;
+        }
         if (count == 2 && courseStartedAt.Value < 0d)
         {
             courseStartedAt.Value = NetworkManager.ServerTime.Time;
@@ -68,6 +98,7 @@ public sealed class GameStateManager : NetworkBehaviour
 
     public override void OnNetworkSpawn()
     {
+        foundationPhase.OnValueChanged += OnFoundationChanged;
         currentState.OnValueChanged += HandleStateChanged;
         winnerClientId.OnValueChanged += HandleWinnerChanged;
         if (IsServer)
@@ -76,6 +107,7 @@ public sealed class GameStateManager : NetworkBehaviour
             turnPointArrivalCount.Value = 0;
             winnerClientId.Value = ulong.MaxValue;
             currentState.Value = GameState.Cooperation;
+            foundationPhase.Value = FoundationPhase.WaitingForPlayers;
             connectedPlayerCount.Value = 0;
             courseStartedAt.Value = -1d;
             courseFinishedAt.Value = -1d;
@@ -88,6 +120,7 @@ public sealed class GameStateManager : NetworkBehaviour
 
     public override void OnNetworkDespawn()
     {
+        foundationPhase.OnValueChanged -= OnFoundationChanged;
         currentState.OnValueChanged -= HandleStateChanged;
         winnerClientId.OnValueChanged -= HandleWinnerChanged;
         if (IsServer && NetworkManager != null)
@@ -98,7 +131,7 @@ public sealed class GameStateManager : NetworkBehaviour
 
     public bool TryTransitionTo(GameState nextState)
     {
-        if (!IsServer || !IsGameReady || !IsValidTransition(currentState.Value, nextState))
+        if (foundationMode || !IsServer || !IsGameReady || !IsValidTransition(currentState.Value, nextState))
         {
             return false;
         }

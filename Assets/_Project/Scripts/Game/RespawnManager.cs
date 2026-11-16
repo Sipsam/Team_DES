@@ -1,3 +1,4 @@
+using System.Linq;
 using System.Collections.Generic;
 using Unity.Netcode;
 using UnityEngine;
@@ -10,14 +11,38 @@ public sealed class RespawnManager : NetworkBehaviour
     private readonly Dictionary<ulong, Pose> checkpoints = new Dictionary<ulong, Pose>();
     private readonly Dictionary<ulong, float> lastRespawnTimes = new Dictionary<ulong, float>();
     private GameStateManager gameStateManager;
+    private readonly Dictionary<ulong, float> lastSupportedHeight = new();
+    // Future cooperative raft module calls these explicit server hooks; ordinary checkpoints remain per-player.
+    public void SetSharedCheckpointServer(Vector3 position, Quaternion rotation, string label)
+    {
+        if (!IsServer) return;
+        foreach (var client in NetworkManager.ConnectedClientsList)
+            if (client.PlayerObject != null) SetCheckpoint(client.PlayerObject.GetComponent<PlayerMovement>(), position + Vector3.right * (client.ClientId == 0 ? -1.5f : 1.5f), rotation, label);
+    }
+    public void RespawnGroupServer()
+    {
+        if (!IsServer) return;
+        foreach (var client in NetworkManager.ConnectedClientsList)
+            if (client.PlayerObject != null) RespawnPlayer(client.PlayerObject.GetComponent<PlayerMovement>());
+    }
+    public void ConfigureFallRecovery(float height) => fallRecoveryHeight = height;
 
     private void Update()
     {
         if (!IsServer || !IsSpawned) return;
         foreach (NetworkClient client in NetworkManager.ConnectedClientsList)
         {
-            if (client.PlayerObject != null && client.PlayerObject.transform.position.y < fallRecoveryHeight)
-                RespawnPlayer(client.PlayerObject.GetComponent<PlayerMovement>());
+            if (client.PlayerObject == null) continue;
+            var position = client.PlayerObject.transform.position;
+            bool fallen = position.y < fallRecoveryHeight;
+            if (client.PlayerObject.GetComponent<TwinEdge.Gameplay.GameplayCharacter>() != null)
+            {
+                bool supported = Physics.RaycastAll(position + Vector3.up * .15f, Vector3.down, .5f, ~0, QueryTriggerInteraction.Ignore)
+                    .Any(hit => !hit.transform.IsChildOf(client.PlayerObject.transform) && hit.normal.y > .4f);
+                if (supported) lastSupportedHeight[client.ClientId] = position.y;
+                else if (lastSupportedHeight.TryGetValue(client.ClientId, out float height)) fallen |= position.y < height - 18f;
+            }
+            if (fallen) RespawnPlayer(client.PlayerObject.GetComponent<PlayerMovement>());
         }
     }
 
@@ -26,10 +51,12 @@ public sealed class RespawnManager : NetworkBehaviour
         if (IsServer && player != null && player.IsSpawned)
         {
             checkpoints[player.OwnerClientId] = new Pose(player.transform.position, player.transform.rotation);
+            var character = player.GetComponent<TwinEdge.Gameplay.GameplayCharacter>();
+            if (character != null) character.CheckpointName.Value = "Mountain start";
         }
     }
 
-    public void SetCheckpoint(PlayerMovement player, Vector3 position, Quaternion rotation)
+    public void SetCheckpoint(PlayerMovement player, Vector3 position, Quaternion rotation, string label = "Checkpoint")
     {
         if (!IsServer || player == null || !player.IsSpawned)
         {
@@ -37,6 +64,8 @@ public sealed class RespawnManager : NetworkBehaviour
         }
 
         checkpoints[player.OwnerClientId] = new Pose(position, rotation);
+        var character = player.GetComponent<TwinEdge.Gameplay.GameplayCharacter>();
+        if (character != null) character.CheckpointName.Value = label;
         Debug.Log($"Checkpoint set for client {player.OwnerClientId}.", player);
     }
 
@@ -59,6 +88,10 @@ public sealed class RespawnManager : NetworkBehaviour
             checkpoints[player.OwnerClientId] = checkpoint;
         }
 
+        var character = player.GetComponent<TwinEdge.Gameplay.GameplayCharacter>();
+        if (character != null) { character.RespawnCount.Value++; character.SetCarryingServer(false); }
+        lastSupportedHeight[player.OwnerClientId] = checkpoint.position.y;
+        player.SetGrabbedServer(false);
         player.RespawnAtOwnerClientRpc(checkpoint.position, checkpoint.rotation,
             RpcTarget.Single(player.OwnerClientId, RpcTargetUse.Temp));
     }
@@ -69,6 +102,7 @@ public sealed class RespawnManager : NetworkBehaviour
         {
             checkpoints.Clear();
             lastRespawnTimes.Clear();
+            lastSupportedHeight.Clear();
             gameStateManager = GetComponent<GameStateManager>();
             if (gameStateManager != null) gameStateManager.StateChanged += HandleGameStateChanged;
         }
@@ -92,6 +126,7 @@ public sealed class RespawnManager : NetworkBehaviour
     {
         checkpoints.Remove(clientId);
         lastRespawnTimes.Remove(clientId);
+        lastSupportedHeight.Remove(clientId);
     }
 
     private void HandleGameStateChanged(GameState previous, GameState next)

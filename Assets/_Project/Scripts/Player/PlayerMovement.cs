@@ -16,6 +16,8 @@ public sealed class PlayerMovement : NetworkBehaviour
     [SerializeField, Min(0f)] private float groundedDownForce = 2f;
     [SerializeField, Min(0f)] private float externalVelocityDecay = 8f;
 
+    private TwinEdge.Gameplay.GameplayInput gameplayInput;
+    public Vector3 Velocity => characterController != null ? characterController.velocity : Vector3.zero;
     private CharacterController characterController;
     private RaftController raftController;
     private bool insideRaftControlPoint;
@@ -33,6 +35,7 @@ public sealed class PlayerMovement : NetworkBehaviour
     private void Awake()
     {
         characterController = GetComponent<CharacterController>();
+        gameplayInput = GetComponent<TwinEdge.Gameplay.GameplayInput>();
     }
 
     private void Update()
@@ -42,7 +45,7 @@ public sealed class PlayerMovement : NetworkBehaviour
             return;
         }
 
-        bool canReadInput = !puzzleUiInputBlocked && (!IsSpawned ||
+        bool canReadInput = (gameplayInput == null || gameplayInput.AcceptsInput) && !puzzleUiInputBlocked && (!IsSpawned ||
             (gameStateManager != null && gameStateManager.CanPlay));
 
         IsGrounded = characterController.isGrounded;
@@ -52,7 +55,7 @@ public sealed class PlayerMovement : NetworkBehaviour
             verticalSpeed = -groundedDownForce;
         }
 
-        Vector2 input = canReadInput ? ReadMovementInput() : Vector2.zero;
+        Vector2 input = canReadInput ? (gameplayInput != null ? gameplayInput.Move?.ReadValue<Vector2>() ?? Vector2.zero : ReadMovementInput()) : Vector2.zero;
         if (insideRaftControlPoint || (raftController != null && raftController.IsLocalPlayerAtControlPoint))
         {
             // W/S operate the raft while assigned to a control point; A/D still let the player leave it.
@@ -71,13 +74,13 @@ public sealed class PlayerMovement : NetworkBehaviour
         }
 
         Keyboard keyboard = Keyboard.current;
-        if (canReadInput && IsGrounded && keyboard != null && keyboard.spaceKey.wasPressedThisFrame)
+        if (canReadInput && IsGrounded && (gameplayInput != null ? gameplayInput.Jump != null && gameplayInput.Jump.WasPressedThisFrame() : keyboard != null && keyboard.spaceKey.wasPressedThisFrame))
         {
             verticalSpeed = Mathf.Sqrt(2f * gravity * jumpHeight);
         }
 
         verticalSpeed -= gravity * Time.deltaTime;
-        Vector3 velocity = moveDirection * (moveSpeed * movementSpeedMultiplier.Value);
+        Vector3 velocity = moveDirection * (moveSpeed * (gameplayInput != null && gameplayInput.Sprint != null && gameplayInput.Sprint.IsPressed() ? 1.6f : 1f) * movementSpeedMultiplier.Value);
         velocity += externalVelocity;
         velocity.y = verticalSpeed + externalVelocity.y;
         characterController.Move(velocity * Time.deltaTime);
@@ -207,6 +210,7 @@ public sealed class PlayerMovement : NetworkBehaviour
         transform.SetPositionAndRotation(position, rotation);
         GetComponent<OwnerNetworkTransform>()?.Teleport(position, rotation, transform.localScale);
         insideRaftControlPoint = false;
+        GetComponent<TwinEdge.Gameplay.GameplayCharacter>()?.ResetAfterRespawn();
         ResetVerticalVelocity();
 
         if (controllerWasEnabled)

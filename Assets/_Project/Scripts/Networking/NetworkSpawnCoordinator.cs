@@ -65,6 +65,8 @@ public sealed class NetworkSpawnCoordinator : MonoBehaviour
 
     private void PlaceConnectedPlayer(ulong clientId)
     {
+        // V3 uses the server approval pose; client-ID modulo is invalid after reconnects.
+        if (!networkManager.IsServer && networkManager.NetworkConfig.PlayerPrefab.GetComponent<TwinEdge.Gameplay.GameplayCharacter>() != null) return;
         if (spawnPoints == null || spawnPoints.Length == 0)
         {
             Debug.LogError("NetworkSpawnCoordinator has no PlayerSpawnPoints assigned.", this);

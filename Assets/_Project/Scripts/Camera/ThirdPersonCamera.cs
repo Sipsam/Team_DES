@@ -42,7 +42,7 @@ public sealed class ThirdPersonCamera : MonoBehaviour
     {
         HandleCursor();
 
-        if (Cursor.lockState != CursorLockMode.Locked || Mouse.current == null)
+        if (target == null || Cursor.lockState != CursorLockMode.Locked || Mouse.current == null)
         {
             return;
         }
@@ -63,6 +63,16 @@ public sealed class ThirdPersonCamera : MonoBehaviour
         Quaternion orbitRotation = Quaternion.Euler(pitch, yaw, 0f);
         Vector3 lookPoint = target.position + Vector3.up * height;
         Vector3 desiredPosition = lookPoint - orbitRotation * Vector3.forward * distance;
+        if (target.GetComponentInParent<TwinEdge.Gameplay.GameplayCharacter>() != null)
+        {
+            var direction = (desiredPosition - lookPoint).normalized;
+            float safeDistance = distance;
+            foreach (var hit in Physics.SphereCastAll(lookPoint, .22f, direction, distance, ~0, QueryTriggerInteraction.Ignore))
+                if (!hit.transform.IsChildOf(target.root)) safeDistance = Mathf.Min(safeDistance, Mathf.Max(.15f, hit.distance - .1f));
+            desiredPosition = lookPoint + direction * safeDistance;
+            // Resolve immediately against walls; smoothing can otherwise leave the lens inside geometry.
+            hasInitializedPosition = false;
+        }
 
         if (!hasInitializedPosition || positionSmoothTime <= 0f)
         {
@@ -113,6 +123,7 @@ public sealed class ThirdPersonCamera : MonoBehaviour
         }
         else if (mouse != null && mouse.leftButton.wasPressedThisFrame &&
                  !NetworkDebugUI.IsPointerOverMenu(mouse.position.ReadValue()) &&
+                 !(FindFirstObjectByType<TwinEdge.Gameplay.V3GameplayBootstrap>() != null && TwinEdge.Gameplay.V3GameplayBootstrap.PointerOverMenu(mouse.position.ReadValue())) &&
                  !DoorPuzzleUI.IsPointerOverPanel(mouse.position.ReadValue()))
         {
             Cursor.lockState = CursorLockMode.Locked;

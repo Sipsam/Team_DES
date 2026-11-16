@@ -10,6 +10,21 @@ public sealed class Checkpoint : MonoBehaviour
     [SerializeField] private CheckpointPhase phase;
     [SerializeField] private Transform respawnPoint;
 
+    public void Configure(RespawnManager manager, CheckpointPhase checkpointPhase)
+    { respawnManager = manager; phase = checkpointPhase; }
+    // Server polling also handles owner-authoritative replicated transforms without Rigidbody triggers.
+    private readonly System.Collections.Generic.HashSet<ulong> registered = new();
+    private void Update()
+    {
+        if (respawnManager == null || !respawnManager.IsServer || !respawnManager.IsSpawned) return;
+        foreach (var client in respawnManager.NetworkManager.ConnectedClientsList)
+        {
+            var player = client.PlayerObject != null ? client.PlayerObject.GetComponent<PlayerMovement>() : null;
+            if (player != null && CanRegister(player))
+            { if (registered.Add(client.ClientId)) RegisterPlayerCheckpoint(player); }
+            else registered.Remove(client.ClientId);
+        }
+    }
     public bool CanRegister(PlayerMovement player)
     {
         GameStateManager state = FindFirstObjectByType<GameStateManager>();
@@ -45,6 +60,9 @@ public sealed class Checkpoint : MonoBehaviour
             : FindFirstObjectByType<RespawnManager>();
 
         Transform point = respawnPoint != null ? respawnPoint : transform;
-        manager?.SetCheckpoint(player, point.position + respawnOffset, point.rotation);
+        Vector3 offset = respawnOffset;
+        if (FindFirstObjectByType<GameStateManager>()?.foundationMode == true)
+            offset += point.right * (player.OwnerClientId == Unity.Netcode.NetworkManager.ServerClientId ? -1.5f : 1.5f);
+        manager?.SetCheckpoint(player, point.position + offset, point.rotation, gameObject.name);
     }
 }
