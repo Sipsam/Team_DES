@@ -30,7 +30,7 @@ namespace TwinEdge.Levels.Editor
             foreach (var folder in Directory.GetDirectories(Generated).Select(p=>p.Replace('\\','/')))
             {
                 string name=Path.GetFileName(folder);
-                if (!(name.StartsWith("ValleyV3_")||name.StartsWith("Run_")||name.StartsWith("MountainV3_"))) continue;
+                if (!(name.StartsWith("ValleyV3_")||name.StartsWith("Run_")||name.StartsWith("MountainV3_")||name.StartsWith("FortressV3_"))) continue;
                 var files=Directory.GetFiles(folder,"*",SearchOption.AllDirectories).Select(p=>p.Replace('\\','/')).ToArray();
                 if (files.Any(p=>!new[]{".asset",".mat",".meta"}.Contains(Path.GetExtension(p))) || files.Any(retained.Contains) || text.Contains(folder))
                 { log.Add("KEEP "+folder); continue; }
@@ -38,11 +38,14 @@ namespace TwinEdge.Levels.Editor
                 var tracked=System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("git", "ls-files -- \""+folder+"\""){RedirectStandardOutput=true,UseShellExecute=false,CreateNoWindow=true});
                 var trackedPaths=new HashSet<string>(tracked.StandardOutput.ReadToEnd().Split(new[]{'\r','\n'},StringSplitOptions.RemoveEmptyEntries)); tracked.WaitForExit();
                 bool own=File.Exists(Notes+"RefinementGenerations.txt")&&File.ReadAllLines(Notes+"RefinementGenerations.txt").Contains(folder);
+                bool castleOwn=File.Exists(Notes+"CastleGenerations.txt")&&File.ReadAllLines(Notes+"CastleGenerations.txt").Contains(folder);
+                own|=castleOwn;
                 var changed=System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("git", "diff HEAD --name-only -- \""+folder+"\""){RedirectStandardOutput=true,UseShellExecute=false,CreateNoWindow=true});
                 string changes=changed.StandardOutput.ReadToEnd();changed.WaitForExit();
                 if (tracked.ExitCode!=0 || changed.ExitCode!=0 || !string.IsNullOrWhiteSpace(changes)) { log.Add("KEEP modified or Git error "+folder); continue; }
                 if (own) {
-                    var hashes=File.Exists(Notes+"RefinementGenerationHashes.txt")?new HashSet<string>(File.ReadAllLines(Notes+"RefinementGenerationHashes.txt")):new HashSet<string>();
+                    string hashPath=Notes+(castleOwn?"CastleGenerationHashes.txt":"RefinementGenerationHashes.txt");
+                    var hashes=File.Exists(hashPath)?new HashSet<string>(File.ReadAllLines(hashPath)):new HashSet<string>();
                     foreach(var file in files) using(var sha=System.Security.Cryptography.SHA256.Create())
                         if (!hashes.Contains(file+"|"+BitConverter.ToString(sha.ComputeHash(File.ReadAllBytes(file))))) own=false;
                 }

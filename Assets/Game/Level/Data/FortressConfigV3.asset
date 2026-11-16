@@ -1,0 +1,560 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ec5ff20249661dc49acda3a0fc840623, type: 3}
+  m_Name: FortressConfigV3
+  m_EditorClassIdentifier: Assembly-CSharp::TwinEdge.Levels.FortressConfigV3
+  origin: {x: 50, y: 58, z: 2144}
+  approach: {x: 50, y: 58, z: 2070}
+  curtain:
+  - {x: -45, y: 275}
+  - {x: -55, y: 210}
+  - {x: -45, y: 35}
+  - {x: -20, y: -10}
+  - {x: 65, y: -5}
+  - {x: 95, y: 55}
+  - {x: 85, y: 235}
+  - {x: 40, y: 285}
+  towers:
+  - position: {x: -45, y: 275}
+    radius: 9
+    height: 30
+  - position: {x: -45, y: 35}
+    radius: 9
+    height: 32
+  - position: {x: 65, y: -5}
+    radius: 9
+    height: 34
+  - position: {x: 85, y: 235}
+    radius: 9
+    height: 32
+  - position: {x: 40, y: 285}
+    radius: 9
+    height: 38
+  - position: {x: -13, y: -3}
+    radius: 9
+    height: 36
+  - position: {x: 13, y: -3}
+    radius: 9
+    height: 36
+  wallHeight: 20
+  wallThickness: 4
+  gateWidth: 12
+  gateHeight: 12
+  keep:
+    serializedVersion: 2
+    x: -42
+    y: 35
+    width: 86
+    height: 220
+  courtyard:
+    serializedVersion: 2
+    x: -30
+    y: 3
+    width: 80
+    height: 28
+  keepHeight: 32
+  hallHeight: 44
+  sharedWallX: 0
+  rooms:
+  - id: A1
+    plan:
+      serializedVersion: 2
+      x: 0
+      y: 63
+      width: 20
+      height: 26
+    height: 8
+    hint: 1
+  - id: B1
+    plan:
+      serializedVersion: 2
+      x: -28
+      y: 63
+      width: 28
+      height: 26
+    height: 10
+    hint: 0
+  - id: A2
+    plan:
+      serializedVersion: 2
+      x: 0
+      y: 89
+      width: 34
+      height: 44
+    height: 13
+    hint: 0
+  - id: B2
+    plan:
+      serializedVersion: 2
+      x: -22
+      y: 89
+      width: 22
+      height: 44
+    height: 9
+    hint: 1
+  - id: A3
+    plan:
+      serializedVersion: 2
+      x: 0
+      y: 133
+      width: 24
+      height: 30
+    height: 10
+    hint: 1
+  - id: B3
+    plan:
+      serializedVersion: 2
+      x: -36
+      y: 133
+      width: 36
+      height: 30
+    height: 14
+    hint: 0
+  - id: A4
+    plan:
+      serializedVersion: 2
+      x: 0
+      y: 163
+      width: 38
+      height: 48
+    height: 16
+    hint: 0
+  - id: B4
+    plan:
+      serializedVersion: 2
+      x: -30
+      y: 163
+      width: 30
+      height: 48
+    height: 12
+    hint: 1
+  undergroundDoor: {x: 0, y: 0, z: 245}
+  stairVoid:
+    serializedVersion: 2
+    x: 16
+    y: 251
+    width: 58
+    height: 24
+  stairs:
+  - {x: 20, y: 0, z: 248}
+  - {x: 20, y: 0, z: 258}
+  - {x: 68, y: -12, z: 258}
+  - {x: 68, y: -12, z: 268}
+  - {x: 20, y: -24, z: 268}
+  - {x: 20, y: -24, z: 258}
+  - {x: 68, y: -36, z: 258}
+  - {x: 68, y: -36, z: 268}
+  - {x: 20, y: -48, z: 268}
+  - {x: 20, y: -48, z: 258}
+  - {x: 68, y: -60, z: 258}
+  - {x: 68, y: -60, z: 246}
+  - {x: 40, y: -60, z: 246}
+  stairWidth: 6
+  cave:
+  - {x: -37, y: 267}
+  - {x: -37, y: 60}
+  - {x: -15, y: 25}
+  - {x: 40, y: 25}
+  - {x: 75, y: 53}
+  - {x: 75, y: 245}
+  - {x: 56, y: 267}
+  ceiling: -28
+  foundationBottom: -8
+  caveFloor: -92
+  lava: -86
+  start: {x: 40, y: -60, z: 240}
+  seal: {x: 14, y: -52, z: 53}
+  platforms:
+  - id: A0
+    activatedBy: 
+    position: {x: -17, y: -60, z: 227}
+    size: {x: 10, y: 12}
+    fixedLanding: 1
+    seconds: 25
+  - id: A1
+    activatedBy: 
+    position: {x: -24, y: -55, z: 181}
+    size: {x: 10, y: 12}
+    fixedLanding: 1
+    seconds: 25
+  - id: A2
+    activatedBy: 
+    position: {x: -18, y: -61, z: 131}
+    size: {x: 10, y: 12}
+    fixedLanding: 1
+    seconds: 25
+  - id: A3
+    activatedBy: 
+    position: {x: -21, y: -49, z: 83}
+    size: {x: 10, y: 12}
+    fixedLanding: 1
+    seconds: 25
+  - id: A0-1
+    activatedBy: B0
+    position: {x: -16.675, y: -59.375, z: 221.25}
+    size: {x: 5, y: 4}
+    fixedLanding: 0
+    seconds: 25
+  - id: A0-2
+    activatedBy: B0
+    position: {x: -19.95, y: -58.75, z: 215.5}
+    size: {x: 6, y: 4.5}
+    fixedLanding: 0
+    seconds: 25
+  - id: A0-3
+    activatedBy: B0
+    position: {x: -18.425, y: -58.125, z: 209.75}
+    size: {x: 5, y: 5}
+    fixedLanding: 0
+    seconds: 25
+  - id: A0-4
+    activatedBy: B0
+    position: {x: -21.7, y: -57.5, z: 204}
+    size: {x: 6, y: 4}
+    fixedLanding: 0
+    seconds: 25
+  - id: A0-5
+    activatedBy: B0
+    position: {x: -20.175, y: -56.875, z: 198.25}
+    size: {x: 5, y: 4.5}
+    fixedLanding: 0
+    seconds: 25
+  - id: A0-6
+    activatedBy: B0
+    position: {x: -23.45, y: -56.25, z: 192.5}
+    size: {x: 6, y: 5}
+    fixedLanding: 0
+    seconds: 25
+  - id: A0-7
+    activatedBy: B0
+    position: {x: -21.925, y: -55.625, z: 186.75}
+    size: {x: 5, y: 4}
+    fixedLanding: 0
+    seconds: 25
+  - id: A1-1
+    activatedBy: B1
+    position: {x: -22.05, y: -55.75, z: 174.75}
+    size: {x: 5, y: 4}
+    fixedLanding: 0
+    seconds: 25
+  - id: A1-2
+    activatedBy: B1
+    position: {x: -23.7, y: -56.5, z: 168.5}
+    size: {x: 6, y: 4.5}
+    fixedLanding: 0
+    seconds: 25
+  - id: A1-3
+    activatedBy: B1
+    position: {x: -20.55, y: -57.25, z: 162.25}
+    size: {x: 5, y: 5}
+    fixedLanding: 0
+    seconds: 25
+  - id: A1-4
+    activatedBy: B1
+    position: {x: -22.2, y: -58, z: 156}
+    size: {x: 6, y: 4}
+    fixedLanding: 0
+    seconds: 25
+  - id: A1-5
+    activatedBy: B1
+    position: {x: -19.05, y: -58.75, z: 149.75}
+    size: {x: 5, y: 4.5}
+    fixedLanding: 0
+    seconds: 25
+  - id: A1-6
+    activatedBy: B1
+    position: {x: -20.7, y: -59.5, z: 143.5}
+    size: {x: 6, y: 5}
+    fixedLanding: 0
+    seconds: 25
+  - id: A1-7
+    activatedBy: B1
+    position: {x: -17.55, y: -60.25, z: 137.25}
+    size: {x: 5, y: 4}
+    fixedLanding: 0
+    seconds: 25
+  - id: A2-1
+    activatedBy: B2
+    position: {x: -17.175, y: -59.5, z: 125}
+    size: {x: 5, y: 4}
+    fixedLanding: 0
+    seconds: 25
+  - id: A2-2
+    activatedBy: B2
+    position: {x: -19.95, y: -58, z: 119}
+    size: {x: 6, y: 4.5}
+    fixedLanding: 0
+    seconds: 25
+  - id: A2-3
+    activatedBy: B2
+    position: {x: -17.925, y: -56.5, z: 113}
+    size: {x: 5, y: 5}
+    fixedLanding: 0
+    seconds: 25
+  - id: A2-4
+    activatedBy: B2
+    position: {x: -20.7, y: -55, z: 107}
+    size: {x: 6, y: 4}
+    fixedLanding: 0
+    seconds: 25
+  - id: A2-5
+    activatedBy: B2
+    position: {x: -18.675, y: -53.5, z: 101}
+    size: {x: 5, y: 4.5}
+    fixedLanding: 0
+    seconds: 25
+  - id: A2-6
+    activatedBy: B2
+    position: {x: -21.45, y: -52, z: 95}
+    size: {x: 6, y: 5}
+    fixedLanding: 0
+    seconds: 25
+  - id: A2-7
+    activatedBy: B2
+    position: {x: -19.425, y: -50.5, z: 89}
+    size: {x: 5, y: 4}
+    fixedLanding: 0
+    seconds: 25
+  - id: A3-1
+    activatedBy: B3
+    position: {x: -15.425, y: -49.375, z: 79.25}
+    size: {x: 5, y: 4}
+    fixedLanding: 0
+    seconds: 25
+  - id: A3-2
+    activatedBy: B3
+    position: {x: -13.45, y: -49.75, z: 75.5}
+    size: {x: 6, y: 4.5}
+    fixedLanding: 0
+    seconds: 25
+  - id: A3-3
+    activatedBy: B3
+    position: {x: -6.675, y: -50.125, z: 71.75}
+    size: {x: 5, y: 5}
+    fixedLanding: 0
+    seconds: 25
+  - id: A3-4
+    activatedBy: B3
+    position: {x: -4.7, y: -50.5, z: 68}
+    size: {x: 6, y: 4}
+    fixedLanding: 0
+    seconds: 25
+  - id: A3-5
+    activatedBy: B3
+    position: {x: 2.075, y: -50.875, z: 64.25}
+    size: {x: 5, y: 4.5}
+    fixedLanding: 0
+    seconds: 25
+  - id: A3-6
+    activatedBy: B3
+    position: {x: 4.05, y: -51.25, z: 60.5}
+    size: {x: 6, y: 5}
+    fixedLanding: 0
+    seconds: 25
+  - id: A3-7
+    activatedBy: B3
+    position: {x: 10.825, y: -51.625, z: 56.75}
+    size: {x: 5, y: 4}
+    fixedLanding: 0
+    seconds: 25
+  - id: B0
+    activatedBy: 
+    position: {x: 47, y: -58, z: 227}
+    size: {x: 10, y: 12}
+    fixedLanding: 1
+    seconds: 25
+  - id: B1
+    activatedBy: 
+    position: {x: 61, y: -63, z: 177}
+    size: {x: 10, y: 12}
+    fixedLanding: 1
+    seconds: 25
+  - id: B2
+    activatedBy: 
+    position: {x: 55, y: -53, z: 128}
+    size: {x: 10, y: 12}
+    fixedLanding: 1
+    seconds: 25
+  - id: B3
+    activatedBy: 
+    position: {x: 49, y: -47, z: 79}
+    size: {x: 10, y: 12}
+    fixedLanding: 1
+    seconds: 25
+  - id: B0-1
+    activatedBy: A0
+    position: {x: 49.95, y: -58.625, z: 220.75}
+    size: {x: 5, y: 4}
+    fixedLanding: 0
+    seconds: 25
+  - id: B0-2
+    activatedBy: A0
+    position: {x: 49.3, y: -59.25, z: 214.5}
+    size: {x: 6, y: 4.5}
+    fixedLanding: 0
+    seconds: 25
+  - id: B0-3
+    activatedBy: A0
+    position: {x: 53.45, y: -59.875, z: 208.25}
+    size: {x: 5, y: 5}
+    fixedLanding: 0
+    seconds: 25
+  - id: B0-4
+    activatedBy: A0
+    position: {x: 52.8, y: -60.5, z: 202}
+    size: {x: 6, y: 4}
+    fixedLanding: 0
+    seconds: 25
+  - id: B0-5
+    activatedBy: A0
+    position: {x: 56.95, y: -61.125, z: 195.75}
+    size: {x: 5, y: 4.5}
+    fixedLanding: 0
+    seconds: 25
+  - id: B0-6
+    activatedBy: A0
+    position: {x: 56.3, y: -61.75, z: 189.5}
+    size: {x: 6, y: 5}
+    fixedLanding: 0
+    seconds: 25
+  - id: B0-7
+    activatedBy: A0
+    position: {x: 60.45, y: -62.375, z: 183.25}
+    size: {x: 5, y: 4}
+    fixedLanding: 0
+    seconds: 25
+  - id: B1-1
+    activatedBy: A1
+    position: {x: 61.45, y: -61.75, z: 170.875}
+    size: {x: 5, y: 4}
+    fixedLanding: 0
+    seconds: 25
+  - id: B1-2
+    activatedBy: A1
+    position: {x: 58.3, y: -60.5, z: 164.75}
+    size: {x: 6, y: 4.5}
+    fixedLanding: 0
+    seconds: 25
+  - id: B1-3
+    activatedBy: A1
+    position: {x: 59.95, y: -59.25, z: 158.625}
+    size: {x: 5, y: 5}
+    fixedLanding: 0
+    seconds: 25
+  - id: B1-4
+    activatedBy: A1
+    position: {x: 56.8, y: -58, z: 152.5}
+    size: {x: 6, y: 4}
+    fixedLanding: 0
+    seconds: 25
+  - id: B1-5
+    activatedBy: A1
+    position: {x: 58.45, y: -56.75, z: 146.375}
+    size: {x: 5, y: 4.5}
+    fixedLanding: 0
+    seconds: 25
+  - id: B1-6
+    activatedBy: A1
+    position: {x: 55.3, y: -55.5, z: 140.25}
+    size: {x: 6, y: 5}
+    fixedLanding: 0
+    seconds: 25
+  - id: B1-7
+    activatedBy: A1
+    position: {x: 56.95, y: -54.25, z: 134.125}
+    size: {x: 5, y: 4}
+    fixedLanding: 0
+    seconds: 25
+  - id: B2-1
+    activatedBy: A2
+    position: {x: 55.45, y: -52.25, z: 121.875}
+    size: {x: 5, y: 4}
+    fixedLanding: 0
+    seconds: 25
+  - id: B2-2
+    activatedBy: A2
+    position: {x: 52.3, y: -51.5, z: 115.75}
+    size: {x: 6, y: 4.5}
+    fixedLanding: 0
+    seconds: 25
+  - id: B2-3
+    activatedBy: A2
+    position: {x: 53.95, y: -50.75, z: 109.625}
+    size: {x: 5, y: 5}
+    fixedLanding: 0
+    seconds: 25
+  - id: B2-4
+    activatedBy: A2
+    position: {x: 50.8, y: -50, z: 103.5}
+    size: {x: 6, y: 4}
+    fixedLanding: 0
+    seconds: 25
+  - id: B2-5
+    activatedBy: A2
+    position: {x: 52.45, y: -49.25, z: 97.375}
+    size: {x: 5, y: 4.5}
+    fixedLanding: 0
+    seconds: 25
+  - id: B2-6
+    activatedBy: A2
+    position: {x: 49.3, y: -48.5, z: 91.25}
+    size: {x: 6, y: 5}
+    fixedLanding: 0
+    seconds: 25
+  - id: B2-7
+    activatedBy: A2
+    position: {x: 50.95, y: -47.75, z: 85.125}
+    size: {x: 5, y: 4}
+    fixedLanding: 0
+    seconds: 25
+  - id: B3-1
+    activatedBy: A3
+    position: {x: 45.825, y: -47.625, z: 75.75}
+    size: {x: 5, y: 4}
+    fixedLanding: 0
+    seconds: 25
+  - id: B3-2
+    activatedBy: A3
+    position: {x: 39.05, y: -48.25, z: 72.5}
+    size: {x: 6, y: 4.5}
+    fixedLanding: 0
+    seconds: 25
+  - id: B3-3
+    activatedBy: A3
+    position: {x: 37.075, y: -48.875, z: 69.25}
+    size: {x: 5, y: 5}
+    fixedLanding: 0
+    seconds: 25
+  - id: B3-4
+    activatedBy: A3
+    position: {x: 30.3, y: -49.5, z: 66}
+    size: {x: 6, y: 4}
+    fixedLanding: 0
+    seconds: 25
+  - id: B3-5
+    activatedBy: A3
+    position: {x: 28.325, y: -50.125, z: 62.75}
+    size: {x: 5, y: 4.5}
+    fixedLanding: 0
+    seconds: 25
+  - id: B3-6
+    activatedBy: A3
+    position: {x: 21.55, y: -50.75, z: 59.5}
+    size: {x: 6, y: 5}
+    fixedLanding: 0
+    seconds: 25
+  - id: B3-7
+    activatedBy: A3
+    position: {x: 19.575, y: -51.375, z: 56.25}
+    size: {x: 5, y: 4}
+    fixedLanding: 0
+    seconds: 25

@@ -61,6 +61,7 @@ namespace TwinEdge.Levels.Editor
 
         private void OnGUI()
         {
+            if (GUILayout.Button("V3 Castle / Underground review")) FortressViewsV3.Open();
             if (GUILayout.Button("V3 Bridge / Canyon / River framing")) ValleyViewsV3.Open();
             EditorGUILayout.HelpBox("씬을 읽어서 Scene 뷰에만 표시합니다. 창을 닫으면 표시가 해제됩니다.\nScene 뷰의 Gizmos를 켜세요. 카메라 이동은 게임 카메라에 영향을 주지 않습니다.", MessageType.Info);
             EditorGUI.BeginChangeCheck();

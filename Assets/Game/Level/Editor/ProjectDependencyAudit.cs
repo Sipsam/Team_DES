@@ -77,8 +77,13 @@ namespace TwinEdge.Levels.Editor
                         report.Add($"SCENE {scenePath}: missing scripts={missing}; generated dependencies={AssetDatabase.GetDependencies(scenePath, true).Count(p => p.StartsWith(Generated, StringComparison.Ordinal))}");
                         foreach (var section in objects.Select(t => t.GetComponent<LevelSection>()).Where(s => s != null))
                         {
-                            report.Add($"SECTION {section.section}: config={AssetDatabase.GetAssetPath(section.config)}; Generated={section.transform.Find("Generated") != null}; Manual={section.transform.Find("Manual") != null}; markers={section.GetComponentsInChildren<LevelMarker>(true).Length}");
-                            foreach (var error in LevelValidation.ConfigErrors(section.config)) report.Add("CONFIG ERROR: " + error);
+                            var fortress=section.GetComponent<FortressSectionV3>();
+                            var mountain=section.GetComponent<MountainSectionV3>();
+                            var valley=section.GetComponent<ValleySectionV3>();
+                            UnityEngine.Object config=fortress?fortress.config:mountain?mountain.config:valley?valley.config:(UnityEngine.Object)section.config;
+                            report.Add($"SECTION {section.section}: config={AssetDatabase.GetAssetPath(config)}; Generated={section.transform.Find("Generated") != null}; Manual={section.transform.Find("Manual") != null}; markers={section.GetComponentsInChildren<LevelMarker>(true).Length}");
+                            if(!config)report.Add("CONFIG ERROR: Missing config");
+                            else if(!fortress&&!mountain&&!valley)foreach (var error in LevelValidation.ConfigErrors(section.config)) report.Add("CONFIG ERROR: " + error);
                         }
                         report.Add((scene.isDirty ? "FAIL" : "PASS") + ": preview remains clean " + scenePath);
                     }
