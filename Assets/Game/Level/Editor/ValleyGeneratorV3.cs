@@ -81,26 +81,28 @@ namespace TwinEdge.Levels.Editor
             float floor=c.bridgeStart.y-c.canyonDepth;
             float y;
             if(z<=710) {
-                float north=Smooth(0,1,Mathf.InverseLerp(565,642,z));
+                // Broad, oblique rock shoulders rather than a single near-vertical cut.
+                float wallOffset=24*Mathf.Sin(x*.008f)+18*Mathf.Sin(x*.017f+1.3f);
+                float north=Smooth(410+wallOffset,642,z);
                 float distance=Mathf.Abs(x-c.bridgeEnd.x);
                 float shoulder=Mathf.Max(0,distance-c.landingRadius);
-                y=Mathf.Lerp(floor+12*Mathf.Sin(x*.018f+z*.02f),c.bridgeEnd.y-Mathf.Min(200,shoulder*.72f),north);
+                y=Mathf.Lerp(floor+18*Mathf.Sin(x*.008f+z*.011f),c.bridgeEnd.y-Mathf.Min(200,shoulder*.58f),north);
                 y+=Smooth(0,1,Mathf.InverseLerp(c.landingRadius,100,distance))*c.silhouette*Mathf.Sin(x*.033f+z*.022f)*north;
                 if(z>650) {
                     var hp=Sample(c.descent,z);float hd=Mathf.Abs(x-hp.x);
-                    float hy=hp.y+Mathf.Max(0,hd-c.walkWidth*.5f)*(x<hp.x?-.48f:c.cliffSlope)+c.silhouette*Mathf.Sin(x*.027f+z*.019f)*Smooth(8,75,hd);
+                    float hy=hp.y+Mathf.Max(0,hd-c.walkWidth*.5f)*(x<hp.x?-.48f:c.cliffSlope)+c.silhouette*(2*Mathf.PerlinNoise(x*.008f+50,z*.006f)-1)*Smooth(8,75,hd);
                     y=Mathf.Lerp(y,hy,Smooth(0,1,(z-650)/60));
                 }
                 var path=Sample(c.descent,z);
-                float blend=1-Smooth(c.walkWidth*.5f,c.walkWidth*.5f+32,Mathf.Abs(x-path.x));
+                float blend=1-Smooth(c.walkWidth*1.5f,c.walkWidth*1.5f+32,Mathf.Abs(x-path.x));
                 y=Mathf.Lerp(y,path.y,blend*north);
             } else if(z<1150) {
                 var p=Sample(c.descent,z);float d=Mathf.Abs(x-p.x);
                 float side=Mathf.Sign(x-p.x);
                 y=p.y+Mathf.Max(0,d-c.walkWidth*.5f)*(side<0?-.48f:c.cliffSlope);
-                y+=c.silhouette*Mathf.Sin(x*.027f+z*.019f)*Smooth(8,75,d);
+                y+=c.silhouette*(2*Mathf.PerlinNoise(x*.008f+50,z*.006f)-1)*Smooth(8,75,d);
                 if(z>1090)y=Mathf.Lerp(y,RiverHeight(c,x,1150),Smooth(0,1,(z-1090)/60));
-                y=Mathf.Lerp(y,p.y,1-Smooth(c.walkWidth*.5f,c.walkWidth*.5f+12,d));
+                y=Mathf.Lerp(y,p.y,1-Smooth(c.walkWidth*1.5f,c.walkWidth*1.5f+12,d));
             } else if(z<=1900)y=RiverHeight(c,x,z);
             else {
                 float u=Smooth(0,1,Mathf.InverseLerp(1900,2070,z));
@@ -117,13 +119,24 @@ namespace TwinEdge.Levels.Editor
         }
         static float RiverHeight(ValleyConfigV3 c,float x,float z) {
             var p=Sample(c.river,z);float d=Mathf.Abs(x-p.x);float half=Width(c,z)*.5f;
-            // Meander banks vary with curvature, side, longitudinal terraces and rock noses.
+            // Broad overlapping erosion basins modulate entire cross-sections continuously.
+            // Different centres on each bank avoid a repeated sine-wave ridge train.
             float bend=Sample(c.river,z+8).x-2*p.x+Sample(c.river,z-8).x;
             float outer=.5f-.5f*Mathf.Clamp(bend*.25f*Mathf.Sign(x-p.x),-1,1);
-            float slope=Mathf.Lerp(c.innerBankSlope,c.outerBankSlope,outer);
+            float side=x<p.x?-1:1;
+            float basinA=Mathf.Exp(-Mathf.Pow((z-(side<0?1320:1460))/150,2));
+            float basinB=Mathf.Exp(-Mathf.Pow((z-(side<0?1760:1840))/105,2));
+            float ridge=Mathf.Exp(-Mathf.Pow((z-(side<0?1535:1650))/100,2));
+            float slope=Mathf.Lerp(c.innerBankSlope,c.outerBankSlope,outer*.45f+.25f);
+            slope*=1-.70f*basinA-.45f*basinB;
+            slope+=.34f*ridge;
             float edge=d-half;
-            float y=edge<-3?p.y-c.bedDepth:edge<5?Mathf.Lerp(p.y-c.bedDepth,p.y+2,(edge+3)/8):p.y+2+(edge-5)*slope;
-            y+=Smooth(12,65,edge)*(9*Mathf.Sin(z*.029f+x*.023f)+6*Mathf.Cos(z*.013f-x*.037f));
+            float floodplain=8+38*basinA+20*basinB;
+            float bank=Mathf.Max(0,edge-5);
+            float rise=bank*Mathf.Lerp(.10f,slope,Smooth(0,floodplain+28,bank));
+            float y=edge<-3?p.y-c.bedDepth:edge<5?Mathf.Lerp(p.y-c.bedDepth,p.y+2,(edge+3)/8):p.y+2+rise;
+            float rock=7*Mathf.PerlinNoise(x*.012f+24,z*.005f)+11*Mathf.PerlinNoise(x*.004f+70,z*.009f)-9;
+            y+=Smooth(18,100,edge)*rock*(.4f+ridge);
             // End landing terrain joins the timber docks at exactly water + 2m.
             float dock=Mathf.Max(1-Mathf.Clamp01(Mathf.Abs(z-1150)/30),1-Mathf.Clamp01(Mathf.Abs(z-1900)/30));
             float shelf=1-Smooth(half+12,half+32,d);
@@ -132,6 +145,7 @@ namespace TwinEdge.Levels.Editor
         public static void Check(ValleyConfigV3 c) {
             if(c.plankCount<4||c.plankCount>1000||c.bridgeWidth<1||c.bedDepth<1||c.walkWidth<2||c.widths.Length!=c.river.Length)throw new Exception("Invalid dimensions");
             foreach(var path in new[]{c.descent,c.river})for(int i=1;i<path.Length;i++)if(path[i].z<=path[i-1].z)throw new Exception("Control points must increase Z");
+            for(int i=1;i<c.river.Length;i++)if(c.river[i].y<=c.river[i-1].y)throw new Exception("Outbound must climb from downstream Mountain dock to upstream Castle dock");
             if(c.widths.Any(w=>w<c.raftLaneReservation*2))throw new Exception("Two reserved raft lanes do not fit");
             if(c.plankGap<0||c.plankGap>=Vector3.Distance(c.bridgeStart,c.bridgeEnd)/c.plankCount)throw new Exception("Invalid plank gap");
             var m=Mountain();
@@ -147,16 +161,20 @@ namespace TwinEdge.Levels.Editor
             try {
                 string folder="Assets/Game/Level/Data/Generated/ValleyV3_"+owner.part+"_"+Guid.NewGuid().ToString("N");
                 Directory.CreateDirectory(folder);AssetDatabase.Refresh();
+                Directory.CreateDirectory(Notes);
+                File.AppendAllText(Notes+"/RefinementGenerations.txt",folder+Environment.NewLine);
                 var g=new GameObject("Generated");g.transform.SetParent(owner.transform,false);Undo.RegisterCreatedObjectUndo(g,"Generate valley");
                 var rock=Mat(folder,"Geology",new Color(.39f,.44f,.40f));var wood=Mat(folder,"Timber",new Color(.48f,.30f,.14f));
                 var water=Mat(folder,"Water",new Color(.08f,.39f,.47f));
-                int cols=boundary.Count;var arc=new float[cols];for(int i=1;i<cols;i++)arc[i]=arc[i-1]+Vector3.Distance(boundary[i],boundary[i-1]);
+                var paleWood=Mat(folder,"TimberPale",new Color(.57f,.40f,.24f));
+                // Regular 4m cross-sections avoid inheriting tiny Mountain perimeter edges.
+                int cols=201;
                 float a=owner.part==ValleyPartV3.Bridge?0:owner.part==ValleyPartV3.CanyonDescent?710:owner.part==ValleyPartV3.River?1150:1900;
                 float b=owner.part==ValleyPartV3.Bridge?710:owner.part==ValleyPartV3.CanyonDescent?1150:owner.part==ValleyPartV3.River?1900:2140;
                 int rows=owner.part==ValleyPartV3.Bridge?65:Mathf.CeilToInt((b-a)/4)+1;
                 var v=new List<Vector3>();var t=new List<int>();
                 for(int j=0;j<rows;j++)for(int i=0;i<cols;i++) {
-                    float f=j/(float)(rows-1);float x=Mathf.Lerp(-400,400,arc[i]/arc.Last());float z=Mathf.Lerp(a,b,f);float y;
+                    float f=j/(float)(rows-1);float x=Mathf.Lerp(-400,400,i/(float)(cols-1));float z=Mathf.Lerp(a,b,f);float y;
                     if(owner.part==ValleyPartV3.Bridge)continue;
                     x=WorldX(x,z);y=Height(c,x,z);
                     v.Add(new Vector3(x,y,z));
@@ -164,8 +182,8 @@ namespace TwinEdge.Levels.Editor
                 }
                 if(owner.part==ValleyPartV3.Bridge) {
                     v=new List<Vector3>(boundary);
-                    for(int i=cols-1;i>=0;i--) {float x=WorldX(Mathf.Lerp(-400,400,arc[i]/arc.Last()),710);v.Add(new Vector3(x,Height(c,x,710),710));}
-                    t=Triangulate(v);Refine(c,v,t);
+                    for(int i=cols-1;i>=0;i--) {float x=WorldX(Mathf.Lerp(-400,400,i/(float)(cols-1)),710);v.Add(new Vector3(x,Height(c,x,710),710));}
+                    t=Triangulate(v);Refine(c,v,t,boundary);ImproveTriangles(v,t);
                 }
                 MeshObject(g.transform,folder,"Terrain",v,t,rock,true);
                 if(owner.part==ValleyPartV3.Bridge) {
@@ -173,7 +191,7 @@ namespace TwinEdge.Levels.Editor
                     for(int i=0;i<c.plankCount;i++) {
                         var p=Vector3.Lerp(c.bridgeStart,c.bridgeEnd,(i+.5f)/c.plankCount);
                         var size=new Vector3(c.bridgeWidth,.4f,pitch-c.plankGap);
-                        var plank=Box(g.transform,"Plank_"+i.ToString("000"),p-Vector3.up*.2f,size,wood);
+                        var plank=Box(g.transform,"Plank_"+i.ToString("000"),p-Vector3.up*.2f,size,i%3==1?paleWood:wood);
                         plank.transform.rotation=Quaternion.LookRotation(c.bridgeEnd-c.bridgeStart);
                         var id=plank.AddComponent<BridgePlankV3>();id.plankId=i;id.socket=p;id.dimensions=size;
                     }
@@ -191,24 +209,28 @@ namespace TwinEdge.Levels.Editor
                     }
                     MeshObject(g.transform,folder,"WaterSurface",wv,wt,water,false);
                     foreach(bool upper in new[]{true,false}) {
-                        var p=upper?c.river.First():c.river.Last();float half=Width(c,p.z)*.5f;
-                        Box(g.transform,(upper?"Upper":"Lower")+"Dock",p+new Vector3(half+2,1.4f,upper?8:-8),new Vector3(16,1.2f,16),wood);
+                    var p=upper?c.river.Last():c.river.First();float half=Width(c,p.z)*.5f;
+                        Box(g.transform,(upper?"Upper":"Lower")+"Dock",p+new Vector3(half+2,1.4f,upper?-8:8),new Vector3(16,1.2f,16),wood);
                         string name=upper?"Upper":"Lower";
                         Mark(g.transform,name+"Boarding",p+new Vector3(half+3,2,0),new Vector3(12,3,14),MarkerKind.RaftDock);
-                        Mark(g.transform,name+"Checkpoint",p+new Vector3(half+10,2,upper?18:-18),new Vector3(8,3,8),MarkerKind.Checkpoint);
-                        Mark(g.transform,name+"CombinedRaft",p+new Vector3(0,0,upper?20:-20),new Vector3(c.raftLaneReservation*2,3,16),MarkerKind.PlatformPlacement);
-                        for(int lane=-1;lane<=1;lane+=2)Mark(g.transform,name+"IndividualRaft"+lane,p+new Vector3(lane*c.raftLaneReservation*.5f,0,upper?40:-40),new Vector3(c.raftLaneReservation,3,12),MarkerKind.PlatformPlacement);
+                        Mark(g.transform,name+"Checkpoint",p+new Vector3(half+10,2,upper?-18:18),new Vector3(8,3,8),MarkerKind.Checkpoint);
+                        Mark(g.transform,name+"CombinedRaft",p+new Vector3(0,0,upper?-20:20),new Vector3(c.raftLaneReservation*2,3,16),MarkerKind.PlatformPlacement);
+                        for(int lane=-1;lane<=1;lane+=2)Mark(g.transform,name+"IndividualRaft"+lane,p+new Vector3(lane*c.raftLaneReservation*.5f,0,upper?-40:40),new Vector3(c.raftLaneReservation,3,12),MarkerKind.PlatformPlacement);
                     }
                     for(int bend=1;bend<c.river.Length-1;bend++)Mark(g.transform,"TurnReservation_"+bend,c.river[bend],new Vector3(c.turningReservation*2,3,c.turningReservation*2),MarkerKind.PlatformPlacement);
-                    Route(g.transform,c.river,RouteKind.Water,"Same waterway outbound/return; currents and rafting unimplemented");
+                    Route(g.transform,c.river,RouteKind.Water,"Outbound +Z: LowerDock to UpperDock, upstream. Return/current -Z: UpperDock to LowerDock. Outbound raft respawn LowerCheckpoint; return raft respawn UpperCheckpoint; return bridge fall LowerCheckpoint. Metadata only, no raft physics.");
                 }
                 if(owner.part==ValleyPartV3.CastleApproach) {
                     Mark(g.transform,"CastleEntranceReservation",c.castleEntry,new Vector3(c.castleSite.x,4,c.castleSite.y),MarkerKind.SectionExit);
-                    Route(g.transform,new[]{new Vector3(80,31,1900),new Vector3(50,35,1980),c.castleEntry},RouteKind.Walk,"Reserved approach; no castle geometry");
+                    Route(g.transform,new[]{new Vector3(c.river.Last().x+Width(c,1900)*.5f+10,c.river.Last().y+2,1900),new Vector3(50,c.castleEntry.y,1980),c.castleEntry},RouteKind.Walk,"Upper dock to reserved approach; no castle geometry");
                 }
                 Undo.RegisterCompleteObjectUndo(owner,"Replace valley generation");if(owner.generated)Undo.DestroyObjectImmediate(owner.generated);
                 owner.generated=g;owner.generationAssets=folder;Undo.FlushUndoRecordObjects();Undo.CollapseUndoOperations(group);
                 AssetDatabase.SaveAssets();EditorSceneManager.MarkSceneDirty(owner.gameObject.scene);
+                foreach(var file in Directory.GetFiles(folder,"*",SearchOption.AllDirectories)) {
+                    using(var sha=System.Security.Cryptography.SHA256.Create())
+                        File.AppendAllText(Notes+"/RefinementGenerationHashes.txt",file.Replace('\\','/')+"|"+BitConverter.ToString(sha.ComputeHash(File.ReadAllBytes(file)))+Environment.NewLine);
+                }
             } catch {Undo.RevertAllDownToGroup(group);throw;}
         }
         static float Cross(Vector3 a,Vector3 b,Vector3 c) => (b.x-a.x)*(c.z-a.z)-(b.z-a.z)*(c.x-a.x);
@@ -227,14 +249,31 @@ namespace TwinEdge.Levels.Editor
             }
             triangles.AddRange(new[]{ids[0],ids[2],ids[1]});return triangles;
         }
-        static void Refine(ValleyConfigV3 c,List<Vector3> v,List<int> t) {
+        static float CollarHeight(ValleyConfigV3 c,Vector3 p,List<Vector3> boundary) {
+            float best=float.MaxValue,seamY=0;
+            for(int i=1;i<boundary.Count;i++) {
+                var a=boundary[i-1];var b=boundary[i];var edge=b-a;edge.y=0;var delta=p-a;delta.y=0;
+                float u=Mathf.Clamp01(Vector3.Dot(delta,edge)/Mathf.Max(.00001f,edge.sqrMagnitude));
+                var q=Vector3.Lerp(a,b,u);var offset=p-q;offset.y=0;
+                if(offset.sqrMagnitude<best){best=offset.sqrMagnitude;seamY=q.y;}
+            }
+            float blend=(1-Smooth(0,110,Mathf.Sqrt(best)))*(1-Smooth(650,710,p.z));
+            float y=Mathf.Lerp(Height(c,p.x,p.z),seamY,blend);
+            // Keep the bridge air corridor open while spreading seam relief sideways.
+            float air=(1-Smooth(c.bridgeWidth,45,Mathf.Abs(p.x-c.bridgeStart.x)))*Smooth(339,370,p.z)*(1-Smooth(620,650,p.z));
+            y=Mathf.Lerp(y,Mathf.Min(y,c.bridgeStart.y-12),air);
+            var path=Sample(c.descent,p.z);
+            float landing=(1-Smooth(c.walkWidth*1.5f,c.walkWidth*1.5f+20,Mathf.Abs(p.x-path.x)))*Smooth(615,645,p.z);
+            return Mathf.Lerp(y,Height(c,p.x,p.z),landing);
+        }
+        static void Refine(ValleyConfigV3 c,List<Vector3> v,List<int> t,List<Vector3> boundary) {
             for(int iteration=0;iteration<12;iteration++) {
                 var split=new Dictionary<(int,int),int>();
                 for(int j=0;j<t.Count;j+=3)for(int k=0;k<3;k++) {
                     int a=t[j+k],b=t[j+(k+1)%3];if(a>b){int temp=a;a=b;b=temp;}
                     var key=(a,b);var d=v[a]-v[b];d.y=0;
                     if(d.sqrMagnitude<=144||split.ContainsKey(key))continue;
-                    var p=(v[a]+v[b])*.5f;p.y=Height(c,p.x,p.z);split[key]=v.Count;v.Add(p);
+                    var p=(v[a]+v[b])*.5f;p.y=CollarHeight(c,p,boundary);split[key]=v.Count;v.Add(p);
                 }
                 if(split.Count==0)return;
                 var next=new List<int>();
@@ -259,6 +298,33 @@ namespace TwinEdge.Levels.Editor
                 t.Clear();t.AddRange(next);
             }
         }
+        static float Quality(Vector3 a,Vector3 b,Vector3 c) {
+            a.y=b.y=c.y=0;
+            return Mathf.Abs(Cross(a,b,c))/((a-b).sqrMagnitude+(b-c).sqrMagnitude+(c-a).sqrMagnitude+1e-8f);
+        }
+        // Local planar edge flips remove sliver fans without moving seam vertices,
+        // changing topology, or adding a separate road/deck surface.
+        static void ImproveTriangles(List<Vector3> v,List<int> t) {
+            for(int pass=0;pass<8;pass++) {
+                var edges=new Dictionary<(int,int),(int,int)>();var used=new HashSet<int>();int flips=0;
+                for(int j=0;j<t.Count;j+=3)for(int k=0;k<3;k++) {
+                    int a=t[j+k],b=t[j+(k+1)%3],d=t[j+(k+2)%3];var edge=(Math.Min(a,b),Math.Max(a,b));
+                    if(!edges.TryGetValue(edge,out var other)){edges[edge]=(j,d);continue;}
+                    int i=other.Item1,c=other.Item2;
+                    if(used.Contains(i)||used.Contains(j)||c==d)continue;
+                    if(Cross(v[c],v[d],v[a])*Cross(v[c],v[d],v[b])>=-1e-8f)continue;
+                    float before=Mathf.Min(Quality(v[a],v[b],v[c]),Quality(v[a],v[b],v[d]));
+                    float after=Mathf.Min(Quality(v[c],v[d],v[a]),Quality(v[c],v[d],v[b]));
+                    if(after<=before+.002f)continue;
+                    t[i]=c;t[i+1]=d;t[i+2]=a;
+                    t[j]=d;t[j+1]=c;t[j+2]=b;
+                    if(Cross(v[t[i]],v[t[i+1]],v[t[i+2]])>0){t[i+1]=a;t[i+2]=d;}
+                    if(Cross(v[t[j]],v[t[j+1]],v[t[j+2]])>0){t[j+1]=b;t[j+2]=c;}
+                    used.Add(i);used.Add(j);flips++;
+                }
+                if(flips==0)break;
+            }
+        }
         static Material Mat(string folder,string name,Color color) {
             var m=new Material(Shader.Find("Universal Render Pipeline/Lit")){name=name};m.SetColor("_BaseColor",color);m.SetFloat("_Smoothness",.05f);AssetDatabase.CreateAsset(m,folder+"/"+name+".mat");return m;
         }
@@ -267,8 +333,9 @@ namespace TwinEdge.Levels.Editor
         }
         static void MeshObject(Transform parent,string folder,string name,List<Vector3> v,List<int> t,Material mat,bool collider) {
             var mesh=new Mesh{name=name,indexFormat=IndexFormat.UInt32};
-            // Flat face normals match the existing low-poly Mountain.
-            mesh.vertices=t.Select(i=>v[i]).ToArray();mesh.triangles=Enumerable.Range(0,t.Count).ToArray();mesh.RecalculateNormals();mesh.RecalculateBounds();
+            // Shared vertices remove amplified stripes from narrow collar triangles and
+            // avoid storing three copies of every triangle vertex. Collider uses this mesh.
+            mesh.SetVertices(v);mesh.SetTriangles(t,0);mesh.RecalculateNormals();mesh.RecalculateBounds();
             AssetDatabase.CreateAsset(mesh,folder+"/"+name+".asset");var g=new GameObject(name);g.transform.SetParent(parent,false);
             g.AddComponent<MeshFilter>().sharedMesh=mesh;g.AddComponent<MeshRenderer>().sharedMaterial=mat;if(collider)g.AddComponent<MeshCollider>().sharedMesh=mesh;
         }

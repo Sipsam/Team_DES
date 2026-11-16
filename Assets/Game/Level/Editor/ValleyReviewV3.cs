@@ -10,7 +10,7 @@ namespace TwinEdge.Levels.Editor
 {
     public sealed class ValleyViewsV3 : EditorWindow
     {
-        public static readonly string[] Names={"Final Summit to Bridge","Bridge to Opposite Cliff","Canyon Descent Overview","Upper River Dock","Entire River Valley","Representative River Bend","Lower River Dock","Castle Approach","Whole World"};
+        public static readonly string[] Names={"Final Summit to Bridge","Bridge to Opposite Cliff","Canyon Descent Overview","Lower River Dock","Entire River Valley","Representative River Bend","Upper River Dock","Castle Approach","Whole World","Bridge Plank Detail","River North Bend","River South Bend"};
         public static Bounds Bounds(int i) {
             switch(i) {
                 case 0:return new Bounds(new Vector3(12,130,440),new Vector3(170,200,340));
@@ -19,8 +19,11 @@ namespace TwinEdge.Levels.Editor
                 case 3:return new Bounds(new Vector3(15,45,1170),new Vector3(180,100,150));
                 case 4:return new Bounds(new Vector3(0,65,1525),new Vector3(550,200,820));
                 case 5:return new Bounds(new Vector3(-10,45,1500),new Vector3(290,140,280));
-                case 6:return new Bounds(new Vector3(60,35,1880),new Vector3(180,100,150));
+                case 6:return new Bounds(new Vector3(60,55,1880),new Vector3(180,100,150));
                 case 7:return new Bounds(new Vector3(50,45,2040),new Vector3(240,160,300));
+                case 9:return new Bounds(new Vector3(12,190,510),new Vector3(24,12,30));
+                case 10:return new Bounds(new Vector3(65,55,1360),new Vector3(330,180,230));
+                case 11:return new Bounds(new Vector3(-60,55,1700),new Vector3(380,180,260));
                 default:return new Bounds(new Vector3(0,50,800),new Vector3(1100,440,2700));
             }
         }
@@ -41,6 +44,14 @@ namespace TwinEdge.Levels.Editor
     }
     public static class ValleyReviewV3
     {
+        static bool TerrainHit(Vector3 p, out RaycastHit hit) {
+            hit=default;bool found=false;float best=float.MaxValue;
+            foreach(var section in Object.FindObjectsByType<ValleySectionV3>(FindObjectsSortMode.None)) {
+                var col=section.generated.transform.Find("Terrain").GetComponent<MeshCollider>();
+                if(col.Raycast(new Ray(p+Vector3.up*50,Vector3.down),out var next,150)&&next.distance<best) {hit=next;best=next.distance;found=true;}
+            }
+            return found;
+        }
         [MenuItem("Tools/Twin Edge/V3 Bridge River/Validate Save and Capture")]
         public static void Run() {
             Directory.CreateDirectory(ValleyGeneratorV3.Notes);
@@ -67,13 +78,21 @@ namespace TwinEdge.Levels.Editor
                 report.Add((bad==0&&down==0?"PASS":"FAIL")+": "+s.part+" triangles="+tris+" degenerate="+bad+" downward="+down+" colliders="+s.generated.GetComponentsInChildren<Collider>().Length);
             }
             var config=ValleyGeneratorV3.Config();float maxSlope=0;int misses=0;float maxError=0;
-            for(float z=650;z<=1150;z+=1) {
+            for(float z=config.bridgeEnd.z;z<=1150;z+=1) {
                 var p=ValleyGeneratorV3.Sample(config.descent,z);
-                if(Physics.Raycast(p+Vector3.up*50,Vector3.down,out var hit,150)) {
+                if(TerrainHit(p,out var hit)) {
                     maxError=Mathf.Max(maxError,Mathf.Abs(hit.point.y-p.y));maxSlope=Mathf.Max(maxSlope,Vector3.Angle(hit.normal,Vector3.up));
                 }else misses++;
             }
             report.Add((misses==0&&maxError<.35f&&maxSlope<45?"PASS":"FAIL")+": descent centerline raycasts misses="+misses+" heightError="+maxError+" maxSlope="+maxSlope+" (controller limit45 step.3 radius.45 height2; no play simulation)");
+            int widthMisses=0;float widthError=0,widthSlope=0;Vector3 widthWorst=Vector3.zero;
+            for(float z=config.bridgeEnd.z;z<=1150;z+=2)foreach(float side in new[]{-.35f,0,.35f}) {
+                var p=ValleyGeneratorV3.Sample(config.descent,z)+Vector3.right*(config.walkWidth*side);
+                if(TerrainHit(p,out var hit)) {
+                    widthError=Mathf.Max(widthError,Mathf.Abs(hit.point.y-p.y));float angle=Vector3.Angle(hit.normal,Vector3.up);if(angle>widthSlope){widthSlope=angle;widthWorst=p;}
+                }else widthMisses++;
+            }
+            report.Add((widthMisses==0&&widthError<.35f&&widthSlope<45?"PASS":"FAIL")+": descent central70percent width samples misses="+widthMisses+" heightError="+widthError+" maxSlope="+widthSlope+" worst="+widthWorst);
             var sections=mountain.transform.parent.GetComponentsInChildren<ValleySectionV3>();
             foreach(float z in new[]{710f,1150f,1900f}) {
                 var profiles=sections.Select(o=>o.generated.transform.Find("Terrain").GetComponent<MeshFilter>().sharedMesh.vertices.Where(v=>Mathf.Abs(v.z-z)<.001f).Distinct().OrderBy(v=>v.x).ToArray()).Where(v=>v.Length>0).ToArray();
@@ -97,12 +116,13 @@ namespace TwinEdge.Levels.Editor
                 float y=Mathf.Lerp(config.river.Last().y+2,config.castleEntry.y,u);
                 if(approachCol.Raycast(new Ray(new Vector3(x,y+100,z),Vector3.down),out var hit,200)) {approachError=Mathf.Max(approachError,Mathf.Abs(hit.point.y-y));approachSlope=Mathf.Max(approachSlope,Vector3.Angle(hit.normal,Vector3.up));}else approachMiss++;
             }
-            report.Add((approachMiss==0&&approachError<.3f&&approachSlope<45?"PASS":"FAIL")+": lower dock to castle approach misses="+approachMiss+" heightError="+approachError+" maxSlope="+approachSlope);
+            report.Add((approachMiss==0&&approachError<.3f&&approachSlope<45?"PASS":"FAIL")+": upper dock to castle approach misses="+approachMiss+" heightError="+approachError+" maxSlope="+approachSlope);
             var front=ValleyGeneratorV3.MountainBoundary();var bridgeVertices=new HashSet<Vector3>(sections.Single(o=>o.part==ValleyPartV3.Bridge).generated.transform.Find("Terrain").GetComponent<MeshFilter>().sharedMesh.vertices);
             report.Add((front.All(v=>bridgeVertices.Contains(v))?"PASS":"FAIL")+": exact Mountain north boundary vertices retained="+front.Count);
             report.Add("Combined world mesh filters="+mountain.transform.parent.GetComponentsInChildren<MeshFilter>().Length+" colliders="+mountain.transform.parent.GetComponentsInChildren<Collider>().Length+" triangles="+mountain.transform.parent.GetComponentsInChildren<MeshFilter>().Sum(f=>f.sharedMesh.triangles.Length/3));
             report.Add("Planks="+Object.FindObjectsByType<BridgePlankV3>(FindObjectsSortMode.None).Length+" pitch="+Vector3.Distance(config.bridgeStart,config.bridgeEnd)/config.plankCount+" gap="+config.plankGap);
             report.Add("NOT VERIFIED: collapse after destruction, jump ranges, rafting, current, network gameplay, runtime frame cost");
+            report.Add((config.river.Zip(config.river.Skip(1),(a,b)=>b.y>a.y).All(v=>v)?"PASS":"FAIL")+": outbound upstream +Z, return/current downstream -Z; LowerDock Mountain side Y="+config.river.First().y+" UpperDock Castle side Y="+config.river.Last().y);
             EditorSceneManager.SaveScene(mountain.gameObject.scene);
             // Reopen only the owned scene; other loaded scenes stay loaded.
             var scene=mountain.gameObject.scene;EditorSceneManager.CloseScene(scene,true);EditorSceneManager.OpenScene(MountainGeneratorV3.ScenePath,OpenSceneMode.Additive);
