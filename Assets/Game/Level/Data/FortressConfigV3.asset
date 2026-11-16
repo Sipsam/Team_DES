@@ -161,12 +161,27 @@ MonoBehaviour:
   stairWidth: 6
   cave:
   - {x: -37, y: 267}
+  - {x: -43, y: 235}
+  - {x: -39, y: 205}
+  - {x: -42, y: 175}
+  - {x: -36, y: 149}
+  - {x: -40, y: 115}
+  - {x: -33, y: 90}
   - {x: -37, y: 60}
   - {x: -15, y: 25}
+  - {x: 14, y: 30}
   - {x: 40, y: 25}
+  - {x: 63, y: 42}
   - {x: 75, y: 53}
+  - {x: 79, y: 85}
+  - {x: 72, y: 112}
+  - {x: 78, y: 141}
+  - {x: 76, y: 173}
+  - {x: 80, y: 203}
+  - {x: 72, y: 227}
   - {x: 75, y: 245}
   - {x: 56, y: 267}
+  - {x: 18, y: 273}
   ceiling: -28
   foundationBottom: -8
   caveFloor: -92
@@ -177,25 +192,25 @@ MonoBehaviour:
   - id: A0
     activatedBy: 
     position: {x: -17, y: -60, z: 227}
-    size: {x: 10, y: 12}
+    size: {x: 10, y: 7}
     fixedLanding: 1
     seconds: 25
   - id: A1
     activatedBy: 
     position: {x: -24, y: -55, z: 181}
-    size: {x: 10, y: 12}
+    size: {x: 10, y: 7}
     fixedLanding: 1
     seconds: 25
   - id: A2
     activatedBy: 
     position: {x: -18, y: -61, z: 131}
-    size: {x: 10, y: 12}
+    size: {x: 10, y: 7}
     fixedLanding: 1
     seconds: 25
   - id: A3
     activatedBy: 
     position: {x: -21, y: -49, z: 83}
-    size: {x: 10, y: 12}
+    size: {x: 10, y: 7}
     fixedLanding: 1
     seconds: 25
   - id: A0-1
@@ -369,25 +384,25 @@ MonoBehaviour:
   - id: B0
     activatedBy: 
     position: {x: 47, y: -58, z: 227}
-    size: {x: 10, y: 12}
+    size: {x: 10, y: 7}
     fixedLanding: 1
     seconds: 25
   - id: B1
     activatedBy: 
     position: {x: 61, y: -63, z: 177}
-    size: {x: 10, y: 12}
+    size: {x: 10, y: 7}
     fixedLanding: 1
     seconds: 25
   - id: B2
     activatedBy: 
     position: {x: 55, y: -53, z: 128}
-    size: {x: 10, y: 12}
+    size: {x: 10, y: 7}
     fixedLanding: 1
     seconds: 25
   - id: B3
     activatedBy: 
     position: {x: 49, y: -47, z: 79}
-    size: {x: 10, y: 12}
+    size: {x: 10, y: 5}
     fixedLanding: 1
     seconds: 25
   - id: B0-1

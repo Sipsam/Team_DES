@@ -52,6 +52,7 @@ namespace TwinEdge.Levels.Editor
         }
         public static void Generate(FortressSectionV3 owner) {
             if(EditorApplication.isPlayingOrWillChangePlaymode)throw new InvalidOperationException("Edit mode only");
+            var generationTimer=System.Diagnostics.Stopwatch.StartNew();
             c=owner.config;if(!c||c.rooms.Length!=8||c.stairs.Length<2||c.cave.Length<3||c.curtain.Length<3)throw new InvalidOperationException("Incomplete config: asset="+(bool)c+" rooms="+(c?c.rooms.Length:-1)+" stairs="+(c?c.stairs.Length:-1)+" cave="+(c?c.cave.Length:-1));
             if(owner.transform.position!=Vector3.zero||owner.transform.rotation!=Quaternion.identity||owner.transform.lossyScale!=Vector3.one)throw new InvalidOperationException("World identity required");
             Materials();Undo.IncrementCurrentGroup();int group=Undo.GetCurrentGroup();Undo.SetCurrentGroupName("Regenerate "+owner.part);
@@ -70,7 +71,16 @@ namespace TwinEdge.Levels.Editor
                 EditorUtility.SetDirty(owner);EditorSceneManager.MarkSceneDirty(owner.gameObject.scene);AssetDatabase.SaveAssets();Undo.FlushUndoRecordObjects();Undo.CollapseUndoOperations(group);
                 using(var sha=System.Security.Cryptography.SHA256.Create())
                     File.AppendAllLines(Notes+"CastleGenerationHashes.txt",Directory.GetFiles(folder,"*",SearchOption.AllDirectories).Select(path=>path.Replace('\\','/')+"|"+BitConverter.ToString(sha.ComputeHash(File.ReadAllBytes(path)))).ToArray());
-            }catch { Undo.RevertAllDownToGroup(group);throw; }
+                Directory.CreateDirectory(WorldIntegrationReviewV3.Output);
+                File.AppendAllText(WorldIntegrationReviewV3.Output+"GenerationTimes.txt",owner.part+" "+generationTimer.Elapsed.TotalSeconds.ToString("F3")+"s\n");
+            }catch {
+                Undo.RevertAllDownToGroup(group);
+                // Failed candidates also receive fingerprints for the existing cold-session cleanup gate.
+                // Never delete meshes while a live Editor Undo stack may still hold them.
+                if(Directory.Exists(folder))using(var sha=System.Security.Cryptography.SHA256.Create())
+                    File.AppendAllLines(Notes+"CastleGenerationHashes.txt",Directory.GetFiles(folder,"*",SearchOption.AllDirectories).Select(path=>path.Replace('\\','/')+"|"+BitConverter.ToString(sha.ComputeHash(File.ReadAllBytes(path)))).ToArray());
+                throw;
+            }
         }
         static Transform Group(Transform p,string name) {var go=new GameObject(name);go.transform.SetParent(p,false);return go.transform;}
         static GameObject Box(Transform p,string name,Vector3 pos,Vector3 size,Material mat) {
@@ -139,6 +149,8 @@ namespace TwinEdge.Levels.Editor
                     Wall(p,"GateLintel",gate-dir*c.gateWidth*.5f,gate+dir*c.gateWidth*.5f,c.gateHeight,c.wallHeight,c.wallThickness,stone);
                 }
                 else Wall(p,"Curtain_"+i,a,b,-3,c.wallHeight,c.wallThickness,stone);
+                var inward=(new Vector2(12,145)-(a+b)*.5f).normalized;
+                Wall(p,"CurtainWalk_"+i,a+inward*1.5f,b+inward*1.5f,c.wallHeight-1,c.wallHeight,4,stone);
                 int count=Mathf.CeilToInt(Vector2.Distance(a,b)/5);
                 for(int j=0;j<count;j++) {
                     var q=Vector2.Lerp(a,b,(j+.5f)/count);
@@ -153,27 +165,40 @@ namespace TwinEdge.Levels.Editor
         static void Interior(Transform p) {
             Rect k=c.keep;var permanent=Group(p,"PermanentStructure");
             Portal(permanent,"KeepEntrance",new Vector2(k.xMin,k.yMin),new Vector2(k.xMax,k.yMin),c.keepHeight,12,3);
-            Wall(permanent,"WestOuter",new Vector2(k.xMin,k.yMin),new Vector2(k.xMin,k.yMax),0,c.keepHeight,3,stone);
-            Wall(permanent,"EastOuter",new Vector2(k.xMax,k.yMin),new Vector2(k.xMax,k.yMax),0,c.keepHeight,3,stone);
+            // Structural bays follow the unchanged puzzle stages, with unequal eaves.
+            float[] bays={k.yMin,89,133,163,211,k.yMax};
+            float[] heights={24,30,38,28,23};
+            for(int bay=0;bay<heights.Length;bay++)foreach(float x in new[]{k.xMin,k.xMax}) {
+                Wall(permanent,x==k.xMin?"WestOuter":"EastOuter",new Vector2(x,bays[bay]),new Vector2(x,bays[bay+1]),0,heights[bay],3,stone);
+                // Buttresses stay outside both the rooms and the return corridor.
+                Box(permanent,"PerimeterButtress",new Vector3(x+(x<0?-2:2),9,bays[bay]+3),new Vector3(4,18,4),stone);
+            }
             // Rear hall opens into the adjoining stair tower, rather than a marker-only door.
             Wall(permanent,"RearWest",new Vector2(k.xMin,k.yMax),new Vector2(16,k.yMax),0,c.keepHeight,3,stone);
             Wall(permanent,"RearEast",new Vector2(24,k.yMax),new Vector2(k.xMax,k.yMax),0,c.keepHeight,3,stone);
             var roofs=Group(p,"Roofs");
-            Pyramid(roofs,new Vector2(k.center.x,k.yMin+55),k.width+5,110,c.keepHeight,c.hallHeight+18);
-            Pyramid(roofs,new Vector2(k.center.x,k.yMax-55),k.width+5,110,c.keepHeight,c.keepHeight+23);
-            // Raised crossing tower and unequal flanking turrets break the keep's long hall silhouette.
+            // Connected halls use transverse ridges; upper volumes step in above the room envelope.
+            for(int bay=0;bay<heights.Length;bay++) {
+                float z=(bays[bay]+bays[bay+1])*.5f;
+                Gable(roofs,new Vector2(k.center.x,z),k.width+5,bays[bay+1]-bays[bay]+3,heights[bay],heights[bay]+12,bay%2==0);
+            }
             var crossing=Group(roofs,"CrossingTower");
-            var corners=new[]{new Vector2(-14,128),new Vector2(14,128),new Vector2(14,161),new Vector2(-14,161)};
-            for(int i=0;i<4;i++)Wall(crossing,"UpperMasonry",corners[i],corners[(i+1)%4],c.keepHeight,72,2.5f,stone);
-            Pyramid(crossing,new Vector2(0,144.5f),32,37,72,88);
-            Tower(p,new FortressTowerV3{position=new Vector2(-35,49),radius=6,height=53},20);
-            Tower(p,new FortressTowerV3{position=new Vector2(36,49),radius=6,height=48},21);
-            Tower(p,new FortressTowerV3{position=new Vector2(-35,237),radius=7,height=58},22);
+            foreach(float x in new[]{-13f,13f})Wall(crossing,"UpperMasonry",new Vector2(x,134),new Vector2(x,162),38,62,2,stone);
+            foreach(float z in new[]{134f,162f})Wall(crossing,"UpperMasonry",new Vector2(-13,z),new Vector2(13,z),38,62,2,stone);
+            Gable(crossing,new Vector2(0,148),31,33,62,79,true);
+            // Recessed entrance porch frames the existing 12m opening without a new step.
+            foreach(float x in new[]{-9f,9f})Box(permanent,"PorchPier",new Vector3(x,5,31),new Vector3(2,10,9),stone);
+            Gable(roofs,new Vector2(0,31),22,12,10,18,false);
             var annex=Group(permanent,"EastServiceWing");
-            Wall(annex,"WingSouth",new Vector2(44,85),new Vector2(69,85),0,20,2,stone);
-            Wall(annex,"WingEast",new Vector2(69,85),new Vector2(69,130),0,20,2,stone);
-            Wall(annex,"WingNorth",new Vector2(69,130),new Vector2(44,130),0,20,2,stone);
-            Pyramid(roofs,new Vector2(56.5f,107.5f),29,49,20,36);
+            Wall(annex,"WingSouth",new Vector2(44,85),new Vector2(69,85),0,18,2,stone);
+            Wall(annex,"WingEast",new Vector2(69,85),new Vector2(69,130),0,18,2,stone);
+            Wall(annex,"WingNorth",new Vector2(69,130),new Vector2(44,130),0,18,2,stone);
+            Gable(roofs,new Vector2(56.5f,107.5f),29,49,18,30,false);
+            var west=Group(permanent,"WestChapelApse");
+            Wall(west,"ApseSouth",new Vector2(-42,170),new Vector2(-48,178),0,21,2,stone);
+            Wall(west,"ApseFace",new Vector2(-48,178),new Vector2(-48,195),0,21,2,stone);
+            Wall(west,"ApseNorth",new Vector2(-48,195),new Vector2(-42,203),0,21,2,stone);
+            Gable(roofs,new Vector2(-43,186),14,37,21,32,false);
             var removable=Group(p,"RemovablePartitions");
             Wall(removable,"CentralSharedWall",new Vector2(c.sharedWallX,58),new Vector2(c.sharedWallX,211),0,16,1.2f,stone);
             foreach(var room in c.rooms) {
@@ -181,6 +206,13 @@ namespace TwinEdge.Levels.Editor
                 var r=room.plan;var tint=room.id.StartsWith("A")?cyan:amber;
                 Box(g,"Floor",new Vector3(r.center.x,.03f,r.center.y),new Vector3(r.width-.5f,.06f,r.height-.5f),floor);
                 Box(g,"RouteInlay",new Vector3(r.center.x,.08f,r.center.y),new Vector3(.6f,.08f,r.height-3),tint);
+                // Shallow ribs live above the door headroom; no permanent floor pillars.
+                var ribs=Group(roofs,"RoomRibs_"+room.id);
+                for(int rib=0;rib<3;rib++) {
+                    float z=r.yMin+(rib+1)*r.height/4;
+                    Beam(ribs,"VaultRib",new Vector3(r.xMin+1,room.height-1,z),new Vector3(r.center.x,room.height+.1f,z),.7f,.7f,stone);
+                    Beam(ribs,"VaultRib",new Vector3(r.center.x,room.height+.1f,z),new Vector3(r.xMax-1,room.height-1,z),.7f,.7f,stone);
+                }
                 var walls=Group(removable,room.id);
                 Portal(walls,"StageArch",new Vector2(r.xMin,r.yMin),new Vector2(r.xMax,r.yMin),room.height,6,1);
                 Wall(walls,"Side",new Vector2(room.id.StartsWith("A")?r.xMax:r.xMin,r.yMin),new Vector2(room.id.StartsWith("A")?r.xMax:r.xMin,r.yMax),0,room.height,1,stone);
@@ -219,7 +251,7 @@ namespace TwinEdge.Levels.Editor
         static void Cavern(Transform p) {
             Slab(p,"CavernFloor",c.cave,c.caveFloor-3,c.caveFloor,rock,false);
             Slab(Group(p,"CaveCeiling"),"Ceiling",c.cave,c.ceiling-3,c.ceiling,rock,true);
-            Slab(p,"Lava",c.cave,c.lava-.5f,c.lava,lava,false,false);
+            PolygonSolid(p,"Lava",c.cave,c.lava-.5f,c.lava,lava,false);
             // Continuous faceted rock shell; bent middle band avoids an extruded polygon silhouette.
             var v=new List<Vector3>();var tris=new List<int>();
             int ring=0;
@@ -227,8 +259,10 @@ namespace TwinEdge.Levels.Editor
                 var a=c.cave[i];var b=c.cave[(i+1)%c.cave.Length];int segments=Mathf.CeilToInt(Vector2.Distance(a,b)/18);
                 for(int j=0;j<segments;j++) {
                     var q=Vector2.Lerp(a,b,j/(float)segments);var center=new Vector2(12,145);var inset=(center-q).normalized;
-                    float wave=2+3*Mathf.Sin(ring*1.9f);
-                    v.Add(new Vector3(q.x,c.caveFloor,q.y));v.Add(new Vector3(q.x+inset.x*wave,c.lava+27+(ring%3)*5,q.y+inset.y*wave));v.Add(new Vector3(q.x,c.ceiling,q.y));ring++;
+                    float wave=1.5f+1.5f*Mathf.Sin(q.y*.045f+q.x*.03f);
+                    v.Add(new Vector3(q.x,c.caveFloor,q.y));
+                    v.Add(new Vector3(q.x+inset.x*wave,c.lava+19+8*Mathf.Sin(q.y*.033f),q.y+inset.y*wave));
+                    v.Add(new Vector3(q.x,CeilingBottom(q.x,q.y),q.y));ring++;
                 }
             }
             for(int i=0;i<ring;i++)for(int band=0;band<2;band++) {
@@ -243,7 +277,8 @@ namespace TwinEdge.Levels.Editor
             foreach(var platform in c.platforms) {
                 var g=Group(p,platform.fixedLanding?"Fixed_"+platform.id:"Timed_"+platform.id+"_by_"+platform.activatedBy+"_25s_PROVISIONAL");
                 var tint=platform.id.StartsWith("A")?cyan:amber;
-                Box(g,"LandingSurface",platform.position-Vector3.up*.6f,new Vector3(platform.size.x,1.2f,platform.size.y),platform.fixedLanding?stone:tint);
+                if(platform.fixedLanding) LandingShelf(g,platform);
+                else Box(g,"LandingSurface",platform.position-Vector3.up*.6f,new Vector3(platform.size.x,1.2f,platform.size.y),tint);
                 if(platform.fixedLanding) {
                     Box(g,"OppositeSwitch_"+platform.id,platform.position+new Vector3(0,1,2),new Vector3(1,2,1),tint);
                 }
@@ -263,26 +298,74 @@ namespace TwinEdge.Levels.Editor
                 var point=light.AddComponent<Light>();point.type=LightType.Point;point.range=100;point.intensity=6;point.color=new Color(1,.61f,.35f);point.shadows=LightShadows.None;
             }
         }
+        static float CeilingBottom(float x,float z) {
+            // Large geological vaults, with all rock extending DOWN from the protected roof datum.
+            float edge=Mathf.Clamp01(Mathf.Abs(x-16)/65);
+            return c.ceiling-3-7*edge-4*(.5f+.5f*Mathf.Sin(z*.043f+x*.018f))-2*Mathf.PerlinNoise(x*.055f+10,z*.05f);
+        }
+        static void Gable(Transform p,Vector2 q,float w,float d,float y,float peak,bool transverse) {
+            if(transverse) {
+                var g=Group(p,"TransverseRoof");g.localPosition=new Vector3(q.x,0,q.y);g.localRotation=Quaternion.Euler(0,90,0);
+                Gable(g,Vector2.zero,d,w,y,peak,false);return;
+            }
+            MeshObject(p,"GabledHallRoof",new[]{new Vector3(q.x-w/2,y,q.y-d/2),new Vector3(q.x+w/2,y,q.y-d/2),new Vector3(q.x+w/2,y,q.y+d/2),new Vector3(q.x-w/2,y,q.y+d/2),new Vector3(q.x,peak,q.y-d/2),new Vector3(q.x,peak,q.y+d/2)},new[]{0,5,4,0,3,5,4,2,1,4,5,2,0,4,1,3,2,5},roof,true);
+        }
+        static void LandingShelf(Transform p,CavernPlatformV3 platform) {
+            var q=platform.position;float hx=platform.size.x/2,hz=platform.size.y/2;
+            bool west=q.x<14;float wall=west?float.MaxValue:float.MinValue;
+            for(int i=0;i<c.cave.Length;i++) {
+                var a=c.cave[i];var b=c.cave[(i+1)%c.cave.Length];
+                if((a.y>q.z)==(b.y>q.z))continue;
+                float x=Mathf.Lerp(a.x,b.x,(q.z-a.y)/(b.y-a.y));wall=west?Mathf.Min(wall,x):Mathf.Max(wall,x);
+            }
+            // Full reserved rectangle is retained; the root embeds into the continuous shell.
+            float left=west?wall-3:q.x-hx,right=west?q.x+hx:wall+3;
+            var polygon=new[]{new Vector2(left,q.z-hz),new Vector2(right-1,q.z-hz),new Vector2(right+1,q.z-hz+2),new Vector2(right,q.z+hz),new Vector2(right-2,q.z+hz),new Vector2(left+1,q.z+hz),new Vector2(left-1,q.z+hz-2)};
+            PolygonSolid(p,"LandingSurface",polygon,q.y-8,q.y,rock,true,new Vector2(wall,q.z));
+        }
+        static void PolygonSolid(Transform p,string name,Vector2[] polygon,float bottom,float top,Material mat,bool collider,Vector2? root=null) {
+            // Ear clipping preserves concave shorelines rather than filling them with a fan.
+            var points=polygon.ToList();float area=0;
+            for(int i=0;i<points.Count;i++){var a=points[i];var b=points[(i+1)%points.Count];area+=a.x*b.y-b.x*a.y;}
+            if(area<0)points.Reverse();
+            var v=points.Select(q=>new Vector3(q.x,top,q.y)).Concat(points.Select(q=>{var b=root.HasValue?Vector2.Lerp(root.Value,q,.28f):q;return new Vector3(b.x,bottom,b.y);})).ToArray();
+            var ids=Enumerable.Range(0,points.Count).ToList();var t=new List<int>();int n=points.Count;
+            Func<Vector2,Vector2,float> cross=(a,b)=>a.x*b.y-a.y*b.x;
+            while(ids.Count>2) {
+                bool clipped=false;
+                for(int k=0;k<ids.Count;k++) {
+                    int a=ids[(k+ids.Count-1)%ids.Count],b=ids[k],d=ids[(k+1)%ids.Count];
+                    if(cross(points[b]-points[a],points[d]-points[b])<=0)continue;
+                    if(ids.Any(j=>j!=a&&j!=b&&j!=d&&cross(points[b]-points[a],points[j]-points[a])>=0&&cross(points[d]-points[b],points[j]-points[b])>=0&&cross(points[a]-points[d],points[j]-points[d])>=0))continue;
+                    t.AddRange(new[]{a,d,b,a+n,b+n,d+n});ids.RemoveAt(k);clipped=true;break;
+                }
+                if(!clipped)throw new InvalidOperationException("Non-simple polygon: "+name);
+            }
+            for(int i=0;i<n;i++){int j=(i+1)%n;t.AddRange(new[]{i,j,i+n,j,j+n,i+n});}
+            MeshObject(p,name,v,t.ToArray(),mat,collider);
+        }
         static void Slab(Transform p,string name,Vector2[] polygon,float bottom,float top,Material mat,bool cut,bool collider=true,Vector2[] hollow=null) {
             var v=new List<Vector3>();var t=new List<int>();
-            float minX=Mathf.Floor(polygon.Min(q=>q.x)/2)*2,maxX=polygon.Max(q=>q.x),minZ=Mathf.Floor(polygon.Min(q=>q.y)/2)*2,maxZ=polygon.Max(q=>q.y);
+            const float cellSize=4;
+            float minX=Mathf.Floor(polygon.Min(q=>q.x)/cellSize)*cellSize,maxX=polygon.Max(q=>q.x),minZ=Mathf.Floor(polygon.Min(q=>q.y)/2)*2,maxZ=polygon.Max(q=>q.y);
             var cells=new HashSet<Vector2>();
-            for(float x=minX;x<maxX;x+=2)for(float z=minZ;z<maxZ;z+=2) {
-                var q=new Vector2(x+1,z+1);if(!Inside(q,polygon))continue;
+            for(float x=minX;x<maxX;x+=cellSize)for(float z=minZ;z<maxZ;z+=cellSize) {
+                var q=new Vector2(x+cellSize/2,z+cellSize/2);if(!Inside(q,polygon))continue;
+                if(name=="CavernFloor"&&new[]{new Vector2(x,z),new Vector2(x+cellSize,z),new Vector2(x,z+cellSize),new Vector2(x+cellSize,z+cellSize)}.Any(pt=>!Inside(pt,c.curtain)))continue;
                 if(hollow!=null&&Inside(q,hollow))continue;
                 if(cut&&new Rect(c.stairVoid.xMin-2,c.stairVoid.yMin-2,c.stairVoid.width+4,c.stairVoid.height+4).Contains(q))continue;
                 cells.Add(new Vector2(x,z));
             }
             foreach(var cell in cells) {
                 float x=cell.x,z=cell.y;
-                Func<float,float,float> bottomAt=(px,pz)=>name=="Ceiling"?bottom-5*Mathf.PerlinNoise(px*.07f+10,pz*.06f):bottom;
-                int n=v.Count;v.AddRange(new[]{new Vector3(x,top,z),new Vector3(x,top,z+2),new Vector3(x+2,top,z+2),new Vector3(x+2,top,z),new Vector3(x,bottomAt(x,z),z),new Vector3(x,bottomAt(x,z+2),z+2),new Vector3(x+2,bottomAt(x+2,z+2),z+2),new Vector3(x+2,bottomAt(x+2,z),z)});
+                Func<float,float,float> bottomAt=(px,pz)=>name=="Ceiling"?CeilingBottom(px,pz):bottom;
+                int n=v.Count;v.AddRange(new[]{new Vector3(x,top,z),new Vector3(x,top,z+cellSize),new Vector3(x+cellSize,top,z+cellSize),new Vector3(x+cellSize,top,z),new Vector3(x,bottomAt(x,z),z),new Vector3(x,bottomAt(x,z+cellSize),z+cellSize),new Vector3(x+cellSize,bottomAt(x+cellSize,z+cellSize),z+cellSize),new Vector3(x+cellSize,bottomAt(x+cellSize,z),z)});
                 foreach(int j in new[]{0,1,2,0,2,3,4,6,5,4,7,6})t.Add(n+j);
-                var corners=new[]{new Vector2(x,z),new Vector2(x,z+2),new Vector2(x+2,z+2),new Vector2(x+2,z)};
-                var neighbors=new[]{new Vector2(-2,0),new Vector2(0,2),new Vector2(2,0),new Vector2(0,-2)};
+                var corners=new[]{new Vector2(x,z),new Vector2(x,z+cellSize),new Vector2(x+cellSize,z+cellSize),new Vector2(x+cellSize,z)};
+                var neighbors=new[]{new Vector2(-cellSize,0),new Vector2(0,cellSize),new Vector2(cellSize,0),new Vector2(0,-cellSize)};
                 for(int side=0;side<4;side++)if(!cells.Contains(cell+neighbors[side])) {
                     var a=corners[side];var b=corners[(side+1)%4];int k=v.Count;
-                    v.AddRange(new[]{new Vector3(a.x,top,a.y),new Vector3(a.x,bottom,a.y),new Vector3(b.x,bottom,b.y),new Vector3(b.x,top,b.y)});
+                    v.AddRange(new[]{new Vector3(a.x,top,a.y),new Vector3(a.x,bottomAt(a.x,a.y),a.y),new Vector3(b.x,bottomAt(b.x,b.y),b.y),new Vector3(b.x,top,b.y)});
                     t.AddRange(new[]{k,k+1,k+2,k,k+2,k+3});
                 }
             }MeshObject(p,name,v.ToArray(),t.ToArray(),mat,collider);

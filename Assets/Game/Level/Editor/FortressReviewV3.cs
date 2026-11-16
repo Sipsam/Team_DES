@@ -10,20 +10,21 @@ namespace TwinEdge.Levels.Editor
 {
     public static class FortressReviewV3
     {
+        public static string ReportDirectory=FortressGeneratorV3.Notes;
         static readonly List<string> report=new List<string>();
         static void Check(bool ok,string text){report.Add((ok?"PASS: ":"FAIL: ")+text);}
         public static void Run() {
-            Directory.CreateDirectory(FortressGeneratorV3.Notes);
-            try { Execute(); }catch(Exception e){File.WriteAllText(FortressGeneratorV3.Notes+"CastleUndergroundError.txt",e.ToString());throw;}
+            Directory.CreateDirectory(ReportDirectory);
+            try { Execute(); }catch(Exception e){File.WriteAllText(ReportDirectory+"CastleUndergroundError.txt",e.ToString());throw;}
         }
         public static void VerifySaved() {
-            Directory.CreateDirectory(FortressGeneratorV3.Notes);
+            Directory.CreateDirectory(ReportDirectory);
             MountainGeneratorV3.CreateOrOpen();
             var owners=FortressViewsV3.Owners();
             if(owners.Length!=4||owners.Any(o=>!o.config||!o.generated||o.generated.GetComponentsInChildren<MeshFilter>().Any(f=>!f.sharedMesh)))throw new Exception("Saved fortress references missing after cleanup: "+string.Join("; ",owners.Select(o=>o.part+" config="+(bool)o.config+" meshes="+o.generated.GetComponentsInChildren<MeshFilter>().Count(f=>!f.sharedMesh))));
             var config=FortressGeneratorV3.Config();EditorUtility.SetDirty(config);AssetDatabase.SaveAssets();
-            FortressViewsV3.Capture();
-            File.WriteAllText(FortressGeneratorV3.Notes+"CastleUndergroundPostCleanup.txt","PASS: fresh Unity session loads four section/config/mesh references after cleanup.\nPASS: "+FortressViewsV3.Names.Length+" actual Unity views recaptured from saved scene.\n");
+            FortressViewsV3.Capture(ReportDirectory+"CastleUndergroundViews");
+            File.WriteAllText(ReportDirectory+"CastleUndergroundPostCleanup.txt","PASS: fresh Unity session loads four section/config/mesh references after cleanup.\nPASS: "+FortressViewsV3.Names.Length+" actual Unity views recaptured from saved scene.\n");
             ProjectDependencyAudit.Run();
         }
         public static void VerifyFinalSaved() { VerifySaved(); VerifyPlayerCapsule(); }
@@ -31,12 +32,12 @@ namespace TwinEdge.Levels.Editor
             MountainGeneratorV3.CreateOrOpen();var c=FortressGeneratorV3.Config();
             if(!c)throw new Exception("Config could not load");
             AssetDatabase.TryGetGUIDAndLocalFileIdentifier(c,out string guid,out long id);
-            File.WriteAllText(FortressGeneratorV3.Notes+"CastleConfigImport.txt","Before config localId="+id+" guid="+guid+" rooms="+c.rooms.Length+"\n");
+            File.WriteAllText(ReportDirectory+"CastleConfigImport.txt","Before config localId="+id+" guid="+guid+" rooms="+c.rooms.Length+"\n");
             EditorUtility.SetDirty(c);AssetDatabase.SaveAssets();AssetDatabase.ForceReserializeAssets(new[]{AssetDatabase.GetAssetPath(c)});
             foreach(var o in FortressViewsV3.Owners()){o.config=c;EditorUtility.SetDirty(o);}
             var scene=ValleyGeneratorV3.Mountain().gameObject.scene;EditorSceneManager.MarkSceneDirty(scene);EditorSceneManager.SaveScene(scene);
             AssetDatabase.TryGetGUIDAndLocalFileIdentifier(c,out guid,out id);
-            File.AppendAllText(FortressGeneratorV3.Notes+"CastleConfigImport.txt","After config localId="+id+" guid="+guid+"\n");
+            File.AppendAllText(ReportDirectory+"CastleConfigImport.txt","After config localId="+id+" guid="+guid+"\n");
         }
         public static void VerifyPlayerCapsule() {
             MountainGeneratorV3.CreateOrOpen();report.Clear();var c=FortressGeneratorV3.Config();
@@ -51,7 +52,7 @@ namespace TwinEdge.Levels.Editor
             var partitions=FortressViewsV3.Owners().Single(o=>o.part==FortressPartV3.CastleInterior).generated.transform.Find("RemovablePartitions").gameObject;
             try {partitions.SetActive(false);Physics.SyncTransforms();ValidatePath("Return corridor",new[]{new Vector3(0,0,245),new Vector3(0,0,42)},colliders,true);}
             finally {partitions.SetActive(true);Physics.SyncTransforms();}
-            Directory.CreateDirectory(FortressGeneratorV3.Notes);File.WriteAllLines(FortressGeneratorV3.Notes+"CastleUndergroundPlayerCapsule.txt",report);
+            Directory.CreateDirectory(ReportDirectory);File.WriteAllLines(ReportDirectory+"CastleUndergroundPlayerCapsule.txt",report);
             if(report.Any(l=>l.StartsWith("FAIL")))throw new Exception("Player capsule clearance failed");
         }
         static void Execute() {
@@ -114,14 +115,14 @@ namespace TwinEdge.Levels.Editor
             Check(c.platforms.Where(p=>!p.fixedLanding).All(p=>p.position.y>c.lava+10&&p.activatedBy[0]!=p.id[0]&&p.seconds>=20&&p.seconds<=30),"Opposite switch links, 20–30s metadata, lava clearance");
             Check(c.platforms.All(p=>FortressGeneratorV3.Inside(new Vector2(p.position.x,p.position.z),c.cave)),"Platform centers inside cave");
             var scene=mountain.gameObject.scene;EditorSceneManager.MarkSceneDirty(scene);Check(EditorSceneManager.SaveScene(scene),"Save V3");AssetDatabase.SaveAssets();
-            EditorSceneManager.CloseScene(scene,true);var reopened=EditorSceneManager.OpenScene(MountainGeneratorV3.ScenePath,OpenSceneMode.Single);
+            var reopened=EditorSceneManager.OpenScene(MountainGeneratorV3.ScenePath,OpenSceneMode.Single);
             Check(FortressViewsV3.Owners().Length==4,"Reload four sections");
             Check(FortressViewsV3.Owners().SelectMany(o=>o.generated.GetComponentsInChildren<MeshFilter>()).All(f=>f.sharedMesh),"Reload mesh references");
             var test=EditorSceneManager.OpenScene("Assets/Game/Level/Testing/MountainTraversalTest.unity",OpenSceneMode.Additive);
             Check(test.IsValid()&&test.isLoaded,"Retained traversal test loads");EditorSceneManager.CloseScene(test,true);
-            FortressViewsV3.Capture();Check(Directory.GetFiles(FortressGeneratorV3.Notes+"CastleUndergroundViews","*.png").Length==FortressViewsV3.Names.Length,"Unity-rendered review views: "+FortressViewsV3.Names.Length);
+            FortressViewsV3.Capture(ReportDirectory+"CastleUndergroundViews");Check(Directory.GetFiles(ReportDirectory+"CastleUndergroundViews","*.png").Length==FortressViewsV3.Names.Length,"Unity-rendered review views: "+FortressViewsV3.Names.Length);
             report.Add("NOT VERIFIED: actual controller/camera traversal, jump reach, pole mechanics, timer/gameplay/network; visual approval recorded separately after image inspection.");
-            File.WriteAllLines(FortressGeneratorV3.Notes+"CastleUndergroundValidation.txt",report);
+            File.WriteAllLines(ReportDirectory+"CastleUndergroundValidation.txt",report);
             if(report.Any(l=>l.StartsWith("FAIL")))throw new Exception("Fortress validation failures; inspect local report");
         }
         static void ValidatePath(string label,Vector3[] points,Collider[] colliders,bool capsule) {

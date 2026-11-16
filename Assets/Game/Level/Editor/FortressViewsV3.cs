@@ -9,7 +9,7 @@ namespace TwinEdge.Levels.Editor
 {
     public sealed class FortressViewsV3:EditorWindow
     {
-        public static readonly string[] Names={"Castle Whole Top","Castle Whole Perspective","Castle Entrance Perspective","Courtyard Perspective","Castle Interior Top","A/B Room Perspective","Return Corridor Preview","Underground Top","Underground Perspective","Castle / Underground Overlay","Castle / Underground Vertical Section","Castle / River Connection"};
+        public static readonly string[] Names={"Castle Whole Top","Castle Whole Perspective","Castle Entrance Perspective","Courtyard Perspective","Castle Interior Top","A/B Room Perspective","Return Corridor Preview","Underground Top","Underground Perspective","Castle / Underground Overlay","Castle / Underground Vertical Section","Castle / River Connection","Representative Landing Shelf Close-up"};
         int index;bool roofs=true,partitions=true,ceiling=true;
         readonly List<GameObject> hidden=new List<GameObject>();
         [MenuItem("Tools/Twin Edge/V3 Fortress/Review Views")]
@@ -37,7 +37,8 @@ namespace TwinEdge.Levels.Editor
         public static FortressSectionV3[] Owners()=>Object.FindObjectsByType<FortressSectionV3>(FindObjectsSortMode.None).Where(o=>o.generated).ToArray();
         public static Bounds BoundsFor(int i) {
             var c=FortressGeneratorV3.Config();Vector3 center;Vector3 size;
-            if(i==11){center=new Vector3(0,-10,-50);size=new Vector3(450,250,800);}
+            if(i==12){center=new Vector3(-25,-53,181);size=new Vector3(40,28,38);}
+            else if(i==11){center=new Vector3(0,-10,-50);size=new Vector3(450,250,800);}
             else if(i==2){center=new Vector3(0,14,12);size=new Vector3(110,65,110);}
             else if(i==3){center=new Vector3(0,15,32);size=new Vector3(105,60,85);}
             else if(i==5){center=new Vector3(0,8,91);size=new Vector3(62,30,60);}
@@ -48,8 +49,8 @@ namespace TwinEdge.Levels.Editor
         }
         public static Quaternion Rotation(int i)=>i==0||i==4||i==7||i==9?Quaternion.Euler(90,0,0):i==10?Quaternion.Euler(0,90,0):Quaternion.Euler(i==5?15:30,i==8?145:25,0);
         public static void Frame(int i)=>LevelViewCamera.Frame(BoundsFor(i),Rotation(i),i==0||i==4||i==7||i==9||i==10);
-        public static void Capture() {
-            string dir=FortressGeneratorV3.Notes+"CastleUndergroundViews";Directory.CreateDirectory(dir);
+        public static void Capture(string destination=null) {
+            string dir=destination??(FortressGeneratorV3.Notes+"CastleUndergroundViews");Directory.CreateDirectory(dir);
             var go=new GameObject("TemporaryFortressReviewCamera");var cam=go.AddComponent<Camera>();cam.clearFlags=CameraClearFlags.SolidColor;cam.backgroundColor=new Color(.075f,.10f,.13f);cam.farClipPlane=10000;cam.nearClipPlane=.1f;cam.fieldOfView=48;
             var rt=new RenderTexture(1600,1200,24);var old=RenderTexture.active;
             var changed=new List<Renderer>();
@@ -67,7 +68,8 @@ namespace TwinEdge.Levels.Editor
                     var b=BoundsFor(i);cam.transform.rotation=Rotation(i);cam.orthographic=i==0||i==4||i==7||i==9||i==10;
                     cam.orthographicSize=Mathf.Max(b.extents.z,b.extents.y)*1.08f;
                     cam.transform.position=b.center-cam.transform.forward*b.extents.magnitude/Mathf.Sin(24*Mathf.Deg2Rad)*1.1f;cam.targetTexture=rt;
-                    if(i==8){var c=FortressGeneratorV3.Config();cam.transform.position=c.origin+new Vector3(9,-44,250);cam.transform.LookAt(c.origin+new Vector3(12,-55,85));cam.fieldOfView=70;}
+                    if(i==12){var c=FortressGeneratorV3.Config();cam.transform.position=c.origin+new Vector3(2,-42,201);cam.transform.LookAt(c.origin+new Vector3(-26,-56,181));cam.fieldOfView=65;}
+                    else if(i==8){var c=FortressGeneratorV3.Config();cam.transform.position=c.origin+new Vector3(9,-44,250);cam.transform.LookAt(c.origin+new Vector3(12,-55,85));cam.fieldOfView=70;}
                     else if(i==5){var c=FortressGeneratorV3.Config();cam.transform.position=c.origin+new Vector3(10,4,72);cam.transform.LookAt(c.origin+new Vector3(17,4,95));cam.fieldOfView=80;}
                     else if(i==3){var c=FortressGeneratorV3.Config();cam.transform.position=c.origin+new Vector3(0,5,8);cam.transform.LookAt(c.origin+new Vector3(0,14,42));cam.fieldOfView=80;}
                     else if(i==2){var c=FortressGeneratorV3.Config();cam.transform.position=c.origin+new Vector3(0,5,-45);cam.transform.LookAt(c.origin+new Vector3(0,18,20));cam.fieldOfView=75;}
