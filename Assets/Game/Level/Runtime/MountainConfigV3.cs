@@ -4,9 +4,13 @@ using UnityEngine;
 
 namespace TwinEdge.Levels
 {
+    public enum MountainShapeV3 { Automatic, Broad, Ridge, Cliff, Twin, Plateau, Broken }
+
     [Serializable]
     public sealed class MountainPeakV3
     {
+        public MountainShapeV3 shape;
+        [Range(0, 1)] public float asymmetry = .45f;
         public string id;
         public Vector2 position;
         public float height = 150;
@@ -21,6 +25,10 @@ namespace TwinEdge.Levels
         public Vector2 clusterSize = new Vector2(390, 340);
         public Vector2 clusterCenter = new Vector2(0, 30);
         public int seed = 31116;
+        [Range(0, 120)] public float outerRangeSetback = 65;
+        [Range(.3f, 1)] public float outerRangeHeightScale = .62f;
+        [Range(.1f, .5f)] public float boundaryTaper = .3f;
+        [Range(0, .15f)] public float samplingJitter = .06f;
         [Range(12, 60)] public int smallPeakCount = 27;
         public float minimumGap = 12, terrainHeightVariation = 9, basinHeight = -65;
         [Range(2, 8)] public float meshSpacing = 3;

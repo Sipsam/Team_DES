@@ -15,12 +15,18 @@ MonoBehaviour:
   clusterSize: {x: 390, y: 340}
   clusterCenter: {x: 0, y: 30}
   seed: 31116
+  outerRangeSetback: 65
+  outerRangeHeightScale: 0.62
+  boundaryTaper: 0.3
+  samplingJitter: 0.06
   smallPeakCount: 27
   minimumGap: 12
   terrainHeightVariation: 9
   basinHeight: -65
   meshSpacing: 3
   start:
+    shape: 0
+    asymmetry: 0.45
     id: Start
     position: {x: 0, y: -225}
     height: 132
@@ -29,6 +35,8 @@ MonoBehaviour:
     silhouette: 0.16
     shoulderWidth: 15
   destination:
+    shape: 0
+    asymmetry: 0.45
     id: Final
     position: {x: 12, y: 285}
     height: 190
@@ -37,316 +45,406 @@ MonoBehaviour:
     silhouette: 0.16
     shoulderWidth: 15
   smallPeaks:
-  - id: Peak_01
-    position: {x: -0.43790215, y: -0.38510364}
+  - shape: 0
+    asymmetry: 0.45
+    id: Peak_01
+    position: {x: -0.43556145, y: -0.32220787}
     height: 137
     summitSize: {x: 18, y: 24}
     rotation: 137
     silhouette: 0.1893521
     shoulderWidth: 6
-  - id: Peak_02
-    position: {x: -0.2700427, y: -0.40752137}
+  - shape: 0
+    asymmetry: 0.45
+    id: Peak_02
+    position: {x: -0.27415916, y: -0.4933274}
     height: 135
     summitSize: {x: 19, y: 21}
     rotation: 131
     silhouette: 0.14294152
     shoulderWidth: 5
-  - id: Peak_03
-    position: {x: -0.096068114, y: -0.38225165}
-    height: 147
+  - shape: 0
+    asymmetry: 0.45
+    id: Peak_03
+    position: {x: -0.07016889, y: -0.33227453}
+    height: 126.68373
     summitSize: {x: 22, y: 20}
     rotation: 134
     silhouette: 0.20525262
     shoulderWidth: 4
-  - id: Peak_04
-    position: {x: 0.052766953, y: -0.38610232}
-    height: 134
+  - shape: 0
+    asymmetry: 0.45
+    id: Peak_04
+    position: {x: 0.06158292, y: -0.41785917}
+    height: 122.6099
     summitSize: {x: 20, y: 19}
     rotation: 117
     silhouette: 0.17304267
     shoulderWidth: 5
-  - id: Peak_05
-    position: {x: 0.23836125, y: -0.41862708}
-    height: 141
+  - shape: 0
+    asymmetry: 0.45
+    id: Peak_05
+    position: {x: 0.21917386, y: -0.4798088}
+    height: 119.6611
     summitSize: {x: 19, y: 27}
     rotation: 161
     silhouette: 0.10245573
     shoulderWidth: 6
-  - id: Peak_06
-    position: {x: 0.38212603, y: -0.40078735}
+  - shape: 0
+    asymmetry: 0.45
+    id: Peak_06
+    position: {x: 0.35548925, y: -0.35661802}
     height: 127
     summitSize: {x: 21, y: 21}
     rotation: 141
     silhouette: 0.19298825
     shoulderWidth: 6
-  - id: Peak_07
-    position: {x: -0.37805015, y: -0.18634409}
+  - shape: 0
+    asymmetry: 0.45
+    id: Peak_07
+    position: {x: -0.3739208, y: -0.1635433}
     height: 145.25
     summitSize: {x: 22, y: 22}
     rotation: 117
     silhouette: 0.17575516
     shoulderWidth: 6
-  - id: Peak_08
-    position: {x: -0.24306044, y: -0.21353024}
-    height: 152.25
+  - shape: 0
+    asymmetry: 0.45
+    id: Peak_08
+    position: {x: -0.18862322, y: -0.29217792}
+    height: 128.59233
     summitSize: {x: 23, y: 21}
     rotation: 41
     silhouette: 0.19291197
     shoulderWidth: 6
-  - id: Peak_09
-    position: {x: -0.05077728, y: -0.18744457}
-    height: 144.25
+  - shape: 0
+    asymmetry: 0.45
+    id: Peak_09
+    position: {x: -0.1424445, y: -0.1460153}
+    height: 135.54967
     summitSize: {x: 19, y: 18}
     rotation: 6
     silhouette: 0.19452395
     shoulderWidth: 6
-  - id: Peak_10
-    position: {x: 0.11819033, y: -0.20984267}
-    height: 145.25
+  - shape: 0
+    asymmetry: 0.45
+    id: Peak_10
+    position: {x: 0.048302986, y: -0.21316703}
+    height: 132.35326
     summitSize: {x: 23, y: 25}
     rotation: 48
     silhouette: 0.22561212
     shoulderWidth: 5
-  - id: Peak_11
-    position: {x: 0.25922894, y: -0.20164524}
-    height: 144.25
+  - shape: 0
+    asymmetry: 0.45
+    id: Peak_11
+    position: {x: 0.17099911, y: -0.20459057}
+    height: 132.76149
     summitSize: {x: 20, y: 20}
     rotation: 145
     silhouette: 0.12980795
     shoulderWidth: 4
-  - id: Peak_12
-    position: {x: 0.4399068, y: -0.18122773}
+  - shape: 0
+    asymmetry: 0.45
+    id: Peak_12
+    position: {x: 0.5319203, y: -0.123569414}
     height: 139.25
     summitSize: {x: 23, y: 18}
     rotation: 34
     silhouette: 0.14699003
     shoulderWidth: 6
-  - id: Peak_13
-    position: {x: -0.4271737, y: -0.016228486}
+  - shape: 0
+    asymmetry: 0.45
+    id: Peak_13
+    position: {x: -0.43719697, y: 0.02444261}
     height: 159.5
     summitSize: {x: 22, y: 21}
     rotation: 70
     silhouette: 0.22172597
     shoulderWidth: 6
-  - id: Peak_14
-    position: {x: -0.2846764, y: 0.0040622917}
+  - shape: 0
+    asymmetry: 0.45
+    id: Peak_14
+    position: {x: -0.30232927, y: 0.033429116}
     height: 162.5
     summitSize: {x: 18, y: 20}
     rotation: 145
     silhouette: 0.1081881
     shoulderWidth: 6
-  - id: Peak_15
-    position: {x: -0.11192655, y: -0.007021511}
+  - shape: 0
+    asymmetry: 0.45
+    id: Peak_15
+    position: {x: -0.10411598, y: 0.04381997}
     height: 159.5
     summitSize: {x: 24, y: 26}
     rotation: 49
     silhouette: 0.19707277
     shoulderWidth: 4
-  - id: Peak_16
-    position: {x: 0.06398001, y: -0.01082116}
-    height: 160.5
+  - shape: 0
+    asymmetry: 0.45
+    id: Peak_16
+    position: {x: -0.015967064, y: -0.067948826}
+    height: 139.26564
     summitSize: {x: 18, y: 26}
     rotation: 166
     silhouette: 0.2065982
     shoulderWidth: 6
-  - id: Peak_17
-    position: {x: 0.24393041, y: 0.0021016772}
-    height: 164.5
+  - shape: 0
+    asymmetry: 0.45
+    id: Peak_17
+    position: {x: 0.22158748, y: -0.04932467}
+    height: 140.15215
     summitSize: {x: 21, y: 23}
     rotation: 53
     silhouette: 0.10884207
     shoulderWidth: 6
-  - id: Peak_18
-    position: {x: 0.39828888, y: -0.0009734823}
+  - shape: 0
+    asymmetry: 0.45
+    id: Peak_18
+    position: {x: 0.37766993, y: -0.043962587}
     height: 150.5
     summitSize: {x: 22, y: 27}
     rotation: 15
     silhouette: 0.22976992
     shoulderWidth: 6
-  - id: Peak_19
-    position: {x: -0.38244638, y: 0.19448945}
+  - shape: 0
+    asymmetry: 0.45
+    id: Peak_19
+    position: {x: -0.3491639, y: 0.2623143}
     height: 163.75
     summitSize: {x: 23, y: 23}
     rotation: 75
     silhouette: 0.11373602
     shoulderWidth: 5
-  - id: Peak_20
-    position: {x: -0.23022369, y: 0.20764652}
+  - shape: 0
+    asymmetry: 0.45
+    id: Peak_20
+    position: {x: -0.19049461, y: 0.16343468}
     height: 154.75
     summitSize: {x: 18, y: 24}
     rotation: 133
     silhouette: 0.11367414
     shoulderWidth: 4
-  - id: Peak_21
-    position: {x: -0.05015666, y: 0.18426764}
+  - shape: 0
+    asymmetry: 0.45
+    id: Peak_21
+    position: {x: -0.041614912, y: 0.26352835}
     height: 157.75
     summitSize: {x: 22, y: 26}
     rotation: 87
     silhouette: 0.13051811
     shoulderWidth: 4
-  - id: Peak_22
-    position: {x: 0.097328305, y: 0.2192898}
+  - shape: 0
+    asymmetry: 0.45
+    id: Peak_22
+    position: {x: 0.15790914, y: 0.15076953}
     height: 160.75
     summitSize: {x: 20, y: 18}
     rotation: 14
     silhouette: 0.104615405
     shoulderWidth: 5
-  - id: Peak_23
-    position: {x: 0.26580775, y: 0.22208892}
+  - shape: 0
+    asymmetry: 0.45
+    id: Peak_23
+    position: {x: 0.29874858, y: 0.2416147}
     height: 159.75
     summitSize: {x: 21, y: 22}
     rotation: 1
     silhouette: 0.12513992
     shoulderWidth: 5
-  - id: Peak_24
-    position: {x: 0.43653396, y: 0.19428958}
+  - shape: 0
+    asymmetry: 0.45
+    id: Peak_24
+    position: {x: 0.4166871, y: 0.17347702}
     height: 156.75
     summitSize: {x: 24, y: 20}
     rotation: 166
     silhouette: 0.11295008
     shoulderWidth: 6
-  - id: Peak_25
-    position: {x: -0.44250903, y: 0.38008484}
+  - shape: 0
+    asymmetry: 0.45
+    id: Peak_25
+    position: {x: -0.51313317, y: 0.39723673}
     height: 180
     summitSize: {x: 23, y: 27}
     rotation: 48
     silhouette: 0.21845527
     shoulderWidth: 5
-  - id: Peak_26
-    position: {x: -0.28358218, y: 0.39722538}
+  - shape: 0
+    asymmetry: 0.45
+    id: Peak_26
+    position: {x: -0.21951577, y: 0.32613045}
     height: 173
     summitSize: {x: 22, y: 18}
     rotation: 138
     silhouette: 0.17336579
     shoulderWidth: 5
-  - id: Peak_27
-    position: {x: -0.10020656, y: 0.4025953}
+  - shape: 0
+    asymmetry: 0.45
+    id: Peak_27
+    position: {x: -0.15625249, y: 0.46093222}
     height: 180
     summitSize: {x: 22, y: 22}
     rotation: 112
     silhouette: 0.20081176
     shoulderWidth: 6
   boundary:
-  - id: Range_-1_0
+  - shape: 0
+    asymmetry: 0.45
+    id: Range_-1_0
     position: {x: -366, y: -290}
     height: 263
     summitSize: {x: 38, y: 63}
     rotation: 65
     silhouette: 0.3
     shoulderWidth: 24
-  - id: Range_-1_1
+  - shape: 0
+    asymmetry: 0.45
+    id: Range_-1_1
     position: {x: -339, y: -195}
     height: 271
     summitSize: {x: 44, y: 74}
     rotation: 84
     silhouette: 0.3
     shoulderWidth: 24
-  - id: Range_-1_2
+  - shape: 0
+    asymmetry: 0.45
+    id: Range_-1_2
     position: {x: -365, y: -100}
     height: 287
     summitSize: {x: 41, y: 52}
     rotation: 102
     silhouette: 0.3
     shoulderWidth: 24
-  - id: Range_-1_3
+  - shape: 0
+    asymmetry: 0.45
+    id: Range_-1_3
     position: {x: -330, y: -5}
     height: 225
     summitSize: {x: 66, y: 55}
     rotation: 7
     silhouette: 0.3
     shoulderWidth: 24
-  - id: Range_-1_4
+  - shape: 0
+    asymmetry: 0.45
+    id: Range_-1_4
     position: {x: -349, y: 90}
     height: 260
     summitSize: {x: 47, y: 68}
     rotation: 152
     silhouette: 0.3
     shoulderWidth: 24
-  - id: Range_-1_5
+  - shape: 0
+    asymmetry: 0.45
+    id: Range_-1_5
     position: {x: -358, y: 185}
     height: 236
     summitSize: {x: 58, y: 49}
     rotation: 75
     silhouette: 0.3
     shoulderWidth: 24
-  - id: Range_-1_6
+  - shape: 0
+    asymmetry: 0.45
+    id: Range_-1_6
     position: {x: -343, y: 280}
     height: 271
     summitSize: {x: 43, y: 78}
     rotation: 152
     silhouette: 0.3
     shoulderWidth: 24
-  - id: Range_-1_7
+  - shape: 0
+    asymmetry: 0.45
+    id: Range_-1_7
     position: {x: -338, y: 375}
     height: 219
     summitSize: {x: 43, y: 45}
     rotation: 155
     silhouette: 0.3
     shoulderWidth: 24
-  - id: Range_1_0
+  - shape: 0
+    asymmetry: 0.45
+    id: Range_1_0
     position: {x: 355, y: -290}
     height: 223
     summitSize: {x: 59, y: 66}
     rotation: 148
     silhouette: 0.3
     shoulderWidth: 24
-  - id: Range_1_1
+  - shape: 0
+    asymmetry: 0.45
+    id: Range_1_1
     position: {x: 350, y: -195}
     height: 220
     summitSize: {x: 46, y: 79}
     rotation: 133
     silhouette: 0.3
     shoulderWidth: 24
-  - id: Range_1_2
+  - shape: 0
+    asymmetry: 0.45
+    id: Range_1_2
     position: {x: 349, y: -100}
     height: 257
     summitSize: {x: 42, y: 68}
     rotation: 50
     silhouette: 0.3
     shoulderWidth: 24
-  - id: Range_1_3
+  - shape: 0
+    asymmetry: 0.45
+    id: Range_1_3
     position: {x: 342, y: -5}
     height: 231
     summitSize: {x: 51, y: 68}
     rotation: 109
     silhouette: 0.3
     shoulderWidth: 24
-  - id: Range_1_4
+  - shape: 0
+    asymmetry: 0.45
+    id: Range_1_4
     position: {x: 328, y: 90}
     height: 218
     summitSize: {x: 39, y: 59}
     rotation: 14
     silhouette: 0.3
     shoulderWidth: 24
-  - id: Range_1_5
+  - shape: 0
+    asymmetry: 0.45
+    id: Range_1_5
     position: {x: 335, y: 185}
     height: 261
     summitSize: {x: 43, y: 57}
     rotation: 56
     silhouette: 0.3
     shoulderWidth: 24
-  - id: Range_1_6
+  - shape: 0
+    asymmetry: 0.45
+    id: Range_1_6
     position: {x: 328, y: 280}
     height: 276
     summitSize: {x: 65, y: 60}
     rotation: 63
     silhouette: 0.3
     shoulderWidth: 24
-  - id: Range_1_7
+  - shape: 0
+    asymmetry: 0.45
+    id: Range_1_7
     position: {x: 344, y: 375}
     height: 279
     summitSize: {x: 62, y: 74}
     rotation: 51
     silhouette: 0.3
     shoulderWidth: 24
-  - id: Rear_-1
+  - shape: 0
+    asymmetry: 0.45
+    id: Rear_-1
     position: {x: -140, y: -330}
     height: 220
     summitSize: {x: 60, y: 50}
     rotation: 0
     silhouette: 0.3
     shoulderWidth: 25
-  - id: Rear_1
+  - shape: 0
+    asymmetry: 0.45
+    id: Rear_1
     position: {x: 140, y: -330}
     height: 220
     summitSize: {x: 60, y: 50}

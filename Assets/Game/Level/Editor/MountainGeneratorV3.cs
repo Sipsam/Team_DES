@@ -29,24 +29,29 @@ namespace TwinEdge.Levels.Editor
         public static void Populate(MountainConfigV3 c)
         {
             var random = new System.Random(c.seed);
-            c.smallPeaks.Clear();
-            // An unordered, staggered field: no route indices or single prescribed chain.
-            int rows = Mathf.CeilToInt(Mathf.Sqrt(c.smallPeakCount * c.clusterSize.y / c.clusterSize.x));
-            int cols = Mathf.CeilToInt(c.smallPeakCount / (float)rows);
+            var field = new List<MountainPeakV3>();
+            // Authored group anchors, unequal group sizes and constrained dart sampling.
+            var anchors = new[] {new Vector2(-.18f,-.37f),new Vector2(.27f,-.28f),
+                new Vector2(-.29f,-.04f),new Vector2(.16f,.12f),new Vector2(-.12f,.37f)};
             for (int i = 0; i < c.smallPeakCount; i++)
             {
-                int row = i / cols, col = i % cols;
-                float u = (col + .5f + (row % 2 == 0 ? -.13f : .13f)) / cols - .5f;
-                float v = (row + .5f) / rows - .5f;
-                c.smallPeaks.Add(new MountainPeakV3 {
-                    id = "Peak_" + (i+1).ToString("00"),
-                    position = new Vector2(u + ((float)random.NextDouble()-.5f)*.035f, v + ((float)random.NextDouble()-.5f)*.045f),
-                    height = Mathf.Lerp(137,174,row/(float)Mathf.Max(1,rows-1)) + random.Next(-10,11),
-                    summitSize = new Vector2(random.Next(18,25),random.Next(18,28)),
-                    rotation = random.Next(0,180), silhouette = .1f + (float)random.NextDouble()*.14f,
-                    shoulderWidth = random.Next(4,7)
-                });
+                var p = new MountainPeakV3 { id="Peak_"+(i+1).ToString("00"),
+                    height=125+random.Next(0,49), summitSize=new Vector2(random.Next(18,29),random.Next(20,35)),
+                    rotation=random.Next(180), shoulderWidth=4, silhouette=.12f };
+                bool placed=false;
+                for(int attempt=0;attempt<12000;attempt++) {
+                    var anchor=anchors[(i+attempt/160)%anchors.Length];
+                    p.position=anchor+new Vector2((float)random.NextDouble()-.5f,(float)random.NextDouble()-.5f)*.40f;
+                    if(Mathf.Abs(p.position.x)>.48f || Mathf.Abs(p.position.y)>.48f)continue;
+                    var wp=WorldPeak(c,p);
+                    var others=new[]{c.start,c.destination}.Concat(field.Select(q=>WorldPeak(c,q)));
+                    if(others.All(q=>Vector2.Distance(q.position,wp.position)>=SupportRadius(q,wp.position-q.position)+SupportRadius(wp,q.position-wp.position)+c.minimumGap)) {
+                        field.Add(p);placed=true;break;
+                    }
+                }
+                if(!placed)throw new InvalidOperationException("Cannot fit field: increase cluster dimensions or reduce count.");
             }
+            c.smallPeaks = field;
             if (c.boundary.Count == 0)
             {
                 for (int side = -1; side <= 1; side += 2)
@@ -62,33 +67,59 @@ namespace TwinEdge.Levels.Editor
         }
 
         public static MountainPeakV3 WorldPeak(MountainConfigV3 c, MountainPeakV3 p) => new MountainPeakV3 {
-            id=p.id, position=c.clusterCenter+Vector2.Scale(p.position,c.clusterSize), height=p.height,
+            shape=p.shape, asymmetry=p.asymmetry, id=p.id, position=c.clusterCenter+Vector2.Scale(p.position,c.clusterSize), height=p.height,
             summitSize=p.summitSize, rotation=p.rotation, silhouette=p.silhouette, shoulderWidth=p.shoulderWidth };
 
         static float RockHeight(MountainPeakV3 p, float x, float z, float floor)
         {
             var d = new Vector2(x,z)-p.position;
-            float a = -p.rotation*Mathf.Deg2Rad;
-            float u = Mathf.Cos(a)*d.x-Mathf.Sin(a)*d.y, v = Mathf.Sin(a)*d.x+Mathf.Cos(a)*d.y;
-            float angle = Mathf.Atan2(v,u);
-            float shape = 1 + p.silhouette*(.65f*Mathf.Sin(angle*3+1.2f)+.35f*Mathf.Cos(angle*5+.8f));
+            float a=-p.rotation*Mathf.Deg2Rad;
+            float u=Mathf.Cos(a)*d.x-Mathf.Sin(a)*d.y, v=Mathf.Sin(a)*d.x+Mathf.Cos(a)*d.y;
             float rx=p.summitSize.x*.5f, rz=p.summitSize.y*.5f;
-            float q = Mathf.Sqrt(u*u/(rx*rx)+v*v/(rz*rz))/shape;
-            float distance = (q-1)*Mathf.Min(rx,rz);
-            if (distance <= 0) {
-                if(p.id=="Start")return p.height;
-                if(p.id.StartsWith("Range") || p.id.StartsWith("Rear"))
-                    return p.height+38*(1-q);
-                // Keep central landing space flat; one off-centre crest makes a wedge / broken summit.
-                return p.height+Mathf.Max(0,q-.42f)*Mathf.Max(0,Mathf.Sin(angle+p.rotation))*(p.id=="Final"?42:28);
+            float angle=Mathf.Atan2(v,u);
+            int hash=0;foreach(char ch in p.id)hash=unchecked(hash*31+ch);
+            int family=p.shape==MountainShapeV3.Automatic?(hash & 0x7fffffff)%6:(int)p.shape-1;
+            float U=u/rx,V=v/rz;
+            // Large-scale directional footprints; no angular cliff/crest height discontinuity.
+            float q;
+            switch(family) {
+                case 0:q=Mathf.Pow(Mathf.Pow(Mathf.Abs(U),4)+Mathf.Pow(Mathf.Abs(V),4),.25f);break;
+                case 1:q=Mathf.Sqrt(U*U*2.4f+V*V*.8f);break;
+                case 2:q=Mathf.Sqrt(U*U+V*V)*(1+.16f*p.asymmetry*U/Mathf.Max(1,Mathf.Abs(U)));break;
+                case 3:q=Mathf.Min(new Vector2(U-.28f,V).magnitude,new Vector2(U+.28f,V).magnitude)*1.28f;break;
+                case 4:q=Mathf.Max(Mathf.Abs(U),Mathf.Abs(V))*.94f;break;
+                default:q=Mathf.Max(Mathf.Abs(U)*.85f+Mathf.Abs(V)*.45f,Mathf.Abs(V)*.9f);break;
             }
-            // Narrow fractured shoulder, then near-vertical canyon, then a flared scree foot.
-            float shoulder = p.shoulderWidth;
-            if (distance < shoulder) return p.height-distance*.75f;
-            float pitch=3.1f+1.1f*Mathf.Sin(angle*2+p.rotation)+.45f*Mathf.Cos(angle*5+distance*.05f);
-            float cliff = p.height-shoulder*.75f-(distance-shoulder)*pitch;
-            float scree = floor+Mathf.Max(0,(p.height-floor)*.72f-distance*(.68f+.12f*Mathf.Sin(angle*3+p.rotation)));
-            return Mathf.Max(cliff,scree);
+            q/=1+p.silhouette*(.65f*Mathf.Sin(angle*3+1.2f)+.35f*Mathf.Cos(angle*5+.8f));
+            float distance=Mathf.Max(0,q-1)*Mathf.Min(rx,rz);
+            bool range=p.id.StartsWith("Range") || p.id.StartsWith("Rear");
+            float crest=0;
+            // Flat core with continuous perimeter rock crests, differing in section and silhouette.
+            float rim=Mathf.SmoothStep(0,1,Mathf.InverseLerp(.4f,1,q));
+            if(p.id!="Start") {
+                float profile=family==1?Mathf.Max(0,1-Mathf.Abs(U)):
+                    family==3?Mathf.Abs(Mathf.Sin(U*3)):
+                    family==4?.08f:Mathf.Max(0,Mathf.Sin(angle+family));
+                crest=rim*profile*(range?24:p.id=="Final"?48:family==4?5:22);
+            }
+            if(p.id=="Final")crest+=65*Mathf.SmoothStep(0,1,Mathf.InverseLerp(.35f,.9f,V))*Mathf.Exp(-U*U*2)*Mathf.SmoothStep(0,1,Mathf.InverseLerp(10,24,Mathf.Abs(u)));
+            float top=p.height+crest;
+            if(q<=1)return top;
+            float shoulder=Mathf.Max(1,p.shoulderWidth);
+            float pitch=family==2?Mathf.Lerp(1.6f,4.2f,(Mathf.Sin(angle)+1)*.5f):family==1?2.3f:family==4?2.8f:2.0f;
+            float drop=distance*.65f+Mathf.Max(0,distance-shoulder)*(pitch-.65f);
+            // Fade perimeter crest continuously into the shoulder; flared geological foot below.
+            float cliff=p.height+crest*Mathf.Exp(-distance/shoulder)-drop;
+            float scree=floor+Mathf.Max(0,(p.height-floor)*.52f-distance*.7f);
+            return Mathf.Max(floor,Mathf.Max(cliff,scree));
+        }
+
+        static MountainPeakV3 RangePeak(MountainConfigV3 c, MountainPeakV3 p, int index)
+        {
+            return new MountainPeakV3 { id=p.id, shape=MountainShapeV3.Ridge,
+                position=p.position+new Vector2(Mathf.Sign(p.position.x)*c.outerRangeSetback,0),
+                height=p.height*c.outerRangeHeightScale*(.85f+.15f*Mathf.Cos(index*1.7f)),
+                summitSize=p.summitSize, rotation=p.rotation, silhouette=p.silhouette, shoulderWidth=p.shoulderWidth };
         }
 
         public static void CheckConfig(MountainConfigV3 c)
@@ -200,11 +231,12 @@ namespace TwinEdge.Levels.Editor
             var vertices=new List<Vector3>();var triangles=new List<int>();
             int nx=Mathf.CeilToInt(1060/c.meshSpacing)+1,nz=Mathf.CeilToInt(1250/c.meshSpacing)+1;
             var inside=new bool[nx*nz];
+            var ranges=c.boundary.Select((p,i)=>RangePeak(c,p,i)).ToArray();
             Func<float,float,float> height=(x,z)=> {
                 float floor=c.basinHeight+c.terrainHeightVariation*(Mathf.Sin(x*.028f+z*.012f)+Mathf.Cos(z*.039f-x*.009f))*.5f;
                 float y=floor;
                 foreach(var p in peaks) y=Mathf.Max(y,RockHeight(p,x,z,floor));
-                foreach(var p in c.boundary) y=Mathf.Max(y,RockHeight(p,x,z,floor));
+                foreach(var p in ranges) y=Mathf.Max(y,RockHeight(p,x,z,floor));
                 // Carve a short socket through the destination crest, so the exit stub is exposed.
                 // This stops at the stub: it never connects across the next section.
                 if(Mathf.Abs(x-c.bridgeAnchor.x)<c.bridgeWidth*.9f && z>c.bridgeAnchor.z-18 && z<c.bridgeAnchor.z+c.bridgeStubLength+3)
@@ -212,14 +244,14 @@ namespace TwinEdge.Levels.Editor
                 return y;
             };
             for(int j=0;j<nz;j++) for(int i=0;i<nx;i++) {
-                float x=-530+i*c.meshSpacing+.18f*c.meshSpacing*Mathf.Sin(i*17.13f+j*37.77f+c.seed);
-                float z=-595+j*c.meshSpacing+.18f*c.meshSpacing*Mathf.Cos(i*27.43f-j*13.19f+c.seed);
+                float x=-530+i*c.meshSpacing+c.samplingJitter*c.meshSpacing*Mathf.Sin(i*17.13f+j*37.77f+c.seed);
+                float z=-595+j*c.meshSpacing+c.samplingJitter*c.meshSpacing*Mathf.Cos(i*27.43f-j*13.19f+c.seed);
                 float a=Mathf.Atan2((z-30)/540,x/460);
                 float edge=1+.09f*Mathf.Sin(5*a)+.045f*Mathf.Cos(9*a);
                 float radius=Mathf.Sqrt(x*x/(460*460)+(z-30)*(z-30)/(540*540))/edge;
                 inside[j*nx+i]=radius<=1;
                 float y=height(x,z);
-                if(radius>.92f)y=Mathf.Lerp(y,c.basinHeight-70+18*Mathf.Sin(a*7),Mathf.Clamp01((radius-.92f)/.08f));
+                if(radius>1-c.boundaryTaper)y=Mathf.Lerp(y,c.basinHeight-25,Mathf.SmoothStep(0,1,Mathf.InverseLerp(1-c.boundaryTaper,1,radius)));
                 vertices.Add(new Vector3(x,y,z));
             }
             for(int j=0;j<nz-1;j++) for(int i=0;i<nx-1;i++) {

@@ -93,14 +93,19 @@ namespace TwinEdge.Levels.Editor
             Func<int,int> find=null;find=i=>{while(parents[i]!=i){parents[i]=parents[parents[i]];i=parents[i];}return i;};
             Action<int,int> join=(a,b)=>parents[find(a)]=find(b);
             var edges=new Dictionary<(int,int),int>();
-            int badNormals=0,degenerate=0;
+            int badNormals=0,degenerate=0,thin=0;float maxEdge=0;
             for(int i=0;i<t.Length;i+=3){
                 var a=v[t[i]];var b=v[t[i+1]];var d=v[t[i+2]];var n=Vector3.Cross(b-a,d-a);
+                float longest=Mathf.Max((b-a).sqrMagnitude,Mathf.Max((d-b).sqrMagnitude,(a-d).sqrMagnitude));
+                maxEdge=Mathf.Max(maxEdge,Mathf.Sqrt(longest));
+                if(n.magnitude/Mathf.Max(.0001f,longest)<.015f)thin++;
                 if(n.sqrMagnitude<.000001f)degenerate++;
                 if(n.y<=0)badNormals++;
                 if(n.normalized.y>=Mathf.Cos(45*Mathf.Deg2Rad)){join(map[t[i]],map[t[i+1]]);join(map[t[i]],map[t[i+2]]);}
                 for(int k=0;k<3;k++) {int u=map[t[i+k]],w=map[t[i+(k+1)%3]];var key=(Math.Min(u,w),Math.Max(u,w));edges.TryGetValue(key,out int count);edges[key]=count+1;}
             }
+            report.Add("METRIC: triangles="+t.Length/3+" thin faces (area ratio < .015)="+thin+" longest edge="+maxEdge);
+            check(mesh.normals.Length==v.Length && mesh.normals.All(n=>float.IsFinite(n.x)&&float.IsFinite(n.y)&&float.IsFinite(n.z)&&n.sqrMagnitude>.9f),"Finite unit mesh normals");
             check(badNormals==0 && degenerate==0,"Upward winding, no degenerate faces");
             check(edges.Values.All(n=>n<=2),"Manifold triangle adjacency");
             // Every unshared edge must lie on the irregular outer perimeter, never inside the terrain.
@@ -126,11 +131,48 @@ namespace TwinEdge.Levels.Editor
 
     public static class MountainBatchV3
     {
+        // Explicit composition edit; ordinary regeneration never rewrites authored values.
+        public static void RefineSightline()
+        {
+            MountainGeneratorV3.CreateOrOpen();
+            var c=MountainGeneratorV3.Config();
+            Undo.RecordObject(c,"Open start sightline");
+            foreach(var p in c.smallPeaks) {
+                var wp=MountainGeneratorV3.WorldPeak(c,p);
+                if(wp.position.y<25 && Mathf.Abs(wp.position.x)<105)
+                    p.height=Mathf.Min(p.height,118+(wp.position.y+145)*.14f);
+            }
+            EditorUtility.SetDirty(c);AssetDatabase.SaveAssets();Run();
+        }
+
+        public static void Refine()
+        {
+            MountainGeneratorV3.CreateOrOpen();
+            var owner=UnityEngine.Object.FindFirstObjectByType<MountainSectionV3>();
+            var c=owner.config; Undo.RecordObject(c,"Refine field composition");
+            var random=new System.Random(c.seed);
+            foreach(var p in c.smallPeaks) {
+                var original=p.position;
+                for(int attempt=0;attempt<120;attempt++) {
+                    p.position=original+new Vector2((float)random.NextDouble()-.5f,(float)random.NextDouble()-.5f)*.19f;
+                    try {MountainGeneratorV3.CheckConfig(c);break;}
+                    catch(InvalidOperationException){p.position=original;}
+                }
+            }
+            EditorUtility.SetDirty(c);AssetDatabase.SaveAssets();Run();
+        }
+
         public static void Run()
         {
             Directory.CreateDirectory(MountainGeneratorV3.Notes);
             MountainGeneratorV3.CreateOrOpen();
             var owner=UnityEngine.Object.FindFirstObjectByType<MountainSectionV3>();
+            var probe=UnityEngine.Object.Instantiate(owner.config);
+            MountainGeneratorV3.Populate(probe);MountainGeneratorV3.CheckConfig(probe);
+            string deterministic=JsonUtility.ToJson(probe);
+            MountainGeneratorV3.Populate(probe);
+            if(deterministic!=JsonUtility.ToJson(probe))throw new InvalidOperationException("Reseed is not deterministic");
+            UnityEngine.Object.DestroyImmediate(probe);
             var original=owner.generated;
             string originalFolder=owner.generationAssets;
             var manual=new GameObject("Manual_PreservationProbe");manual.transform.SetParent(owner.transform.Find("Manual"),false);
@@ -146,6 +188,7 @@ namespace TwinEdge.Levels.Editor
             EditorSceneManager.OpenScene(MountainGeneratorV3.ScenePath,UnityEditor.SceneManagement.OpenSceneMode.Single);
             owner=UnityEngine.Object.FindFirstObjectByType<MountainSectionV3>();
             var report=MountainSectionV3Inspector.Inspect(owner);
+            report.Add("PASS: Constrained reseed clearance and deterministic same-seed configuration");
             report.Add((retained?"PASS":"FAIL")+": Regeneration preserved Manual and unrelated scene content");
             report.Add((undo&&redo?"PASS":"FAIL")+": Undo and Redo restore generated object references; undo="+undo+" redo="+redo+" "+undoState);
             report.Add("PASS: Saved scene reopened before geometry inspection");
@@ -173,6 +216,25 @@ namespace TwinEdge.Levels.Editor
                     camera.Render();RenderTexture.active=rt;
                     var texture=new Texture2D(1600,1200,TextureFormat.RGB24,false);texture.ReadPixels(new Rect(0,0,1600,1200),0,0);texture.Apply();
                     File.WriteAllBytes(folder+"/"+new[]{"Whole","Start","Field","Final","Exit"}[target]+"_"+mode+".png",texture.EncodeToPNG());
+                    UnityEngine.Object.DestroyImmediate(texture);
+                }
+                var c=owner.config;
+                var views=new List<(string,Vector3,Vector3)> {
+                    ("Start_Player",new Vector3(0,c.start.height+2,-190),new Vector3(12,176,160)),
+                    ("Return_Player",new Vector3(12,c.destination.height+2,245),new Vector3(0,136,-160)),
+                    ("Central_Reverse",new Vector3(120,205,155),new Vector3(-25,135,-80)),
+                    ("Outer_Boundary",new Vector3(650,230,-510),new Vector3(310,20,-200)) };
+                foreach(var p in c.smallPeaks.Take(6)) {
+                    var wp=MountainGeneratorV3.WorldPeak(c,p);
+                    var at=new Vector3(wp.position.x,wp.height-10,wp.position.y);
+                    views.Add(("Close_"+p.id,at+new Vector3(70,55,-80),at));
+                }
+                foreach(var view in views) {
+                    camera.orthographic=false;camera.transform.position=view.Item2;camera.transform.LookAt(view.Item3);
+                    camera.Render();RenderTexture.active=rt;
+                    var texture=new Texture2D(1600,1200,TextureFormat.RGB24,false);
+                    texture.ReadPixels(new Rect(0,0,1600,1200),0,0);texture.Apply();
+                    File.WriteAllBytes(folder+"/"+view.Item1+".png",texture.EncodeToPNG());
                     UnityEngine.Object.DestroyImmediate(texture);
                 }
             }
