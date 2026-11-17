@@ -149,7 +149,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::TwinEdge.Levels.Testing.MountainTraversalTest
   view: {fileID: 2100000003}
-  sourceConfig: {fileID: 11400000, guid: c8331f1ff1253c94ab6fc738e4495ada, type: 2}
+  sourceConfig: {fileID: 11400000, guid: c068a931fc6d4930a2f8f04a076774a0, type: 2}
   configHash: 253337b1b9829b152acfa963ab7a6ec34101fb9a0dcd11dfbb041c26d33411f4
   geometryHash: 90b8c2e1f38f25eca5a6505d5b2a02301d36236ba2af80ffc26f5a6c43c4ca4d
   terrainFilter: {fileID: 1970880938}

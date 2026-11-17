@@ -1,4 +1,4 @@
-﻿# V3 mountain traversal testing
+# V3 mountain traversal testing
 
 Open `Assets/Game/Level/Testing/MountainTraversalTest.unity` on its own and press Play. The menu **Tools > Twin Edge > V3 Traversal > Open Test Scene** opens it exclusively after Unity's normal unsaved-scene prompt. Do not run concurrently with the source blockout or networking scenes.
 
@@ -17,3 +17,6 @@ Landing sampling uses the actual MeshCollider: 1.5m grid, <=45 degree center/rin
 JSON sessions save automatically after attempts and on stop, and via F5, under `Docs/Development/Level/V3/TraversalTests/` (local, ignored). They contain source hashes, parameters, static snapshots, per-attempt evidence and grouped preset/route/target/outcome statistics. Zero attempts means failure rate is unmeasured. Visibility and complexity stay unmeasured until human observation. Optional local implementation/verification evidence lives beside these files; this guide does not require it on a fresh clone.
 
 Automated setup check: Unity `-batchmode -projectPath <project> -executeMethod TwinEdge.Levels.Testing.Editor.TraversalSetup.Batch -quit -logFile <ignored-path>` on a fresh setup only. It refuses to overwrite the test scene. Runtime smoke: `-batchmode -projectPath <project> -executeMethod TwinEdge.Levels.Testing.Editor.TraversalSmoke.Run -logFile <ignored-path>` (no `-quit`; the check exits itself). Create the ignored log directory first. Runtime smoke is automated controller evidence, not human play acceptance.
+
+
+The saved historical Sparse/Balanced/Dense simplified-arc test scene uses `Assets/Game/Level/Testing/MountainTraversalBaselineConfig.asset`, frozen byte-for-byte at its recorded config hash. This keeps its cached meshes and authored node coordinates consistent when the live V3 MountainConfig changes. It is a historical prototype, not a cooperative-pole or Relay acceptance test. Use the V3 Mountain Pole Reachability tools and V3Gameplay for current production-mechanic validation. Rebuilding the simplified test scene through its setup tool intentionally creates a new experiment against the current terrain.

@@ -12,6 +12,11 @@ public sealed class Checkpoint : MonoBehaviour
 
     public void Configure(RespawnManager manager, CheckpointPhase checkpointPhase)
     { respawnManager = manager; phase = checkpointPhase; }
+    private TwinEdge.Gameplay.CooperativePole summitPole;
+    private string summitId;
+    public void RequireSummitLanding(TwinEdge.Gameplay.CooperativePole pole, string id)
+    { summitPole = pole; summitId = id; }
+
     // Server polling also handles owner-authoritative replicated transforms without Rigidbody triggers.
     private readonly System.Collections.Generic.HashSet<ulong> registered = new();
     private void Update()
@@ -31,6 +36,10 @@ public sealed class Checkpoint : MonoBehaviour
         if (state == null || !state.CanPlay || player == null) return false;
         if (phase == CheckpointPhase.Cooperation && state.CurrentState != GameState.Cooperation) return false;
         if (phase == CheckpointPhase.Competition && state.CurrentState != GameState.Competition) return false;
+        // Pole arrivals can be anywhere on the real summit, while the respawn pose stays at its existing marker.
+        if (summitPole != null)
+            return TwinEdge.Gameplay.PoleGeometry.Summit(player.transform.position, summitPole.mountain, .9f) == summitId
+                && summitPole.SafeLanding(player.transform.position, out var landed) && landed == summitId;
         Bounds bounds = GetComponent<Collider>().bounds;
         bounds.Expand(1.5f); // Allow for transform replication delay at trigger edges.
         return bounds.Contains(player.transform.position);

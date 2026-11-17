@@ -12,6 +12,7 @@ namespace TwinEdge.Levels.Editor
 {
     public static class MountainGeneratorV3
     {
+        public static event Action<MountainSectionV3> Regenerated;
         public const string ScenePath = "Assets/Game/Level/Scenes/LevelBlockoutV3.unity";
         public const string Notes = "Docs/Development/Level/V3";
         const string ConfigPath = "Assets/Game/Level/Data/MountainConfigV3.asset";
@@ -52,6 +53,8 @@ namespace TwinEdge.Levels.Editor
                 if(!placed)throw new InvalidOperationException("Cannot fit field: increase cluster dimensions or reduce count.");
             }
             c.smallPeaks = field;
+            // Explicit reseeding creates a different layout; old authored canyon links no longer apply.
+            c.poleCanyons = new List<MountainPoleCanyonV3>();
             if (c.boundary.Count == 0)
             {
                 for (int side = -1; side <= 1; side += 2)
@@ -67,7 +70,7 @@ namespace TwinEdge.Levels.Editor
         }
 
         public static MountainPeakV3 WorldPeak(MountainConfigV3 c, MountainPeakV3 p) => new MountainPeakV3 {
-            shape=p.shape, asymmetry=p.asymmetry, id=p.id, position=c.clusterCenter+Vector2.Scale(p.position,c.clusterSize), height=p.height,
+            landingTerrace=p.landingTerrace, landingApproachWidth=p.landingApproachWidth, landingApproachDirection=p.landingApproachDirection, shape=p.shape, asymmetry=p.asymmetry, id=p.id, position=c.clusterCenter+Vector2.Scale(p.position,c.clusterSize), height=p.height,
             summitSize=p.summitSize, rotation=p.rotation, silhouette=p.silhouette, shoulderWidth=p.shoulderWidth };
 
         static float RockHeight(MountainPeakV3 p, float x, float z, float floor)
@@ -80,6 +83,14 @@ namespace TwinEdge.Levels.Editor
             int hash=0;foreach(char ch in p.id)hash=unchecked(hash*31+ch);
             int family=p.shape==MountainShapeV3.Automatic?(hash & 0x7fffffff)%6:(int)p.shape-1;
             float U=u/rx,V=v/rz;
+            if (p.landingTerrace) {
+                // Authored real-rock landing core with continuous sloping sides, not an overlay platform.
+                // Two metres of real rock beyond the permitted ellipse prevent coarse-grid edge triangles
+                // from intruding into the usable capsule support area.
+                float ellipse = Mathf.Sqrt(u*u/((rx+2)*(rx+2))+v*v/((rz+2)*(rz+2)));
+                float outside = Mathf.Max(0,ellipse-1)*Mathf.Min(rx,rz);
+                return Mathf.Max(floor,p.height-outside*.65f-Mathf.Max(0,outside-p.shoulderWidth)*1.35f);
+            }
             // Large-scale directional footprints; no angular cliff/crest height discontinuity.
             float q;
             switch(family) {
@@ -91,6 +102,11 @@ namespace TwinEdge.Levels.Editor
                 default:q=Mathf.Max(Mathf.Abs(U)*.85f+Mathf.Abs(V)*.45f,Mathf.Abs(V)*.9f);break;
             }
             q/=1+p.silhouette*(.65f*Mathf.Sin(angle*3+1.2f)+.35f*Mathf.Cos(angle*5+.8f));
+            if(p.landingApproachWidth>0) {
+                var direction=p.landingApproachDirection.normalized;
+                float lateral=Mathf.Abs(d.x*direction.y-d.y*direction.x);
+                if(Vector2.Dot(d,direction)>0) q=Mathf.Lerp(Mathf.Sqrt(U*U+V*V),q,Mathf.SmoothStep(0,1,Mathf.InverseLerp(p.landingApproachWidth,p.landingApproachWidth+5,lateral)));
+            }
             float distance=Mathf.Max(0,q-1)*Mathf.Min(rx,rz);
             bool range=p.id.StartsWith("Range") || p.id.StartsWith("Rear");
             float crest=0;
@@ -103,6 +119,11 @@ namespace TwinEdge.Levels.Editor
                 crest=rim*profile*(range?24:p.id=="Final"?48:family==4?5:22);
             }
             if(p.id=="Final")crest+=65*Mathf.SmoothStep(0,1,Mathf.InverseLerp(.35f,.9f,V))*Mathf.Exp(-U*U*2)*Mathf.SmoothStep(0,1,Mathf.InverseLerp(10,24,Mathf.Abs(u)));
+            if(p.landingApproachWidth>0) {
+                var approach=p.landingApproachDirection.normalized;
+                float along=Vector2.Dot(d,approach), lateral=Mathf.Abs(d.x*approach.y-d.y*approach.x);
+                if(along>0) crest*=Mathf.SmoothStep(0,1,Mathf.InverseLerp(p.landingApproachWidth,p.landingApproachWidth+5,lateral));
+            }
             float top=p.height+crest;
             if(q<=1)return top;
             float shoulder=Mathf.Max(1,p.shoulderWidth);
@@ -134,20 +155,28 @@ namespace TwinEdge.Levels.Editor
                     throw new InvalidOperationException("Invalid peak data.");
             for (int i=0;i<peaks.Length;i++) for (int j=i+1;j<peaks.Length;j++)
             {
-                float r1=SupportRadius(peaks[i],peaks[j].position-peaks[i].position);
-                float r2=SupportRadius(peaks[j],peaks[i].position-peaks[j].position);
-                // Bounding circles are conservative: reject overlap before replacing any generation.
+                bool terracePair=peaks[i].landingTerrace || peaks[j].landingTerrace;
+                float r1=SupportRadius(peaks[i],peaks[j].position-peaks[i].position,terracePair);
+                float r2=SupportRadius(peaks[j],peaks[i].position-peaks[j].position,terracePair);
+                // Terrace pairs require a real canyon between summit rims; lower geological shoulders may merge.
                 if (Vector2.Distance(peaks[i].position,peaks[j].position)-r1-r2 < c.minimumGap)
                     throw new InvalidOperationException("Insufficient canyon clearance: "+peaks[i].id+" / "+peaks[j].id);
+            }
+            foreach(var cut in c.poleCanyons) {
+                var a=peaks.FirstOrDefault(p=>p.id==cut.from);var b=peaks.FirstOrDefault(p=>p.id==cut.to);
+                if((!string.IsNullOrEmpty(cut.island)&&cut.island!=cut.from&&cut.island!=cut.to)||a==null||b==null||a==b||!float.IsFinite(cut.width)||!float.IsFinite(cut.span)||!float.IsFinite(cut.depth)||cut.width<4||cut.span<20||cut.depth<10)throw new InvalidOperationException("Invalid pole canyon data");
+                var direction=(b.position-a.position).normalized;
+                float gap=Vector2.Distance(a.position,b.position)-SupportRadius(a,direction,true)-SupportRadius(b,-direction,true)-(a.landingTerrace?2:0)-(b.landingTerrace?2:0);
+                if(cut.width>gap-2)throw new InvalidOperationException("Pole canyon must stay outside both summit landing rims: "+cut.from+" / "+cut.to);
             }
             if (Vector2.Distance(new Vector2(c.bridgeAnchor.x,c.bridgeAnchor.z),c.destination.position) > c.destination.summitSize.y*.6f || Mathf.Abs(c.bridgeAnchor.y-c.destination.height)>.5f)
                 throw new InvalidOperationException("Bridge anchor must start on the destination summit at landing height.");
         }
 
-        static float SupportRadius(MountainPeakV3 p,Vector2 direction)
+        static float SupportRadius(MountainPeakV3 p,Vector2 direction,bool summitOnly=false)
         {
             float angle=Mathf.Atan2(direction.y,direction.x)-p.rotation*Mathf.Deg2Rad;
-            return .5f*Mathf.Sqrt(Mathf.Pow(p.summitSize.x*Mathf.Cos(angle),2)+Mathf.Pow(p.summitSize.y*Mathf.Sin(angle),2))*(1+p.silhouette)+p.shoulderWidth;
+            return .5f*Mathf.Sqrt(Mathf.Pow(p.summitSize.x*Mathf.Cos(angle),2)+Mathf.Pow(p.summitSize.y*Mathf.Sin(angle),2))*(summitOnly?1:1+p.silhouette)+(summitOnly?0:p.shoulderWidth);
         }
 
         [MenuItem("Tools/Twin Edge/V3 Mountain/Create or Open Mountain Scene")]
@@ -210,6 +239,7 @@ namespace TwinEdge.Levels.Editor
                 Undo.FlushUndoRecordObjects(); Undo.CollapseUndoOperations(group); EditorSceneManager.MarkSceneDirty(owner.gameObject.scene); AssetDatabase.SaveAssets();
             }
             catch { Undo.RevertAllDownToGroup(group); throw; }
+            Regenerated?.Invoke(owner);
         }
 
         static void Marker(Transform parent,string id,Vector3 point,MarkerKind kind)
@@ -232,11 +262,33 @@ namespace TwinEdge.Levels.Editor
             int nx=Mathf.CeilToInt(1060/c.meshSpacing)+1,nz=Mathf.CeilToInt(1250/c.meshSpacing)+1;
             var inside=new bool[nx*nz];
             var ranges=c.boundary.Select((p,i)=>RangePeak(c,p,i)).ToArray();
+            var terraces=peaks.Where(p=>p.landingTerrace).ToArray();
             Func<float,float,float> height=(x,z)=> {
                 float floor=c.basinHeight+c.terrainHeightVariation*(Mathf.Sin(x*.028f+z*.012f)+Mathf.Cos(z*.039f-x*.009f))*.5f;
                 float y=floor;
                 foreach(var p in peaks) y=Mathf.Max(y,RockHeight(p,x,z,floor));
                 foreach(var p in ranges) y=Mathf.Max(y,RockHeight(p,x,z,floor));
+                // Cut authored landing terraces into any overlapping higher geological shoulder.
+                // This changes the rendered mesh and its collider together; no support object is added.
+                foreach(var p in terraces) {
+                    float distance=Vector2.Distance(new Vector2(x,z),p.position)-(Mathf.Min(p.summitSize.x,p.summitSize.y)*.5f+2);
+                    if(distance<6) y=Mathf.Lerp(Mathf.Min(y,p.height),y,Mathf.SmoothStep(0,1,Mathf.InverseLerp(0,6,distance)));
+                }
+                // Real canyon cuts separate walkable endpoint shoulders while leaving summit ellipses intact.
+                foreach(var cut in c.poleCanyons) {
+                    var a=peaks.First(p=>p.id==cut.from);var b=peaks.First(p=>p.id==cut.to);
+                    Vector2 axis=(b.position-a.position).normalized;
+                    float ra=SupportRadius(a,axis,true)+(a.landingTerrace?2:0),rb=SupportRadius(b,-axis,true)+(b.landingTerrace?2:0);
+                    Vector2 middle=(a.position+axis*ra+b.position-axis*rb)*.5f;
+                    Vector2 delta=new Vector2(x,z)-middle;
+                    bool inside;
+                    if(!string.IsNullOrEmpty(cut.island)) {
+                        var island=peaks.First(p=>p.id==cut.island);
+                        float ring=Mathf.Max(island.summitSize.x,island.summitSize.y)*.5f+7;
+                        inside=Mathf.Abs(Vector2.Distance(new Vector2(x,z),island.position)-ring)<cut.width*.5f;
+                    } else inside=Mathf.Abs(Vector2.Dot(delta,axis))<cut.width*.5f && Mathf.Abs(delta.x*axis.y-delta.y*axis.x)<cut.span*.5f;
+                    if(inside)y=Mathf.Min(y,Mathf.Min(a.height,b.height)-cut.depth);
+                }
                 // Carve a short socket through the destination crest, so the exit stub is exposed.
                 // This stops at the stub: it never connects across the next section.
                 if(Mathf.Abs(x-c.bridgeAnchor.x)<c.bridgeWidth*.9f && z>c.bridgeAnchor.z-18 && z<c.bridgeAnchor.z+c.bridgeStubLength+3)

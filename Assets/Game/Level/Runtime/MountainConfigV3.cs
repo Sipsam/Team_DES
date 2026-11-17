@@ -11,11 +11,22 @@ namespace TwinEdge.Levels
     {
         public MountainShapeV3 shape;
         [Range(0, 1)] public float asymmetry = .45f;
+        [Tooltip("Flatten the permitted summit ellipse into real rock; retains the outer mountain shoulder.")]
+        public bool landingTerrace;
+        [Tooltip("Half-width of a rock-cut approach through a crest; zero preserves the original crest.")]
+        public float landingApproachWidth;
+        public Vector2 landingApproachDirection;
         public string id;
         public Vector2 position;
         public float height = 150;
         public Vector2 summitSize = new Vector2(22, 26);
         public float rotation, silhouette = .16f, shoulderWidth = 7;
+    }
+
+    [Serializable]
+    public sealed class MountainPoleCanyonV3 {
+        public string from, to, island;
+        public float width=6, span=70, depth=25;
     }
 
     [CreateAssetMenu(menuName = "Twin Edge/V3 Mountain Field")]
@@ -38,6 +49,7 @@ namespace TwinEdge.Levels
         public List<MountainPeakV3> smallPeaks = new List<MountainPeakV3>();
         [Tooltip("Unordered boundary summits in world X/Z. Connecting lower shoulders form the enclosing ranges.")]
         public List<MountainPeakV3> boundary = new List<MountainPeakV3>();
+        public List<MountainPoleCanyonV3> poleCanyons = new List<MountainPoleCanyonV3>();
         public Vector3 bridgeAnchor = new Vector3(12,190,330);
         public float bridgeStubLength = 9, bridgeWidth = 7;
     }

@@ -63,7 +63,7 @@ namespace TwinEdge.Levels.Editor
             var report=new List<string>{"Unity "+Application.unityVersion,"Mountain structural verification "+DateTime.Now.ToString("O")};
             Action<bool,string> check=(pass,message)=>report.Add((pass?"PASS: ":"FAIL: ")+message);
             var c=owner.config;
-            try{MountainGeneratorV3.CheckConfig(c);check(true,"Editable config and conservative upper-shoulder separation");}
+            try{MountainGeneratorV3.CheckConfig(c);check(true,"Editable config; terrace rim clearance and original upper-shoulder separation elsewhere");}
             catch(Exception ex){check(false,ex.Message);}
             check(owner.generated!=null && owner.generated.transform.parent==owner.transform,"Owned Generated tree");
             check(owner.transform.Find("Manual")!=null,"Manual sibling exists");
@@ -124,6 +124,7 @@ namespace TwinEdge.Levels.Editor
             var candidates=c.smallPeaks.Select(p=>MountainGeneratorV3.WorldPeak(c,p)).ToArray();
             var components=candidates.Select(component).ToArray();
             check(components.Distinct().Count()==c.smallPeakCount && components.All(x=>x!=start && x!=end),"Each small landing is a separate walking component");
+            foreach(var group in candidates.Select((p,i)=>new {p.id,part=components[i]}).GroupBy(x=>x.part).Where(g=>g.Count()>1||g.Key==start||g.Key==end))report.Add("Walking component: "+string.Join(", ",group.Select(x=>x.id))+(group.Key==start?" + Start":"")+(group.Key==end?" + Final":""));
             report.Add("UNVERIFIED: Actual pole reach, character jump/step controller, landing balance, camera collision, two-player gameplay and runtime fall/respawn behavior. Triangle connectivity is a structural test, not mechanic approval.");
             return report;
         }

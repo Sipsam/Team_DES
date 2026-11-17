@@ -31,6 +31,9 @@ public sealed class V3GameplaySmoke : MonoBehaviour
     IEnumerator Start()
     {
         Application.runInBackground = true; Application.targetFrameRate = 60;
+        // This opt-in process owns a runtime settings clone; hidden-window focus must not discard injected keys.
+        InputSystem.settings = Instantiate(InputSystem.settings);
+        InputSystem.settings.backgroundBehavior = InputSettings.BackgroundBehavior.IgnoreFocus;
         Application.logMessageReceived += Log;
         manager = FindFirstObjectByType<NetworkManager>(); sessions = FindFirstObjectByType<MultiplayerSessionManager>();
         yield return Until(() => FindObjectsByType<Checkpoint>(FindObjectsSortMode.None).Length >= 4, "V3 load / checkpoint setup");
@@ -53,6 +56,7 @@ public sealed class V3GameplaySmoke : MonoBehaviour
         player = manager.LocalClient.PlayerObject.GetComponent<PlayerMovement>();
         Check(player.IsOwner, "Local ownership");
         Check(Camera.main != null && Camera.main.enabled && Camera.main.GetComponent<ThirdPersonCamera>().enabled, "Owner camera bound and rendering enabled");
+        Check(!FindObjectsByType<Camera>(FindObjectsSortMode.None).Any(c => c.enabled && c.name == "MountainPreviewCamera"), "Level preview cannot overwrite owner view: "+string.Join(", ",FindObjectsByType<Camera>(FindObjectsSortMode.None).Select(c=>c.name+" enabled="+c.enabled+" scene="+c.gameObject.scene.name)));
         Check(FindObjectsByType<AudioListener>(FindObjectsSortMode.None).Count(x => x.enabled) == 1, "One audio listener");
         if (host) game.StartFoundation();
         yield return Until(() => game.CanPlay, "Host starts outbound");

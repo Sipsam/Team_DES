@@ -37,6 +37,8 @@ MonoBehaviour:
   destination:
     shape: 0
     asymmetry: 0.45
+    landingApproachWidth: 14
+    landingApproachDirection: {x: -0.534, y: -0.845}
     id: Final
     position: {x: 12, y: 285}
     height: 190
@@ -66,21 +68,23 @@ MonoBehaviour:
   - shape: 0
     asymmetry: 0.45
     id: Peak_03
-    position: {x: -0.07016889, y: -0.33227453}
-    height: 126.68373
-    summitSize: {x: 22, y: 20}
+    position: {x: -0.023813187, y: -0.384862102}
+    height: 140
+    summitSize: {x: 38, y: 38}
     rotation: 134
-    silhouette: 0.20525262
-    shoulderWidth: 4
+    silhouette: 0.02
+    shoulderWidth: 1
+    landingTerrace: 1
   - shape: 0
     asymmetry: 0.45
     id: Peak_04
-    position: {x: 0.06158292, y: -0.41785917}
-    height: 122.6099
-    summitSize: {x: 20, y: 19}
+    position: {x: 0.061538462, y: -0.529411765}
+    height: 134
+    summitSize: {x: 38, y: 38}
     rotation: 117
-    silhouette: 0.17304267
-    shoulderWidth: 5
+    silhouette: 0.02
+    shoulderWidth: 1
+    landingTerrace: 1
   - shape: 0
     asymmetry: 0.45
     id: Peak_05
@@ -129,16 +133,17 @@ MonoBehaviour:
   - shape: 0
     asymmetry: 0.45
     id: Peak_10
-    position: {x: 0.048302986, y: -0.21316703}
-    height: 132.35326
-    summitSize: {x: 23, y: 25}
+    position: {x: 0.050769560, y: -0.223822800}
+    height: 146
+    summitSize: {x: 38, y: 38}
     rotation: 48
-    silhouette: 0.22561212
-    shoulderWidth: 5
+    silhouette: 0.02
+    shoulderWidth: 1
+    landingTerrace: 1
   - shape: 0
     asymmetry: 0.45
     id: Peak_11
-    position: {x: 0.17099911, y: -0.20459057}
+    position: {x: 0.172103360, y: -0.204414324}
     height: 132.76149
     summitSize: {x: 20, y: 20}
     rotation: 145
@@ -174,21 +179,23 @@ MonoBehaviour:
   - shape: 0
     asymmetry: 0.45
     id: Peak_15
-    position: {x: -0.10411598, y: 0.04381997}
-    height: 159.5
-    summitSize: {x: 24, y: 26}
+    position: {x: -0.099484006, y: 0.084591004}
+    height: 158
+    summitSize: {x: 38, y: 38}
     rotation: 49
-    silhouette: 0.19707277
-    shoulderWidth: 4
+    silhouette: 0.02
+    shoulderWidth: 1
+    landingTerrace: 1
   - shape: 0
     asymmetry: 0.45
     id: Peak_16
-    position: {x: -0.015967064, y: -0.067948826}
-    height: 139.26564
-    summitSize: {x: 18, y: 26}
+    position: {x: -0.023809224, y: -0.062781075}
+    height: 152
+    summitSize: {x: 38, y: 38}
     rotation: 166
-    silhouette: 0.2065982
-    shoulderWidth: 6
+    silhouette: 0.02
+    shoulderWidth: 1
+    landingTerrace: 1
   - shape: 0
     asymmetry: 0.45
     id: Peak_17
@@ -219,21 +226,23 @@ MonoBehaviour:
   - shape: 0
     asymmetry: 0.45
     id: Peak_20
-    position: {x: -0.19049461, y: 0.16343468}
-    height: 154.75
-    summitSize: {x: 18, y: 24}
+    position: {x: -0.128205128, y: 0.255882353}
+    height: 164
+    summitSize: {x: 38, y: 38}
     rotation: 133
-    silhouette: 0.11367414
-    shoulderWidth: 4
+    silhouette: 0.02
+    shoulderWidth: 1
+    landingTerrace: 1
   - shape: 0
     asymmetry: 0.45
     id: Peak_21
-    position: {x: -0.041614912, y: 0.26352835}
-    height: 157.75
-    summitSize: {x: 22, y: 26}
+    position: {x: -0.020512821, y: 0.388235294}
+    height: 172
+    summitSize: {x: 38, y: 38}
     rotation: 87
-    silhouette: 0.13051811
-    shoulderWidth: 4
+    silhouette: 0.02
+    shoulderWidth: 1
+    landingTerrace: 1
   - shape: 0
     asymmetry: 0.45
     id: Peak_22
@@ -273,21 +282,23 @@ MonoBehaviour:
   - shape: 0
     asymmetry: 0.45
     id: Peak_26
-    position: {x: -0.21951577, y: 0.32613045}
-    height: 173
-    summitSize: {x: 22, y: 18}
+    position: {x: -0.189743590, y: 0.420588235}
+    height: 172
+    summitSize: {x: 38, y: 38}
     rotation: 138
-    silhouette: 0.17336579
-    shoulderWidth: 5
+    silhouette: 0.02
+    shoulderWidth: 1
+    landingTerrace: 1
   - shape: 0
     asymmetry: 0.45
     id: Peak_27
-    position: {x: -0.15625249, y: 0.46093222}
-    height: 180
-    summitSize: {x: 22, y: 22}
+    position: {x: -0.079487179, y: 0.550000000}
+    height: 182
+    summitSize: {x: 38, y: 38}
     rotation: 112
-    silhouette: 0.20081176
-    shoulderWidth: 6
+    silhouette: 0.02
+    shoulderWidth: 1
+    landingTerrace: 1
   boundary:
   - shape: 0
     asymmetry: 0.45
@@ -451,6 +462,19 @@ MonoBehaviour:
     rotation: 0
     silhouette: 0.3
     shoulderWidth: 25
+  poleCanyons:
+  - from: Start
+    to: Peak_04
+    island: Peak_04
+    width: 6
+    span: 70
+    depth: 25
+  - from: Peak_27
+    to: Final
+    island: Peak_27
+    width: 6
+    span: 70
+    depth: 25
   bridgeAnchor: {x: 12, y: 190, z: 330}
   bridgeStubLength: 9
   bridgeWidth: 7

@@ -21,10 +21,26 @@ namespace TwinEdge.Gameplay
         bool ready, debug;
         string code = "";
         string error;
+        void OnEnable()
+        {
+            SceneManager.sceneLoaded += DisableLevelPreview;
+            var scene = SceneManager.GetSceneByName(levelScene);
+            if (scene.IsValid() && scene.isLoaded) DisableLevelPreview(scene, LoadSceneMode.Additive);
+        }
+        void OnDisable() => SceneManager.sceneLoaded -= DisableLevelPreview;
+        void DisableLevelPreview(Scene scene, LoadSceneMode mode)
+        {
+            if (scene.name != levelScene) return;
+            foreach (var root in scene.GetRootGameObjects())
+                foreach (var preview in root.GetComponentsInChildren<Camera>(true))
+                    if (preview.name == "MountainPreviewCamera") preview.enabled = false;
+        }
+
         IEnumerator Start()
         {
             if (!SceneManager.GetSceneByName(levelScene).isLoaded)
                 yield return SceneManager.LoadSceneAsync(levelScene, LoadSceneMode.Additive);
+            DisableLevelPreview(SceneManager.GetSceneByName(levelScene), LoadSceneMode.Additive);
             var start = FindObjectsByType<LevelMarker>(FindObjectsSortMode.None).SingleOrDefault(m => m.id == "Mountain.V3.Start");
             if (start == null) { error = "V3 start marker missing. Session disabled."; yield break; }
             Physics.SyncTransforms();
@@ -61,7 +77,9 @@ namespace TwinEdge.Gameplay
             var obj = new GameObject("GameplayCheckpoint_" + label);
             obj.transform.SetParent(transform); obj.transform.position = SafeGround(position);
             var box = obj.AddComponent<BoxCollider>(); box.isTrigger = true; box.size = new Vector3(9, 4, 9); box.center = Vector3.up * 2;
-            obj.AddComponent<Checkpoint>().Configure(respawns, phase);
+            var checkpoint = obj.AddComponent<Checkpoint>(); checkpoint.Configure(respawns, phase);
+            if (label == "Big summit" && cooperativePole != null && cooperativePole.mountain != null)
+                checkpoint.RequireSummitLanding(cooperativePole, cooperativePole.mountain.destination.id);
         }
         void Update()
         {

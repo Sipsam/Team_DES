@@ -38,7 +38,7 @@ namespace TwinEdge.Gameplay
             {
                 var task = sessions.CreateRoomAsync(); yield return Until(()=>task.IsCompleted,"Relay create",90);
                 Check(sessions.HasSession,"Relay session created");
-                File.WriteAllText(evidence+"/room.txt",sessions.CurrentJoinCode);
+                File.WriteAllText(evidence+"/room.tmp",sessions.CurrentJoinCode);File.Move(evidence+"/room.tmp",evidence+"/room.txt");
             }
             else
             {
@@ -92,6 +92,8 @@ namespace TwinEdge.Gameplay
             yield return Until(()=>Mathf.Abs(pole.Snapshot.yaw-s.yaw)>2,"Orbit rotation replicated");
             Check(Mathf.Abs(Vector3.Distance(pole.Snapshot.a,pole.Snapshot.b)-pole.length)<.002f,"Rigid endpoint distance");
             Check(Vector3.Distance(s.PivotPoint,pole.Snapshot.PivotPoint)<.001f,"Pivot remains fixed");
+            PoleRuntimeCapture.Save(pole,evidence+"/"+prefix+"-pole-rotation.png");
+            ScreenCapture.CaptureScreenshot(evidence+"/"+prefix+"-owner-camera.png");
             File.WriteAllText(evidence+"/"+prefix+"-rotation.txt",JsonUtility.ToJson(pole.Snapshot));
             yield return Until(()=>File.Exists(evidence+"/host-rotation.txt") && File.Exists(evidence+"/client-rotation.txt"),"Rotation barrier");
             if (!host) pole.CancelRpc(pole.Snapshot.revision);
@@ -115,13 +117,19 @@ namespace TwinEdge.Gameplay
             if (!host)
             {
                 yield return Until(()=>File.Exists(evidence+"/host-pass.txt"),"Host completed");
+                float movingDeadline=Time.realtimeSinceStartup+8;
+                while(!File.Exists(evidence+"/host-moving.txt")&&Time.realtimeSinceStartup<movingDeadline){pole.SteerRpc(pole.Snapshot.revision,new Vector2(.2f,0));yield return new WaitForSeconds(.05f);}
+                Check(File.Exists(evidence+"/host-moving.txt"),"Server observed actual motion before disconnect");
                 var task = sessions.LeaveRoomAsync(); yield return Until(()=>task.IsCompleted,"Client leave");
             }
             else
             {
+                var beforeDisconnect=pole.Snapshot.OrbitPoint;
+                yield return Until(()=>pole.Snapshot.phase==PolePhase.Rotating&&Vector3.Distance(beforeDisconnect,pole.Snapshot.OrbitPoint)>.1f,"Actual orbital motion before disconnect");
+                File.WriteAllText(evidence+"/host-moving.txt",JsonUtility.ToJson(pole.Snapshot));
                 yield return Until(()=>!game.IsGameReady,"Disconnect pauses foundation");
                 yield return Until(()=>pole.Snapshot.phase==PolePhase.Idle && !player.GetComponent<PoleMotor>().Attached,"Attached disconnect releases survivor");
-                File.WriteAllText(evidence+"/disconnect-pass.txt","PASS attached client disconnected; server pole idle, survivor movement restored.");
+                File.WriteAllText(evidence+"/disconnect-pass.txt","PASS client disconnected during actual server-observed orbital motion; server pole idle, survivor movement restored.");
             }
             Application.Quit(0);
         }

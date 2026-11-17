@@ -10,6 +10,8 @@ namespace TwinEdge.Gameplay
     public sealed class CooperativePole : NetworkBehaviour, IInteractable
     {
         public static CooperativePole Current { get; private set; }
+        // Optional observational hook; subscribers cannot approve a rejected sweep.
+        public event System.Action<Vector3, Vector3, Vector3> CollisionRejected;
         [Header("Unconfirmed tuning hypotheses (metres / degrees / seconds)")]
         [Min(3)] public float length = 32;
         public float angularSpeed = 24, pitchSpeed = 12, maxPitch = 40;
@@ -26,6 +28,7 @@ namespace TwinEdge.Gameplay
         double pivotInputAt;
         double inputAt, attachedAt;
         float stable;
+        bool orbitAirborne;
         string candidate;
         string pivotSummit;
         bool debug;
@@ -54,7 +57,7 @@ namespace TwinEdge.Gameplay
             Current = this;
             if (IsServer)
             {
-                snapshot.Value = Home(default);
+                snapshot.Value = Home(default); orbitAirborne = false;
                 NetworkManager.OnClientDisconnectCallback += Disconnected;
             }
         }
@@ -81,6 +84,7 @@ namespace TwinEdge.Gameplay
             {
                 if (s.phase != PolePhase.Landed || sender != s.Orbit || !SafeLanding(s.OrbitPoint, out var landed) || landed == pivotSummit) return;
                 s.pivotRight = !s.pivotRight;
+                orbitAirborne = false;
                 pivotSummit = landed; s.surface = landed; s.phase = PolePhase.Ready;
                 SetAngles(ref s); s.revision++; snapshot.Value = s; intent = Vector2.zero; pivotIntent = Vector2.zero; stable = 0;
                 return;
@@ -130,7 +134,7 @@ namespace TwinEdge.Gameplay
             foreach (ulong id in new[] { s.left, s.right }) Player(id)?.GetComponent<GameplayCharacter>()?.SetCarryingServer(false);
             s.failure = reason;
             // Release atomically before calling respawn so the hook cannot recurse.
-            snapshot.Value = Home(s); intent = Vector2.zero; pivotIntent = Vector2.zero; stable = 0; candidate = null;
+            snapshot.Value = Home(s); orbitAirborne = false; intent = Vector2.zero; pivotIntent = Vector2.zero; stable = 0; candidate = null;
             if (respawnOrbit && falling != null) FindFirstObjectByType<RespawnManager>()?.RespawnPlayer(falling.GetComponent<PlayerMovement>());
         }
         void Update()
@@ -161,6 +165,8 @@ namespace TwinEdge.Gameplay
             if (Player(s.Pivot) == null || (s.Paired && Player(s.Orbit) == null)) { Fail("Missing participant", false); return; }
             if (!SafeLanding(s.PivotPoint, out _)) { Fail("Pivot lost terrain support", true, s.Pivot); return; }
             if (!s.Paired) { if (NetworkManager.ServerTime.Time - attachedAt > maxIdleSeconds) Fail("Waiting timeout", false); return; }
+            if (!SafeLanding(s.OrbitPoint, out _)) orbitAirborne = true;
+            bool stoppedOnLanding = false;
             Vector2 control = NetworkManager.ServerTime.Time - inputAt < .25 ? intent : Vector2.zero;
             // On the same summit, the pivot may carry the rigid pair toward a departure edge.
             // Both real feet must stay supported; once the orbit leaves terrain the pivot is locked.
@@ -183,14 +189,23 @@ namespace TwinEdge.Gameplay
                 for (int i = 1; i <= steps; i++)
                 {
                     Vector3 point = PoleGeometry.Endpoint(s.PivotPoint, length, Mathf.Lerp(s.yaw, yaw, (float)i / steps), Mathf.Lerp(s.pitch, pitch, (float)i / steps));
-                    if (!ClearPath(last, point, orbit) || !ClearRod(s.PivotPoint, point)) { Fail("Terrain / capsule collision", true); return; }
+                    bool clearBody = ClearPath(last, point, orbit), clearRod = ClearRod(s.PivotPoint, point);
+                    if (!clearBody || !clearRod) {
+                        // A real walkable contact after flight stops at the previous authoritative sphere pose.
+                        // No endpoint is projected/snapped onto terrain, and no rejected pose is applied.
+                        if (!clearBody && clearRod && orbitAirborne && LandingContact(before, point, orbit)) { stoppedOnLanding = true; break; }
+                        try { CollisionRejected?.Invoke(s.PivotPoint,last,point); } catch (System.Exception ex) { Debug.LogWarning("Pole collision trace failed: "+ex.Message); }
+                        Fail("Terrain / capsule collision", true); return;
+                    }
                     last = point;
                 }
+                if (!stoppedOnLanding) {
                 s.yaw = yaw; s.pitch = pitch;
                 if (s.pivotRight) s.a = after; else s.b = after;
                 s.phase = PolePhase.Rotating;
+                }
             }
-            bool landed = SafeLanding(s.OrbitPoint, out string id) && id != pivotSummit && control.sqrMagnitude < .001f;
+            bool landed = SafeLanding(s.OrbitPoint, out string id) && id != pivotSummit && (control.sqrMagnitude < .001f || stoppedOnLanding);
             stable = landed && candidate == id ? stable + Time.fixedDeltaTime : 0;
             candidate = landed ? id : null;
             if (stable >= landingDwell) { s.phase = PolePhase.Landed; s.surface = id; }
@@ -209,6 +224,18 @@ namespace TwinEdge.Gameplay
             }
             return true;
         }
+        bool LandingContact(Vector3 from, Vector3 to, NetworkObject player)
+        {
+            if (to.y >= from.y || !SafeLanding(from, out _)) return false;
+            var cc = player.GetComponent<CharacterController>();
+            float radius = cc.radius - .03f, half = cc.height * .5f - radius;
+            Vector3 delta = to - from;
+            var hits = Physics.CapsuleCastAll(from + cc.center - Vector3.up * half + Vector3.up * .04f,
+                from + cc.center + Vector3.up * half, radius, delta.normalized, delta.magnitude,
+                ~0, QueryTriggerInteraction.Ignore).Where(h => Environment(h.collider)).ToArray();
+            return hits.Length > 0 && hits.All(h => h.normal.y >= .85f);
+        }
+
         bool ClearPath(Vector3 from, Vector3 to, NetworkObject player)
         {
             var cc = player.GetComponent<CharacterController>();
