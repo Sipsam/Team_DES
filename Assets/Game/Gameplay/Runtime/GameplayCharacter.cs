@@ -33,7 +33,7 @@ namespace TwinEdge.Gameplay
             {
                 float speed = Vector3.ProjectOnPlane(transform.position - previous, Vector3.up).magnitude / (Time.time - sampleTime);
                 var poleMotor = GetComponent<PoleMotor>();
-                motion.Value = poleMotor != null && poleMotor.Attached ? (poleMotor.Orbiting ? (byte)3 : (byte)4) : !GetComponent<PlayerMovement>().IsGrounded ? (byte)3 : speed < .15f ? (byte)0 : carrying.Value ? (byte)4 : speed > 4f ? (byte)2 : (byte)1;
+                motion.Value = poleMotor != null && poleMotor.Attached ? (poleMotor.Orbiting ? (byte)3 : (byte)4) : GetComponent<MountainReturnLaunch>()?.State.Value == LaunchState.Landing ? (byte)0 : (GetComponent<MountainReturnLaunch>()?.InFlight == true || !GetComponent<PlayerMovement>().IsGrounded) ? (byte)3 : speed < .15f ? (byte)0 : carrying.Value ? (byte)4 : speed > 4f ? (byte)2 : (byte)1;
                 previous = transform.position; sampleTime = Time.time;
             }
             if (rendered != motion.Value)

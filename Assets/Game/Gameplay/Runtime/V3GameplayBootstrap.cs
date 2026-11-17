@@ -101,6 +101,12 @@ namespace TwinEdge.Gameplay
             if (GUILayout.Button("Leave room")) _ = sessions.LeaveRoomAsync();
             GUI.enabled = manager.IsServer && state.IsGameReady;
             if (GUILayout.Button("Start game")) state.StartFoundation();
+            #if UNITY_EDITOR || DEVELOPMENT_BUILD
+            if (GUILayout.Button("DEV: Return (server phase transition)"))
+            {
+                if (state.AdvanceFoundation(FoundationPhase.SealPending)) state.AdvanceFoundation(FoundationPhase.Return);
+            }
+#endif
             GUI.enabled = true;
             GUILayout.Label($"Players: {state.ConnectedPlayerCount}/2 | Phase: {state.FoundationPhaseLabel}");
             var player = manager.LocalClient?.PlayerObject;

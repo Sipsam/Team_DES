@@ -8,6 +8,8 @@ namespace TwinEdge.Gameplay
     {
         public InputActionAsset actions;
         InputActionAsset instance;
+        public InputAction Launch { get; private set; }
+        public InputAction LaunchCancel { get; private set; }
         public InputAction Move { get; private set; }
         public InputAction Jump { get; private set; }
         public InputAction Sprint { get; private set; }
@@ -34,6 +36,8 @@ namespace TwinEdge.Gameplay
             var map = instance.FindActionMap("Player", true);
             Move = map.FindAction("Move", true); Jump = map.FindAction("Jump", true);
             Sprint = map.FindAction("Sprint", true); Interact = map.FindAction("Interact", true);
+            Launch = map.AddAction("ReturnLaunch", UnityEngine.InputSystem.InputActionType.Button, "<Keyboard>/r");
+            LaunchCancel = map.AddAction("ReturnCancel", UnityEngine.InputSystem.InputActionType.Button, "<Keyboard>/escape");
             map.Enable();
         }
         void OnDestroy() { if (instance != null) { instance.Disable(); Destroy(instance); } }

@@ -248,6 +248,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 884166343593699352, guid: cc47681f0b69fe746a2482dfa4c8af4b, type: 3}
       insertIndex: -1
       addedObject: {fileID: 749905564856991976}
+    - targetCorrespondingSourceObject: {fileID: 884166343593699352, guid: cc47681f0b69fe746a2482dfa4c8af4b, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 7657216293243401717}
   m_SourcePrefab: {fileID: 100100000, guid: cc47681f0b69fe746a2482dfa4c8af4b, type: 3}
 --- !u!1 &460619931900518097 stripped
 GameObject:
@@ -264,7 +267,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 5f496bf0f9be5b141b50cb1183c0b131, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Assembly-CSharp::TwinEdge.Gameplay.GameplayInput
   actions: {fileID: -944628639613478452, guid: 052faaac586de48259a63d0c4782560b, type: 3}
 --- !u!114 &5334908212402902658
@@ -277,7 +280,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 3d380b6f14b9e2b4cb2b76d863c8e410, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Assembly-CSharp::TwinEdge.Gameplay.GameplayCharacter
   ShowTopMostFoldoutHeaderGroup: 1
   animator: {fileID: 4447214307476119673}
@@ -293,6 +296,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d1151352df5430b4eaa6d162ee2cc963, type: 3}
   m_Name:
   m_EditorClassIdentifier: Assembly-CSharp::TwinEdge.Gameplay.PoleMotor
+--- !u!114 &7657216293243401717
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 460619931900518097}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 137332f34fb29a840beb6724cdfd4b9f, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::TwinEdge.Gameplay.MountainReturnLaunch
+  ShowTopMostFoldoutHeaderGroup: 1
+  config: {fileID: 11400000, guid: a1a452716f407344cbb0e2e8e118d352, type: 2}
 --- !u!4 &5930110596755836109 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 6371115535682140676, guid: cc47681f0b69fe746a2482dfa4c8af4b, type: 3}

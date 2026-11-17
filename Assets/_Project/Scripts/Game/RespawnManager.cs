@@ -33,6 +33,7 @@ public sealed class RespawnManager : NetworkBehaviour
         foreach (NetworkClient client in NetworkManager.ConnectedClientsList)
         {
             if (client.PlayerObject == null) continue;
+            if (client.PlayerObject.GetComponent<TwinEdge.Gameplay.MountainReturnLaunch>()?.InFlight == true) continue;
             var position = client.PlayerObject.transform.position;
             bool fallen = position.y < fallRecoveryHeight;
             if (client.PlayerObject.GetComponent<TwinEdge.Gameplay.GameplayCharacter>() != null)
@@ -81,6 +82,7 @@ public sealed class RespawnManager : NetworkBehaviour
         lastRespawnTimes[player.OwnerClientId] = Time.time;
 
         TwinEdge.Gameplay.CooperativePole.Current?.BeforeRespawnServer(player.OwnerClientId);
+        player.GetComponent<TwinEdge.Gameplay.MountainReturnLaunch>()?.BeforeRespawnServer();
 
         player.GetComponent<PlayerCombat>()?.ForceEndGrabServer();
 

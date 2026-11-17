@@ -52,6 +52,8 @@ public sealed class PlayerMovement : NetworkBehaviour
             return;
         }
 
+        if (GetComponent<TwinEdge.Gameplay.MountainReturnLaunch>()?.ControlsMovement == true) return;
+
         // A pole release/respawn can arrive before its LateUpdate restores the controller.
         if (!characterController.enabled) return;
 
@@ -212,6 +214,7 @@ public sealed class PlayerMovement : NetworkBehaviour
         }
 
         GetComponent<TwinEdge.Gameplay.PoleMotor>()?.SuspendForRespawn();
+        GetComponent<TwinEdge.Gameplay.MountainReturnLaunch>()?.ResetOwner();
 
         bool controllerWasEnabled = characterController != null && characterController.enabled;
         if (controllerWasEnabled)
