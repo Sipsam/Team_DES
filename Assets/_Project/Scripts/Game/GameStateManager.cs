@@ -86,8 +86,8 @@ public sealed class GameStateManager : NetworkBehaviour
         connectedPlayerCount.Value = count;
         if (foundationMode)
         {
-            if (count < 2) foundationPhase.Value = FoundationPhase.WaitingForPlayers;
-            else if (foundationPhase.Value == FoundationPhase.WaitingForPlayers) foundationPhase.Value = FoundationPhase.Preparing;
+            if (count < 2 && foundationPhase.Value < FoundationPhase.Outbound) foundationPhase.Value = FoundationPhase.WaitingForPlayers;
+            else if (count == 2 && foundationPhase.Value == FoundationPhase.WaitingForPlayers) foundationPhase.Value = FoundationPhase.Preparing;
         }
         if (count == 2 && courseStartedAt.Value < 0d)
         {
@@ -103,6 +103,8 @@ public sealed class GameStateManager : NetworkBehaviour
         winnerClientId.OnValueChanged += HandleWinnerChanged;
         if (IsServer)
         {
+            if (foundationMode && NetworkManager.NetworkConfig.EnableSceneManagement)
+                NetworkManager.SceneManager.SetClientSynchronizationMode(UnityEngine.SceneManagement.LoadSceneMode.Additive);
             arrivedClientIds.Clear();
             turnPointArrivalCount.Value = 0;
             winnerClientId.Value = ulong.MaxValue;

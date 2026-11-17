@@ -24,6 +24,7 @@ public sealed class PlayerMovement : NetworkBehaviour
     private bool puzzleUiInputBlocked;
     private GameStateManager gameStateManager;
     private float verticalSpeed;
+    private float bridgeJumpSpeed;
     private Vector3 externalVelocity;
     private readonly NetworkVariable<float> movementSpeedMultiplier = new NetworkVariable<float>(
         1f, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
@@ -62,6 +63,7 @@ public sealed class PlayerMovement : NetworkBehaviour
 
         IsGrounded = characterController.isGrounded;
 
+        if (IsGrounded) bridgeJumpSpeed = 0f;
         if (IsGrounded && verticalSpeed < 0f)
         {
             verticalSpeed = -groundedDownForce;
@@ -76,6 +78,17 @@ public sealed class PlayerMovement : NetworkBehaviour
 
         Vector3 moveDirection = GetCameraRelativeDirection(input);
 
+        var bridge = TwinEdge.Gameplay.BridgeGameplay.Current;
+        bool sprint = gameplayInput?.Sprint?.IsPressed() == true;
+        if (IsSpawned && bridge != null && bridge.Holds(OwnerClientId))
+        {
+            bridge.MoveHolder(this, characterController, moveDirection, sprint);
+            verticalSpeed = 0f;
+            externalVelocity = Vector3.zero;
+            IsGrounded = characterController.isGrounded;
+            return;
+        }
+
         if (moveDirection.sqrMagnitude > 0.001f)
         {
             Quaternion targetRotation = Quaternion.LookRotation(moveDirection, Vector3.up);
@@ -89,10 +102,12 @@ public sealed class PlayerMovement : NetworkBehaviour
         if (canReadInput && IsGrounded && (gameplayInput != null ? gameplayInput.Jump != null && gameplayInput.Jump.WasPressedThisFrame() : keyboard != null && keyboard.spaceKey.wasPressedThisFrame))
         {
             verticalSpeed = Mathf.Sqrt(2f * gravity * jumpHeight);
+            if (bridge != null && bridge.UsesBridgeJump(transform.position)) bridgeJumpSpeed = bridge.BridgeJumpSpeed(sprint);
         }
 
         verticalSpeed -= gravity * Time.deltaTime;
-        Vector3 velocity = moveDirection * (moveSpeed * (gameplayInput != null && gameplayInput.Sprint != null && gameplayInput.Sprint.IsPressed() ? 1.6f : 1f) * movementSpeedMultiplier.Value);
+        float horizontalSpeed = bridgeJumpSpeed > 0 ? bridgeJumpSpeed : moveSpeed * (sprint ? 1.6f : 1f);
+        Vector3 velocity = moveDirection * (horizontalSpeed * movementSpeedMultiplier.Value);
         velocity += externalVelocity;
         velocity.y = verticalSpeed + externalVelocity.y;
         characterController.Move(velocity * Time.deltaTime);
@@ -100,6 +115,12 @@ public sealed class PlayerMovement : NetworkBehaviour
             externalVelocity, Vector3.zero, externalVelocityDecay * Time.deltaTime);
 
         IsGrounded = characterController.isGrounded;
+    }
+
+    private void OnControllerColliderHit(ControllerColliderHit hit)
+    {
+        if (IsSpawned && IsOwner && gameplayInput != null)
+            TwinEdge.Gameplay.BridgeGameplay.Current?.ReportSupport(this, hit);
     }
 
     public override void OnNetworkSpawn()
@@ -150,6 +171,7 @@ public sealed class PlayerMovement : NetworkBehaviour
 
     public void ResetVerticalVelocity()
     {
+        bridgeJumpSpeed = 0f;
         verticalSpeed = 0f;
         externalVelocity = Vector3.zero;
         IsGrounded = false;

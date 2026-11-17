@@ -23,6 +23,16 @@ public sealed class PlayerInteraction : NetworkBehaviour
         if (IsSpawned && TwinEdge.Gameplay.CooperativePole.Current != null &&
             TwinEdge.Gameplay.CooperativePole.Current.IsAttached(OwnerClientId)) return;
 
+        var bridge = TwinEdge.Gameplay.BridgeGameplay.Current;
+        if (IsSpawned && bridge != null && bridge.Holds(OwnerClientId))
+        {
+            CurrentTarget = bridge;
+            if (Keyboard.current?.escapeKey.wasPressedThisFrame == true) bridge.Cancel(this);
+            else if (gameplayInput?.AcceptsInput == true && gameplayInput.Interact?.WasPressedThisFrame() == true)
+                bridge.Interact(this);
+            return;
+        }
+
         if (gameplayInput != null && Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame)
         {
             foreach (var target in FindObjectsByType<TwinEdge.Gameplay.NetworkInteractionTarget>(FindObjectsSortMode.None)) target.Cancel(this);

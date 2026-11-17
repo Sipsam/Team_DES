@@ -34,6 +34,7 @@ namespace TwinEdge.Gameplay
             foreach (var root in scene.GetRootGameObjects())
                 foreach (var preview in root.GetComponentsInChildren<Camera>(true))
                     if (preview.name == "MountainPreviewCamera") preview.enabled = false;
+            state.GetComponent<BridgeGameplay>()?.Bind(scene);
         }
 
         IEnumerator Start()
@@ -116,7 +117,20 @@ namespace TwinEdge.Gameplay
                 var interaction = player.GetComponent<PlayerInteraction>();
                 GUILayout.Label($"Player {player.OwnerClientId} | Checkpoint: {character.CheckpointName.Value}");
                 GUILayout.Label($"Respawns: {character.RespawnCount.Value}");
-                GUILayout.Label(interaction.CurrentTarget is NetworkInteractionTarget target ? target.Prompt : "E: interact");
+                if (BridgeGameplay.Current is { } bridge && bridge.PlankCount > 0 &&
+                    Vector3.Distance(player.transform.position, bridge.StartPoint) <= bridge.Length + 10 &&
+                    Mathf.Abs(player.transform.position.x - bridge.StartPoint.x) < 12 &&
+                    Mathf.Abs(player.transform.position.y - bridge.StartPoint.y) < 8 &&
+                    player.transform.position.z >= bridge.StartPoint.z - 16)
+                    GUILayout.Label(bridge.CompletedDeliveries == bridge.TotalDeliveries
+                        ? "Bridge complete. The timber creaks."
+                        : $"Bridge construction {bridge.CompletedDeliveries}/{bridge.TotalDeliveries}");
+                GUILayout.Label(interaction.CurrentTarget switch
+                {
+                    NetworkInteractionTarget target => target.Prompt,
+                    BridgeGameplay construction => construction.Prompt,
+                    _ => "E: interact"
+                });
                 if (debug) GUILayout.Label($"DEBUG (F3)\nPosition: {player.transform.position:F2}\nGrounded: {player.GetComponent<PlayerMovement>().IsGrounded}\nOwner: {player.IsOwner}\nAnimator: {character.AnimationState}\nTarget: {(interaction.CurrentTarget as MonoBehaviour)?.name}");
             }
             GUILayout.Label("WASD / Shift / Space / E | Esc: menu, cancel\nClick world: capture mouse | F3: debug");

@@ -55,12 +55,13 @@ public sealed class NetworkSpawnCoordinator : MonoBehaviour
         }
 
         Transform spawnPoint = spawnPoints[spawnIndex];
+        Pose pose = GetSpawnPose(spawnPoint, out _);
         clientSpawnSlots[request.ClientNetworkId] = spawnIndex;
 
         response.Approved = true;
         response.CreatePlayerObject = true;
-        response.Position = spawnPoint.position;
-        response.Rotation = spawnPoint.rotation;
+        response.Position = pose.position;
+        response.Rotation = pose.rotation;
     }
 
     private void PlaceConnectedPlayer(ulong clientId)
@@ -104,14 +105,25 @@ public sealed class NetworkSpawnCoordinator : MonoBehaviour
             return;
         }
 
-        playerObject.transform.SetPositionAndRotation(spawnPoint.position, spawnPoint.rotation);
+        Pose pose = GetSpawnPose(spawnPoint, out string label);
+        playerObject.transform.SetPositionAndRotation(pose.position, pose.rotation);
         playerObject.GetComponent<PlayerMovement>()?.ResetVerticalVelocity();
         if (networkManager.IsServer)
         {
             RespawnManager respawnManager = FindFirstObjectByType<RespawnManager>();
-            respawnManager?.RegisterSpawn(playerObject.GetComponent<PlayerMovement>());
+            var movement = playerObject.GetComponent<PlayerMovement>();
+            respawnManager?.RegisterSpawn(movement);
+            if (label != null) respawnManager?.SetCheckpoint(movement, pose.position, pose.rotation, label);
         }
-        Debug.Log($"Placed client {clientId} at {spawnPoint.name}: {spawnPoint.position}.", playerObject);
+        Debug.Log($"Placed client {clientId} at {label ?? spawnPoint.name}: {pose.position}.", playerObject);
+    }
+
+    private static Pose GetSpawnPose(Transform spawnPoint, out string label)
+    {
+        var bridge = TwinEdge.Gameplay.BridgeGameplay.Current;
+        if (bridge != null && bridge.TryGetResumeSpawn(out Pose pose, out label)) return pose;
+        label = null;
+        return new Pose(spawnPoint.position, spawnPoint.rotation);
     }
 
     private int FindAvailableSpawnIndex(ulong clientId)

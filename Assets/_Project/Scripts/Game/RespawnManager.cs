@@ -12,6 +12,7 @@ public sealed class RespawnManager : NetworkBehaviour
     private readonly Dictionary<ulong, float> lastRespawnTimes = new Dictionary<ulong, float>();
     private GameStateManager gameStateManager;
     private readonly Dictionary<ulong, float> lastSupportedHeight = new();
+    private readonly Dictionary<ulong, Vector3> lastBridgeFeet = new();
     // Future cooperative raft module calls these explicit server hooks; ordinary checkpoints remain per-player.
     public void SetSharedCheckpointServer(Vector3 position, Quaternion rotation, string label)
     {
@@ -40,6 +41,12 @@ public sealed class RespawnManager : NetworkBehaviour
             {
                 bool supported = Physics.RaycastAll(position + Vector3.up * .15f, Vector3.down, .5f, ~0, QueryTriggerInteraction.Ignore)
                     .Any(hit => !hit.transform.IsChildOf(client.PlayerObject.transform) && hit.normal.y > .4f);
+                var bridge = TwinEdge.Gameplay.BridgeGameplay.Current;
+                if (bridge != null && lastBridgeFeet.ContainsKey(client.ClientId) && bridge.IsBelowSpan(position)) fallen = true;
+                if (bridge != null && bridge.PlankCount > 0 &&
+                    bridge.InBridgeAirspace(position, 1f) && Mathf.Abs(position.y - bridge.StartPoint.y) < 1.2f)
+                    lastBridgeFeet[client.ClientId] = position;
+                else if (supported && !fallen) lastBridgeFeet.Remove(client.ClientId);
                 if (supported) lastSupportedHeight[client.ClientId] = position.y;
                 else if (lastSupportedHeight.TryGetValue(client.ClientId, out float height)) fallen |= position.y < height - 18f;
             }
@@ -81,6 +88,11 @@ public sealed class RespawnManager : NetworkBehaviour
             return;
         lastRespawnTimes[player.OwnerClientId] = Time.time;
 
+        var bridge = TwinEdge.Gameplay.BridgeGameplay.Current;
+        bridge?.BeforeRespawnServer(player);
+        if (lastBridgeFeet.Remove(player.OwnerClientId, out Vector3 feet) && bridge != null &&
+            bridge.TryFallCheckpoint(feet, out Pose bridgeCheckpoint, out string bridgeLabel))
+            SetCheckpoint(player, bridgeCheckpoint.position, bridgeCheckpoint.rotation, bridgeLabel);
         TwinEdge.Gameplay.CooperativePole.Current?.BeforeRespawnServer(player.OwnerClientId);
         player.GetComponent<TwinEdge.Gameplay.MountainReturnLaunch>()?.BeforeRespawnServer();
 
@@ -107,6 +119,7 @@ public sealed class RespawnManager : NetworkBehaviour
             checkpoints.Clear();
             lastRespawnTimes.Clear();
             lastSupportedHeight.Clear();
+            lastBridgeFeet.Clear();
             gameStateManager = GetComponent<GameStateManager>();
             if (gameStateManager != null) gameStateManager.StateChanged += HandleGameStateChanged;
         }
@@ -131,6 +144,7 @@ public sealed class RespawnManager : NetworkBehaviour
         checkpoints.Remove(clientId);
         lastRespawnTimes.Remove(clientId);
         lastSupportedHeight.Remove(clientId);
+        lastBridgeFeet.Remove(clientId);
     }
 
     private void HandleGameStateChanged(GameState previous, GameState next)

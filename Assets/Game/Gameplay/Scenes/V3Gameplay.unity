@@ -653,6 +653,7 @@ GameObject:
   - component: {fileID: 1013249411}
   - component: {fileID: 1013249410}
   - component: {fileID: 1013249409}
+  - component: {fileID: 1013249413}
   m_Layer: 0
   m_Name: GameState
   m_TagString: Untagged
@@ -736,6 +737,38 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1013249413
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1013249408}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1e864b9b4d6f3bb4e8258597152d9e44, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::TwinEdge.Gameplay.BridgeGameplay
+  ShowTopMostFoldoutHeaderGroup: 1
+  gripHalfWidth: 1.25
+  gripRange: 1.25
+  supplySetback: 7
+  socketSetback: 1.4
+  socketRadius: 0.75
+  socketAngle: 18
+  carrySpeed: 2.5
+  turnSpeed: 85
+  looseLoadTimeout: 45
+  crateModel: {fileID: 8933509140027267805, guid: 35e6e042dd50d75419a405f1fe692e9d, type: 3}
+  plankModel: {fileID: 5473386298295533735, guid: 7b7c42d093dc97a4d9b95a776bd096f1, type: 3}
+  frameModel: {fileID: 3492504242107166402, guid: bbb6e35737ae7944c95ff07e622c5d80, type: 3}
+  nominalFrameLength: 12
+  fallDepth: 1.65
+  hazardFraction: 0.2
+  safeEndPlanks: 5
+  walkJumpSpeed: 3.05
+  sprintJumpSpeed: 5.25
+  deliveryCount: 13
 --- !u!1 &1657298009
 GameObject:
   m_ObjectHideFlags: 0
