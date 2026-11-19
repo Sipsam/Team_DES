@@ -94,9 +94,10 @@ public sealed class RespawnManager : NetworkBehaviour
             return;
         lastRespawnTimes[player.OwnerClientId] = Time.time;
 
+        bool castleCheckpoint = !useAssignedCheckpoint && TwinEdge.Gameplay.CastleGameplay.Current?.AssignDeathCheckpoint(player) == true;
         var bridge = TwinEdge.Gameplay.BridgeGameplay.Current;
         bridge?.BeforeRespawnServer(player);
-        if (lastBridgeFeet.Remove(player.OwnerClientId, out Vector3 feet) && !useAssignedCheckpoint && bridge != null &&
+        if (lastBridgeFeet.Remove(player.OwnerClientId, out Vector3 feet) && !useAssignedCheckpoint && !castleCheckpoint && bridge != null &&
             bridge.TryFallCheckpoint(feet, out Pose bridgeCheckpoint, out string bridgeLabel))
             SetCheckpoint(player, bridgeCheckpoint.position, bridgeCheckpoint.rotation, bridgeLabel);
         TwinEdge.Gameplay.CooperativePole.Current?.BeforeRespawnServer(player.OwnerClientId);

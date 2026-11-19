@@ -36,6 +36,7 @@ namespace TwinEdge.Gameplay
                     if (preview.name == "MountainPreviewCamera") preview.enabled = false;
             state.GetComponent<BridgeGameplay>()?.Bind(scene);
             state.GetComponent<RiverGameplay>()?.Bind(scene);
+            state.GetComponent<CastleGameplay>()?.Bind(scene);
         }
 
         IEnumerator Start()
@@ -131,12 +132,14 @@ namespace TwinEdge.Gameplay
                     NetworkInteractionTarget target => target.Prompt,
                     BridgeGameplay construction => construction.Prompt,
                     RiverDockInteraction dock => dock.Prompt,
+                    CastleStation castle => castle.Prompt,
                     _ => "E: interact"
                 });
                 var movement = player.GetComponent<PlayerMovement>();
                 var river = RiverGameplay.Current;
                 string riverHud = river?.Hud(movement);
                 if (riverHud != null) GUILayout.Label(riverHud);
+                CastleGameplay.Current?.DrawHud(player, debug);
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
                 string riverDebug = debug ? river?.DebugHud(movement) : null;
                 if (riverDebug != null) GUILayout.Label(riverDebug);

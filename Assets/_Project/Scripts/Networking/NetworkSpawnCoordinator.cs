@@ -55,7 +55,7 @@ public sealed class NetworkSpawnCoordinator : MonoBehaviour
         }
 
         Transform spawnPoint = spawnPoints[spawnIndex];
-        Pose pose = GetSpawnPose(spawnPoint, out _);
+        Pose pose = GetSpawnPose(spawnPoint, spawnIndex, out _);
         clientSpawnSlots[request.ClientNetworkId] = spawnIndex;
 
         response.Approved = true;
@@ -105,7 +105,7 @@ public sealed class NetworkSpawnCoordinator : MonoBehaviour
             return;
         }
 
-        Pose pose = GetSpawnPose(spawnPoint, out string label);
+        Pose pose = GetSpawnPose(spawnPoint, spawnIndex, out string label);
         playerObject.transform.SetPositionAndRotation(pose.position, pose.rotation);
         playerObject.GetComponent<PlayerMovement>()?.ResetVerticalVelocity();
         if (networkManager.IsServer)
@@ -118,8 +118,12 @@ public sealed class NetworkSpawnCoordinator : MonoBehaviour
         Debug.Log($"Placed client {clientId} at {label ?? spawnPoint.name}: {pose.position}.", playerObject);
     }
 
-    private static Pose GetSpawnPose(Transform spawnPoint, out string label)
+    public bool TryGetSlot(ulong clientId, out int slot) => clientSpawnSlots.TryGetValue(clientId, out slot);
+
+    private static Pose GetSpawnPose(Transform spawnPoint, int slot, out string label)
     {
+        var castle = TwinEdge.Gameplay.CastleGameplay.Current;
+        if (castle != null && castle.TryResume(slot, out Pose castlePose, out label)) return castlePose;
         var bridge = TwinEdge.Gameplay.BridgeGameplay.Current;
         if (bridge != null && bridge.TryGetResumeSpawn(out Pose pose, out label)) return pose;
         label = null;

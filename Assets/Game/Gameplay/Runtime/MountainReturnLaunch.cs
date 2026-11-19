@@ -190,7 +190,7 @@ namespace TwinEdge.Gameplay
         void OnControllerColliderHit(ControllerColliderHit hit) { if (flight) collision = hit.collider.name; }
         void OnGUI()
         {
-            if (!IsSpawned || !IsOwner || !ReturnEnabled) return;
+            if (!IsSpawned || !IsOwner || !ReturnEnabled || CastleGameplay.Current?.Contains(transform.position) == true) return;
             GUILayout.BeginArea(new Rect(420, 12, 390, debug ? 390 : 175), GUI.skin.box);
             GUILayout.Label($"Mountain Return: {(preparePending ? "Preparing" : State.Value.ToString())} | Last summit: {LastLanding.Value}");
             GUILayout.Label(preparePending ? "Preparing launch..." : State.Value == LaunchState.Ready ? (Supported(out _) ? "Launch available" : "Stand on a safe mountain summit to launch") : "Launch busy / recovering");

@@ -268,6 +268,7 @@ namespace TwinEdge.Gameplay
             if (!IsSpawned) return;
             var s = snapshot.Value;
             var local = NetworkManager.LocalClient?.PlayerObject;
+            if (local != null && CastleGameplay.Current?.Contains(local.transform.position) == true) return;
             GUILayout.BeginArea(new Rect(Screen.width - 370, 12, 358, debug ? 400 : 210), GUI.skin.box);
             GUILayout.Label("COOPERATIVE POLE (outbound)");
             GUILayout.Label($"Attached: {(s.left != ulong.MaxValue ? 1 : 0) + (s.right != ulong.MaxValue ? 1 : 0)}/2 | {s.phase}");

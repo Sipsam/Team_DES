@@ -93,7 +93,8 @@ public sealed class PlayerMovement : NetworkBehaviour
         Vector3 moveDirection = GetCameraRelativeDirection(input);
 
         var bridge = TwinEdge.Gameplay.BridgeGameplay.Current;
-        bool sprint = gameplayInput?.Sprint?.IsPressed() == true;
+        var castle = IsSpawned ? TwinEdge.Gameplay.CastleGameplay.Current : null;
+        bool sprint = gameplayInput?.Sprint?.IsPressed() == true && castle?.SprintBlocked(this) != true;
         if (IsSpawned && bridge != null && bridge.Holds(OwnerClientId))
         {
             bridge.MoveHolder(this, characterController, moveDirection, sprint);
@@ -121,7 +122,7 @@ public sealed class PlayerMovement : NetworkBehaviour
 
         verticalSpeed -= gravity * Time.deltaTime;
         float horizontalSpeed = bridgeJumpSpeed > 0 ? bridgeJumpSpeed : moveSpeed * (sprint ? 1.6f : 1f);
-        Vector3 velocity = moveDirection * (horizontalSpeed * movementSpeedMultiplier.Value);
+        Vector3 velocity = moveDirection * (horizontalSpeed * movementSpeedMultiplier.Value * (castle?.SpeedScale(this) ?? 1f));
         velocity += externalVelocity;
         velocity.y = verticalSpeed + externalVelocity.y;
         characterController.Move(velocity * Time.deltaTime);

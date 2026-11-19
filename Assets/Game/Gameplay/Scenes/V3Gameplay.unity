@@ -655,6 +655,7 @@ GameObject:
   - component: {fileID: 1013249409}
   - component: {fileID: 1013249413}
   - component: {fileID: 1013249414}
+  - component: {fileID: 1013249415}
   m_Layer: 0
   m_Name: GameState
   m_TagString: Untagged
@@ -794,6 +795,51 @@ MonoBehaviour:
   whirlpoolModel: {fileID: 568129917782008683, guid: 484d49ceb69cc5941a3767640c46afa9, type: 3}
   waterMaterial: {fileID: 2100000, guid: 23522c39b225d5f48acd1c6554492fe1, type: 2}
   warningMaterial: {fileID: 2100000, guid: 4b03e5a93d1a1194bbbd82d597b6d535, type: 2}
+--- !u!114 &1013249415
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1013249408}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3d0a57d65e15cdb42af72c61a7987466, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::TwinEdge.Gameplay.CastleGameplay
+  ShowTopMostFoldoutHeaderGroup: 1
+  symbolModels:
+  - {fileID: 3024415727473262396, guid: c2910425466fe4948acf0d16ef1fd4b8, type: 3}
+  - {fileID: 8787304267403646811, guid: 8e2382941b5e8ec4e8027c9271cd6934, type: 3}
+  - {fileID: 7838503923582902330, guid: f846658bac695164ebc4a8047002909c, type: 3}
+  trapModels:
+  - {fileID: 6471262554969923326, guid: 1f998751ae235ba4f86c884e28175f65, type: 3}
+  - {fileID: 8768833564549288605, guid: aacbbe51801e154498bdcf8fb267bd83, type: 3}
+  - {fileID: 5217236310353641407, guid: 8ce755b432a75464490972e24e53d6fe, type: 3}
+  - {fileID: 6663240412609322937, guid: 9341ef79f68d1124e9003341fdc8f7fc, type: 3}
+  - {fileID: 3184932090933496717, guid: e5dd1eee3a97d5b43a709e172e40cfaa, type: 3}
+  doorModel: {fileID: 6207444914001343743, guid: 57f21f3ac8a12f74f9e776e6543381a2, type: 3}
+  wallModel: {fileID: 7956429563847465764, guid: 19281697dd5b7b043a69be09fd8662a2, type: 3}
+  transferModel: {fileID: 5923155136696812505, guid: 36e090165e66ba3429bfe416515e92d0, type: 3}
+  windowModel: {fileID: 302724855108180122, guid: 102d74480024cb54196d6035aed20f9b, type: 3}
+  hintModel: {fileID: 1890265731772884112, guid: e6b3353f23667ae4ca9aeeaf7071283b, type: 3}
+  numberModel: {fileID: 9014088147980079938, guid: 50a76cf587a96a64cb60d6277d8fb652, type: 3}
+  sequenceModel: {fileID: 3455263899554984052, guid: 65071302f78d8a34fb0422412989206c, type: 3}
+  stoneMaterial: {fileID: 2100000, guid: 30b2370595a74384aa903ef91460a59c, type: 2}
+  darkMaterial: {fileID: 2100000, guid: c7ab7d1ad0ef2eb478560d79dba640b2, type: 2}
+  accentMaterial: {fileID: 2100000, guid: 9bc4fae7a3b8ab44ea9e18a90cdf336f, type: 2}
+  labelShader: {fileID: 4800000, guid: 7d5926cd87662824fa764c8d341ab635, type: 3}
+  randomizeNumbers: 1
+  configuredA: 2718
+  configuredB: 6043
+  injuredSpeed: 0.55
+  retryDelay: 3
+  respawnGrace: 2
+  clearInjuryOnRespawn: 1
+  clearInjuryOnExit: 1
+  trapWarning: 1.1
+  trapAttack: 1.35
+  trapRecovery: 2.95
 --- !u!1 &1657298009
 GameObject:
   m_ObjectHideFlags: 0
