@@ -1,6 +1,6 @@
 # Team_DES — 양날의검
 
-Two-player online 3D puzzle game for Windows PC. Unity **6000.3.27f1**, URP **17.3.0**. Active development currently focuses on the LevelBlockout V2 spatial blockout; the historical multiplayer prototype is retained for reference.
+Two-player online 3D puzzle game for Windows PC. Unity **6000.3.27f1**, URP **17.3.0**. Active gameplay development uses V3Gameplay and the additive LevelBlockoutV3. The historical multiplayer prototype is retained for reference.
 
 ## Clone and open
 
@@ -15,9 +15,9 @@ Install Unity 6000.3.27f1 through Unity Hub with Windows Build Support (IL2CPP i
 
 ## Scenes and tools
 
-Open `Assets/Game/Level/Scenes/LevelBlockoutV2.unity` alone for current spatial review. `LevelBlockout.unity` is V1; `LevelBlockout 1.unity` and `LevelBlockoutV2_InitialDraft.unity` are retained comparison scenes. Avoid additive overlapping blockouts for traversal checks.
+Open `Assets/Game/Level/Scenes/LevelBlockoutV3.unity` alone for V3 spatial review. For multiplayer, open `Assets/Game/Gameplay/Scenes/V3Gameplay.unity` and follow [V3 Gameplay](Docs/Architecture/V3Gameplay.md) and [River Gameplay](Docs/Architecture/RiverGameplay.md). `LevelBlockoutV2.unity` is the retained V2 review scene. `LevelBlockout.unity` is V1; `LevelBlockout 1.unity` and `LevelBlockoutV2_InitialDraft.unity` are retained comparison scenes. Avoid additive overlapping blockouts for traversal checks.
 
-The enabled first Build Settings scene is still `Assets/_Project/Scenes/MainPrototype.unity`. V2 is a spatial authoring scene, not a replacement playable multiplayer entry point. Some disabled build entries point to missing local scenes. The initial scene opened in the Editor is a local session preference, not a shared default.
+The enabled first Build Settings scene is still `Assets/_Project/Scenes/MainPrototype.unity`. Use the explicit V3 Gameplay build command for a current Windows Development build. Some disabled build entries point to missing local scenes. The initial scene opened in the Editor is a local session preference, not a shared default.
 
 - `Tools > Twin Edge > Level Blockout`: select/create the V2 spatial layout; generate an entire blockout or one section. Work on a new scene or reviewed copy; generation replaces the selected Generated hierarchy. Put authored edits under Manual. Existing Undo is supported.
 - `Tools > Twin Edge > Level Visualization`: select a root/section and Top, Side X, Side Z, or Perspective; inspect routes, markers and Elevation Profile without editing geometry.

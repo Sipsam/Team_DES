@@ -654,6 +654,7 @@ GameObject:
   - component: {fileID: 1013249410}
   - component: {fileID: 1013249409}
   - component: {fileID: 1013249413}
+  - component: {fileID: 1013249414}
   m_Layer: 0
   m_Name: GameState
   m_TagString: Untagged
@@ -769,6 +770,30 @@ MonoBehaviour:
   walkJumpSpeed: 3.05
   sprintJumpSpeed: 5.25
   deliveryCount: 13
+--- !u!114 &1013249414
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1013249408}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 827b537b5f8f49a59f3556fb40ad32f5, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::TwinEdge.Gameplay.RiverGameplay
+  sharedModel: {fileID: 4800955834497204660, guid: 5113ba27febe0ce438601690f763f381, type: 3}
+  soloModel: {fileID: 1825442350050762965, guid: 77e730cfe67d6de458781e145cfffcfc, type: 3}
+  oarModel: {fileID: 3369815190155220205, guid: 7ddf915b78f01d64eba4c09eeee3adb3, type: 3}
+  dockModel: {fileID: 245964148391014828, guid: ce47e536cd4166441bc79135865f7f0d, type: 3}
+  stairsModel: {fileID: 8668484103051472039, guid: f69975bb7e4f2b949b6159ee4d9b6680, type: 3}
+  rockModel: {fileID: 1435806058647638941, guid: 94c5b9560e206e6438919a4763fa144d, type: 3}
+  driftwoodModel: {fileID: 2472116883904180728, guid: ace2b4485581db04ab0d0d15367306eb, type: 3}
+  fishModel: {fileID: 2331363070510047194, guid: 33354460c579a8d45979ee1190dc9534, type: 3}
+  crocodileModel: {fileID: 2715110019118731239, guid: cd5fd4476f2846d4194b7b793c677007, type: 3}
+  whirlpoolModel: {fileID: 568129917782008683, guid: 484d49ceb69cc5941a3767640c46afa9, type: 3}
+  waterMaterial: {fileID: 2100000, guid: 23522c39b225d5f48acd1c6554492fe1, type: 2}
+  warningMaterial: {fileID: 2100000, guid: 4b03e5a93d1a1194bbbd82d597b6d535, type: 2}
 --- !u!1 &1657298009
 GameObject:
   m_ObjectHideFlags: 0

@@ -35,6 +35,7 @@ namespace TwinEdge.Gameplay
                 foreach (var preview in root.GetComponentsInChildren<Camera>(true))
                     if (preview.name == "MountainPreviewCamera") preview.enabled = false;
             state.GetComponent<BridgeGameplay>()?.Bind(scene);
+            state.GetComponent<RiverGameplay>()?.Bind(scene);
         }
 
         IEnumerator Start()
@@ -89,7 +90,7 @@ namespace TwinEdge.Gameplay
         }
         void OnGUI()
         {
-            GUILayout.BeginArea(new Rect(12, 12, 380, 480), GUI.skin.box);
+            GUILayout.BeginArea(new Rect(12, 12, 380, Mathf.Min(620, Screen.height - 24)), GUI.skin.box);
             GUILayout.Label("TWIN EDGE / V3 GAMEPLAY");
             if (!ready) GUILayout.Label(error ?? "Loading V3 colliders...");
             GUILayout.Label(sessions.CurrentStatus);
@@ -105,7 +106,7 @@ namespace TwinEdge.Gameplay
             #if UNITY_EDITOR || DEVELOPMENT_BUILD
             if (GUILayout.Button("DEV: Return (server phase transition)"))
             {
-                if (state.AdvanceFoundation(FoundationPhase.SealPending)) state.AdvanceFoundation(FoundationPhase.Return);
+                state.RequestDevelopmentReturn();
             }
 #endif
             GUI.enabled = true;
@@ -129,13 +130,22 @@ namespace TwinEdge.Gameplay
                 {
                     NetworkInteractionTarget target => target.Prompt,
                     BridgeGameplay construction => construction.Prompt,
+                    RiverDockInteraction dock => dock.Prompt,
                     _ => "E: interact"
                 });
-                if (debug) GUILayout.Label($"DEBUG (F3)\nPosition: {player.transform.position:F2}\nGrounded: {player.GetComponent<PlayerMovement>().IsGrounded}\nOwner: {player.IsOwner}\nAnimator: {character.AnimationState}\nTarget: {(interaction.CurrentTarget as MonoBehaviour)?.name}");
+                var movement = player.GetComponent<PlayerMovement>();
+                var river = RiverGameplay.Current;
+                string riverHud = river?.Hud(movement);
+                if (riverHud != null) GUILayout.Label(riverHud);
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+                string riverDebug = debug ? river?.DebugHud(movement) : null;
+                if (riverDebug != null) GUILayout.Label(riverDebug);
+#endif
+                if (debug && riverHud == null) GUILayout.Label($"DEBUG (F3)\nPosition: {player.transform.position:F2}\nGrounded: {player.GetComponent<PlayerMovement>().IsGrounded}\nOwner: {player.IsOwner}\nAnimator: {character.AnimationState}\nTarget: {(interaction.CurrentTarget as MonoBehaviour)?.name}");
             }
             GUILayout.Label("WASD / Shift / Space / E | Esc: menu, cancel\nClick world: capture mouse | F3: debug");
             GUILayout.EndArea();
         }
-        public static bool PointerOverMenu(Vector2 point) => point.x < 404 && point.y > Screen.height - 504;
+        public static bool PointerOverMenu(Vector2 point) => point.x < 404 && point.y > Screen.height - Mathf.Min(644, Screen.height);
     }
 }

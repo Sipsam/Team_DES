@@ -34,6 +34,7 @@ public sealed class Checkpoint : MonoBehaviour
     {
         GameStateManager state = FindFirstObjectByType<GameStateManager>();
         if (state == null || !state.CanPlay || player == null) return false;
+        if (TwinEdge.Gameplay.RiverGameplay.Current?.IsSeated(player.OwnerClientId) == true) return false;
         if (phase == CheckpointPhase.Cooperation && state.CurrentState != GameState.Cooperation) return false;
         if (phase == CheckpointPhase.Competition && state.CurrentState != GameState.Competition) return false;
         // Pole arrivals can be anywhere on the real summit, while the respawn pose stays at its existing marker.

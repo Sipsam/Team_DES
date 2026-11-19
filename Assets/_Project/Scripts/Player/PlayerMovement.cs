@@ -21,6 +21,7 @@ public sealed class PlayerMovement : NetworkBehaviour
     private CharacterController characterController;
     private RaftController raftController;
     private bool insideRaftControlPoint;
+    private bool hasRiverSeat;
     private bool puzzleUiInputBlocked;
     private GameStateManager gameStateManager;
     private float verticalSpeed;
@@ -45,6 +46,19 @@ public sealed class PlayerMovement : NetworkBehaviour
         {
             return;
         }
+
+        bool riverSeat = IsSpawned && TwinEdge.Gameplay.RiverGameplay.Current?.ApplyOwnerSeat(this) == true;
+        if (riverSeat)
+        {
+            if (!hasRiverSeat)
+            {
+                characterController.enabled = false;
+                ResetVerticalVelocity();
+            }
+            hasRiverSeat = true;
+            return;
+        }
+        if (hasRiverSeat) ReleaseRiverSeat();
 
         if (IsSpawned && TwinEdge.Gameplay.CooperativePole.Current != null &&
             TwinEdge.Gameplay.CooperativePole.Current.IsAttached(OwnerClientId))
@@ -158,6 +172,7 @@ public sealed class PlayerMovement : NetworkBehaviour
             return;
         }
 
+        if (hasRiverSeat) ReleaseRiverSeat();
         Camera mainCamera = Camera.main;
         ThirdPersonCamera thirdPersonCamera = mainCamera != null
             ? mainCamera.GetComponent<ThirdPersonCamera>()
@@ -235,6 +250,21 @@ public sealed class PlayerMovement : NetworkBehaviour
             return;
         }
 
+        TwinEdge.Gameplay.RiverGameplay.Current?.SuspendOwnerSeat(OwnerClientId);
+        PlaceAtOwner(position, rotation);
+    }
+
+    private void ReleaseRiverSeat()
+    {
+        hasRiverSeat = false;
+        characterController.enabled = true;
+        ResetVerticalVelocity();
+    }
+
+    internal void PlaceAtOwner(Vector3 position, Quaternion rotation)
+    {
+        if (!IsOwner) return;
+        if (hasRiverSeat) ReleaseRiverSeat();
         GetComponent<TwinEdge.Gameplay.PoleMotor>()?.SuspendForRespawn();
         GetComponent<TwinEdge.Gameplay.MountainReturnLaunch>()?.ResetOwner();
 

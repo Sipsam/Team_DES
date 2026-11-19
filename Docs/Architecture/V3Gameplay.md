@@ -25,3 +25,5 @@ The Host's DEV Return button exists only in Editor/development players and invok
 At the Big summit, press E at the timber crate, then have one player press E at each end of the bundle. Use WASD together to move it. Opposing inputs turn it, Shift increases effort, and Esc resets the current bundle. Both players must press E in the installation socket. The next crate position and socket move forward as the deck extends. After 13 deliveries, the completed deck reaches Canyon.
 
 In Return, some planks collapse on contact and stay destroyed for that Relay session. Space clears one missing plank and Shift+Space clears two. Falls from the bridge send players to Big summit on the outbound leg and Lower dock on Return. A peer disconnect pauses input and clears the current carry. Rejoining after construction starts uses the checkpoint for the current leg. The original Generated plank IDs remain the scene binding for the bridge.
+
+River controls, phase activation and validation are documented in [V3 River Gameplay](RiverGameplay.md).

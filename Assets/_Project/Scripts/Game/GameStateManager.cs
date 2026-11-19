@@ -17,6 +17,20 @@ public sealed class GameStateManager : NetworkBehaviour
 {
     public bool foundationMode;
     readonly NetworkVariable<FoundationPhase> foundationPhase = new(FoundationPhase.WaitingForPlayers);
+    public FoundationPhase Phase => foundationPhase.Value;
+    readonly NetworkVariable<bool> developmentReturnRequested = new();
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+    public bool DevelopmentReturnRequested => developmentReturnRequested.Value;
+
+    public void RequestDevelopmentReturn()
+    {
+        if (AdvanceFoundation(FoundationPhase.SealPending))
+        {
+            developmentReturnRequested.Value = true;
+            AdvanceFoundation(FoundationPhase.Return);
+        }
+    }
+#endif
     public string FoundationPhaseLabel => foundationMode ? foundationPhase.Value.ToString() : CurrentState.ToString();
     public event Action<FoundationPhase, FoundationPhase> FoundationPhaseChanged;
     public void StartFoundation()
@@ -110,6 +124,7 @@ public sealed class GameStateManager : NetworkBehaviour
             winnerClientId.Value = ulong.MaxValue;
             currentState.Value = GameState.Cooperation;
             foundationPhase.Value = FoundationPhase.WaitingForPlayers;
+            developmentReturnRequested.Value = false;
             connectedPlayerCount.Value = 0;
             courseStartedAt.Value = -1d;
             courseFinishedAt.Value = -1d;

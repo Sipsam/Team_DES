@@ -13,18 +13,22 @@ public sealed class RespawnManager : NetworkBehaviour
     private GameStateManager gameStateManager;
     private readonly Dictionary<ulong, float> lastSupportedHeight = new();
     private readonly Dictionary<ulong, Vector3> lastBridgeFeet = new();
-    // Future cooperative raft module calls these explicit server hooks; ordinary checkpoints remain per-player.
-    public void SetSharedCheckpointServer(Vector3 position, Quaternion rotation, string label)
+    public void SetSharedCheckpointServer(Vector3 position, Quaternion rotation, string label, bool resolveGround = false)
     {
         if (!IsServer) return;
         foreach (var client in NetworkManager.ConnectedClientsList)
-            if (client.PlayerObject != null) SetCheckpoint(client.PlayerObject.GetComponent<PlayerMovement>(), position + Vector3.right * (client.ClientId == 0 ? -1.5f : 1.5f), rotation, label);
+        {
+            if (client.PlayerObject == null) continue;
+            Vector3 point = position + Vector3.right * (client.ClientId == 0 ? -1.5f : 1.5f);
+            if (resolveGround) point = TwinEdge.Gameplay.V3GameplayBootstrap.SafeGround(point);
+            SetCheckpoint(client.PlayerObject.GetComponent<PlayerMovement>(), point, rotation, label);
+        }
     }
-    public void RespawnGroupServer()
+    public void RespawnGroupServer(bool useAssignedCheckpoint = false)
     {
         if (!IsServer) return;
         foreach (var client in NetworkManager.ConnectedClientsList)
-            if (client.PlayerObject != null) RespawnPlayer(client.PlayerObject.GetComponent<PlayerMovement>());
+            if (client.PlayerObject != null) RespawnPlayer(client.PlayerObject.GetComponent<PlayerMovement>(), useAssignedCheckpoint);
     }
     public void ConfigureFallRecovery(float height) => fallRecoveryHeight = height;
 
@@ -34,6 +38,7 @@ public sealed class RespawnManager : NetworkBehaviour
         foreach (NetworkClient client in NetworkManager.ConnectedClientsList)
         {
             if (client.PlayerObject == null) continue;
+            if (TwinEdge.Gameplay.RiverGameplay.Current?.IsSeated(client.ClientId) == true) continue;
             if (client.PlayerObject.GetComponent<TwinEdge.Gameplay.MountainReturnLaunch>()?.InFlight == true) continue;
             var position = client.PlayerObject.transform.position;
             bool fallen = position.y < fallRecoveryHeight;
@@ -77,20 +82,21 @@ public sealed class RespawnManager : NetworkBehaviour
         Debug.Log($"Checkpoint set for client {player.OwnerClientId}.", player);
     }
 
-    public void RespawnPlayer(PlayerMovement player)
+    public void RespawnPlayer(PlayerMovement player, bool useAssignedCheckpoint = false)
     {
         if (!IsServer || player == null || !player.IsSpawned)
         {
             return;
         }
 
-        if (lastRespawnTimes.TryGetValue(player.OwnerClientId, out float lastTime) && Time.time - lastTime < 0.75f)
+        if (!useAssignedCheckpoint && TwinEdge.Gameplay.RiverGameplay.Current?.TryRecoverRiderServer(player) == true) return;
+        if (!useAssignedCheckpoint && lastRespawnTimes.TryGetValue(player.OwnerClientId, out float lastTime) && Time.time - lastTime < 0.75f)
             return;
         lastRespawnTimes[player.OwnerClientId] = Time.time;
 
         var bridge = TwinEdge.Gameplay.BridgeGameplay.Current;
         bridge?.BeforeRespawnServer(player);
-        if (lastBridgeFeet.Remove(player.OwnerClientId, out Vector3 feet) && bridge != null &&
+        if (lastBridgeFeet.Remove(player.OwnerClientId, out Vector3 feet) && !useAssignedCheckpoint && bridge != null &&
             bridge.TryFallCheckpoint(feet, out Pose bridgeCheckpoint, out string bridgeLabel))
             SetCheckpoint(player, bridgeCheckpoint.position, bridgeCheckpoint.rotation, bridgeLabel);
         TwinEdge.Gameplay.CooperativePole.Current?.BeforeRespawnServer(player.OwnerClientId);
