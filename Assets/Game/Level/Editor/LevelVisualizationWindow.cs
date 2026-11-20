@@ -49,9 +49,15 @@ namespace TwinEdge.Levels.Editor
             Refresh();
         }
 
+        private static GameObject FindActiveLevelRoot() =>
+            UnityEngine.SceneManagement.SceneManager.GetActiveScene().GetRootGameObjects().FirstOrDefault(
+                candidate => candidate.name == "TwinEdge_Blockout" &&
+                    candidate.GetComponentsInChildren<LevelSection>(true).Any(section => section.owner == LevelSection.Owner));
+
+
         private void Refresh()
         {
-            if (root == null) root = LevelGenerator.FindRoot();
+            if (root == null) root = FindActiveLevelRoot();
             Repaint();
             SceneView.RepaintAll();
         }
@@ -69,7 +75,7 @@ namespace TwinEdge.Levels.Editor
             EditorGUI.BeginChangeCheck();
             var candidate = (GameObject)EditorGUILayout.ObjectField("Blockout Root", root, typeof(GameObject), true);
             if (candidate == null || (candidate.scene.IsValid() && candidate.scene.isLoaded && !EditorUtility.IsPersistent(candidate))) { if (root != candidate) focused = null; root = candidate; }
-            if (GUILayout.Button("활성 씬에서 다시 찾기")) { root = LevelGenerator.FindRoot(); focused = null; }
+            if (GUILayout.Button("활성 씬에서 다시 찾기")) { root = FindActiveLevelRoot(); focused = null; }
             overlay = EditorGUILayout.Toggle("시각화 표시", overlay);
             boundaries = EditorGUILayout.Toggle("구간 이름 / 경계", boundaries);
             outbound = EditorGUILayout.Toggle("왕로 → 청록색", outbound);

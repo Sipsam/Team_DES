@@ -1,7 +1,7 @@
-﻿# Unity generated
+# Unity generated
 [Ll]ibrary/
 [Tt]emp/
-[Oo]bj/
+/[Oo]bj/
 [Ll]ogs/
 UserSettings/
 
@@ -65,6 +65,5 @@ list.txt
 /unity_crash.*
 /mono_crash.*
 
-# Local-only versioned development documents and preserved legacy report
+# Local-only versioned development documents
 /Docs/Development/
-/Assets/_Project/Docs/IntegrationValidation.md

@@ -1,4 +1,4 @@
-﻿#if UNITY_EDITOR
+#if UNITY_EDITOR
 using System;
 using System.IO;
 using System.Linq;
@@ -31,7 +31,7 @@ namespace TwinEdge.Levels.Editor
             var view = SceneView.lastActiveSceneView ?? EditorWindow.GetWindow<SceneView>();
             var pivot = view.pivot; var rotation = view.rotation; var size = view.size; bool ortho = view.orthographic; bool mode2D = view.in2DMode;
             try {
-                foreach (string path in new[] { "Assets/Game/Level/Scenes/LevelBlockout.unity", "Assets/Game/Level/Scenes/LevelBlockoutV2.unity" }) {
+                foreach (string path in new[] { "Assets/Game/Level/Scenes/LevelBlockoutV3.unity" }) {
                     string before = Convert.ToBase64String(System.Security.Cryptography.SHA256.Create().ComputeHash(File.ReadAllBytes(path)));
                     var scene = EditorSceneManager.OpenPreviewScene(path);
                     try {

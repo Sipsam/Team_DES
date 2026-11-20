@@ -1,54 +1,69 @@
-# Team_DES — 양날의검
+# 양날의 검 (Twin Edge)
 
-Two-player online 3D puzzle game for Windows PC. Unity **6000.3.27f1**, URP **17.3.0**. Active gameplay development uses V3Gameplay and the additive LevelBlockoutV3. The historical multiplayer prototype is retained for reference.
+두 플레이어가 함께 유적에 도달한 뒤, 단 하나의 보석을 들고 출발점으로 돌아오는 Windows용 온라인 3D 협동 퍼즐·경쟁 게임입니다.
 
-## Clone and open
+## 핵심 플레이
+
+- 왕로에서는 회전 막대로 산악을 건너고, 목재로 다리를 완성한 뒤 함께 뗏목을 젓습니다.
+- 성채와 지하에서는 서로 다른 문양과 숫자를 전달하고, 상대에게 발판을 열어 줍니다.
+- 복로에서는 공동 봉인을 푼 뒤 보석을 두고 싸웁니다. 보석을 가진 채 출발 봉우리의 결승 구역에 도착하면 승리합니다.
+
+## 사용 기술
+
+- Unity **6000.3.27f1**
+- Universal Render Pipeline (URP)
+- Netcode for GameObjects (NGO)와 Unity Transport
+- Unity Authentication 및 Unity Relay
+- Unity Input System
+
+## 개발 시작
 
 ```powershell
 git clone https://github.com/Sipsam/Team_DES.git
 cd Team_DES
 ```
 
-Install Unity 6000.3.27f1 through Unity Hub with Windows Build Support (IL2CPP if needed). In Hub, add this repository root (the folder containing Assets, Packages, ProjectSettings) and open it. Allow package restore and initial import to finish. Commit both package manifest and lock file; Library is regenerated locally. Relay gameplay also requires access to the team's Unity Services project; cloning does not grant service access.
+1. Unity Hub에서 Unity 6000.3.27f1과 Windows Player 빌드 지원을 설치합니다.
+2. Hub에 저장소 루트를 추가한 뒤 패키지 복원과 에셋 임포트가 끝날 때까지 기다립니다.
+3. `Assets/Game/Gameplay/Scenes/V3Gameplay.unity`를 열어 Play합니다.
+4. 지형만 편집하려면 `Assets/Game/Level/Scenes/LevelBlockoutV3.unity`를 엽니다.
+5. Relay 개발 및 테스트에는 프로젝트에 연결된 팀 Unity Services 환경의 Authentication과 Relay를 사용합니다.
 
-## Play V3 over Relay
+## Windows Playtest
 
-1. In Unity, select **Tools > Twin Edge > Gameplay > Build V3 Windows Playtest Player**. Package the `Builds/V3Playtest/` runtime files together and leave the `*_DoNotShip` debug folder on the build machine. Each tester launches `V3Gameplay.exe` from their own extracted copy.
-2. Host selects **Create room**, then shares the room code. Client pastes it and selects **Join room**. Once the Host sees **Players 2/2**, select **Start game**.
-3. Click the world to capture the mouse. Use WASD to move, Left Shift to sprint, Space to jump and E to interact. Press Esc to release the mouse or cancel the active interaction. Both players work toward the altar, then race back to the starting summit with the gem.
-4. Press Esc and select **Leave room** to disconnect. A disconnected Client can enter the Host's code again while the room is active. After Host leaves, create a new room and share its new code.
+1. Unity에서 **Tools > Twin Edge > Gameplay > Build V3 Windows Playtest Player**를 선택합니다.
+2. `Builds/V3Playtest/`의 런타임 파일을 폴더 단위로 전달합니다.
+3. 두 플레이어는 같은 빌드를 각자 풀고 `V3Gameplay.exe`를 실행합니다.
+4. Host는 **Create room**으로 방을 만들고 **Copy**로 방 코드를 공유합니다.
+5. Client는 코드를 붙여 넣고 **Join room**을 선택합니다.
+6. Host 화면에 **Players 2/2**가 표시되면 **Start game**을 누릅니다.
 
-The playtest build starts in `V3Gameplay.unity` and loads `LevelBlockoutV3.unity` additively. The general Build Settings still start with `MainPrototype.unity`. For Editor play, open `Assets/Game/Gameplay/Scenes/V3Gameplay.unity` first. Use **Build Full Match Development Player** for the existing Relay replay at `Builds/FullMatch/V3Gameplay.exe`. The full control reference, route and two-person test sheets are in the [V3 playtest guide](Docs/Architecture/PlaytestGuide.md). See [full match gameplay](Docs/Architecture/FullMatchGameplay.md) for replay commands.
+## 조작
 
-## Level review and historical tools
+| 입력 | 동작 |
+| --- | --- |
+| 마우스 / WASD | 시점 / 이동 |
+| 왼쪽 Shift / Space | 달리기 / 점프 |
+| E | 막대·뗏목·퍼즐·보석 등 상호작용 |
+| 왼쪽 클릭 / F | 공격 / 잡기·던지기·저항 |
+| R | 복로 산악 발사 충전 및 발사 |
+| Esc | 마우스 해제, 활성 상호작용 취소, 로비 메뉴 |
 
-Open `Assets/Game/Level/Scenes/LevelBlockoutV3.unity` alone for a spatial review. `LevelBlockoutV2.unity` is the retained V2 review scene. `LevelBlockout.unity` is V1. `LevelBlockout 1.unity` and `LevelBlockoutV2_InitialDraft.unity` are comparison scenes. Open one blockout at a time when checking traversal.
+## 주요 폴더
 
-- `Tools > Twin Edge > Level Blockout`: select/create the V2 spatial layout; generate an entire blockout or one section. Work on a new scene or reviewed copy; generation replaces the selected Generated hierarchy. Put authored edits under Manual. Existing Undo is supported.
-- `Tools > Twin Edge > Level Visualization`: select a root/section and Top, Side X, Side Z, or Perspective; inspect routes, markers and Elevation Profile without editing geometry.
-- `Tools > Twin Edge > V2 > Review selected`: frame the selected geometry. V2 markers reserve gameplay space; they do not implement the latest gameplay.
-- `Tools > Twin Edge > Audit project dependencies (read only)`: refresh local AssetDatabase dependency and preview-scene reports under `Docs/Development/Architecture/V1/Audit`.
-- `Tools > Twin Edge > Verify Level Visualization (read only)`: run existing camera/profile checks for V1/V2 without regenerating geometry. Local output: `Docs/Development/Level/Shared/Visualization-Validation.txt`.
+| 경로 | 내용 |
+| --- | --- |
+| `Assets/Game/Gameplay/` | V3 진입 씬, 런타임, 프리팹, 빌드 도구, 회귀 테스트 |
+| `Assets/Game/Level/` | V3 지형 씬, 데이터, 생성기와 검증 도구 |
+| `Assets/_Project/` | 플레이어, 세션, 상태, 리스폰 등 V3 공용 코드 |
+| `Packages/`, `ProjectSettings/` | 패키지 버전과 Unity 설정 |
+| `Tools/Playtest/` | 두 프로세스 Relay 테스트 실행기 |
 
-## Structure and tracking
+## 문서
 
-See [architecture](Docs/Architecture/ProjectStructure.md), [prototype recovery](Docs/Archive/Prototype_v1.md), and [generated asset policy](Docs/Architecture/GeneratedAssetAudit.md).
-
-Internal designs, plans, audits, debugging notes and test results belong in `Docs/Development/<Feature>/V<N>/`. Features version independently; start a version for a major phase and update documents within that phase. Preserve earlier versions. Cross-version tools use `<Feature>/Shared/`. Optional local evidence (absent from fresh clones): `Docs/Development/Level/V1/`, `Level/V2/`, `Level/V3/`, `Level/Shared/`, and `Docs/Development/Architecture/V1/`. Root `AGENTS.md` defines the Codex workflow.
-
-Commit Assets with `.meta` files, Packages, ProjectSettings, design documents and required generated assets. Library, Temp, obj, Logs, UserSettings, Builds/Build, IDE caches, generated C# project files, root tree/list inspection outputs and crash data are ignored. **Generated/Run_* is not ignored**: every saved scene (including drafts) needs its referenced meshes, terrain and materials. Preserve old generation assets used by Undo until they have been explicitly reviewed.
-
-## Team workflow
-
-```powershell
-git switch -c feat/short-description
-# Edit, validate in Unity, and inspect the exact files before staging.
-git status --short
-git diff
-git add -- <reviewed-paths>
-git diff --cached --stat
-git diff --cached --check
-git commit -m "feat(level): describe the change"
-```
-
-Use feature branches and Pull Requests. Write short English Conventional Commit messages (`feat`, `fix`, `chore`, `docs`). Include Unity version, changed scene/config, generated dependencies, checks actually run and remaining playtests in the PR. Coordinate ownership before editing the same scene; preserve GUIDs during moves through Unity's Project window/AssetDatabase. Do not stage local scene deletions or shared settings without reviewing their purpose. Never run old prototype scene builders on an active level scene.
+- [통합 기획서](Docs/GameDesign/TwinEdge_Latest_GamePlanning_IntegratedSummary.pdf)
+- [게임 구조](Docs/Architecture/GameArchitecture.md)
+- [게임플레이 시스템](Docs/Architecture/GameplaySystems.md)
+- [멀티플레이](Docs/Architecture/Multiplayer.md)
+- [플레이테스트 가이드](Docs/Playtest/PlaytestGuide.md)
+- [검증 요약](Docs/Playtest/ValidationSummary.md)
