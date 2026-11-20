@@ -607,6 +607,8 @@ namespace TwinEdge.Gameplay
             var state = Read(i);
             var next = (i == 0 ? Outbound : RaceActive) ? RiverRaftStatus.Docked : RiverRaftStatus.Hidden;
             ResetHull(i, next);
+            if (game.Phase == FoundationPhase.Finished) return;
+
             if (i == 0)
             {
                 recoveringShared = true;

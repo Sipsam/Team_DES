@@ -16,6 +16,7 @@ namespace TwinEdge.Gameplay
     {
         string output, peer;
         bool host, screenshots, failed, recovery;
+        FullMatchRelayReplay fullMatch;
         Keyboard keyboard;
         RiverGameplay river;
         PlayerMovement player;
@@ -38,6 +39,7 @@ namespace TwinEdge.Gameplay
 
         IEnumerator Start()
         {
+            if (fullMatch != null) yield break;
             Application.runInBackground = true;
             Application.targetFrameRate = 60;
             Application.logMessageReceived += ObserveLog;
@@ -133,6 +135,35 @@ namespace TwinEdge.Gameplay
             Application.Quit();
         }
 
+        internal IEnumerator ReplayCrossing(FullMatchRelayReplay match, bool returning)
+        {
+            fullMatch = match;
+            output = match.Output;
+            peer = match.Role;
+            river = RiverGameplay.Current;
+            player = match.Player;
+            keyboard = match.Keyboard;
+            yield return match.Walk(river.Landing(returning, match.Host ? 0 : 1).position);
+            yield return match.Barrier(returning ? "upper-boarding" : "lower-boarding");
+            yield return Press(Key.E);
+            int index = returning ? (match.Host ? 1 : 2) : 0;
+            yield return Wait(() => river.Read(index).Status == RiverRaftStatus.Sailing &&
+                river.TrySeat(player.OwnerClientId, out int seat, out _, out _) && seat == index,
+                "local player boarded hull " + index);
+            match.Capture(returning ? "solo-raft" : "linked-raft");
+            yield return Traverse(index, match.Manager);
+            yield return Wait(() => Vector3.Distance(player.transform.position,
+                river.Landing(!returning, match.Host ? 0 : 1).position) < 3 &&
+                player.GetComponent<CharacterController>().enabled, "arrived and disembarked hull " + index);
+            var character = player.GetComponent<GameplayCharacter>();
+            string dock = returning ? "Lower dock" : "Upper dock";
+            yield return Wait(() => character.CheckpointName.Value.ToString().StartsWith(dock, StringComparison.Ordinal),
+                "arrival checkpoint " + dock);
+            yield return match.Barrier(returning ? "both-downstream" : "both-upstream");
+            if (returning)
+                Require(river.Read(1).FinishPlace + river.Read(2).FinishPlace == 3, "unique solo race order");
+        }
+
         IEnumerator Traverse(int index, NetworkManager manager)
         {
             bool outbound = index == 0;
@@ -148,6 +179,9 @@ namespace TwinEdge.Gameplay
                 if (!outbound && s.Position.z < 1180)
                     correction = Mathf.Clamp((s.Position.x - aim.x) * 15f + s.Velocity.x * .8f, -48, 48);
                 float error = Mathf.DeltaAngle(s.Heading, aim.y + correction);
+                bool warned = river.TryNearbyWarning(s.Position, out var warning);
+                bool flee = fullMatch != null && warned && Mathf.Abs(error) < 14 &&
+                    Vector3.Dot(warning - s.Position, s.Velocity) > 0;
                 bool whirlpool = river.InWhirlpool(index);
                 if (inWhirlpool != whirlpool)
                 {
@@ -155,7 +189,7 @@ namespace TwinEdge.Gameplay
                     Debug.Log($"RIVER WHIRLPOOL {(whirlpool ? "entered" : "left")} {index} at {s.Position:F1}, hits {s.Hits}");
                     if (whirlpool) Capture("whirlpool");
                 }
-                if (Time.time > nextWarning && river.TryNearbyWarning(s.Position, out var warning))
+                if (Time.time > nextWarning && warned)
                 {
                     nextWarning = Time.time + 3;
                     Debug.Log($"RIVER WARNING {warning:F1}");
@@ -168,7 +202,7 @@ namespace TwinEdge.Gameplay
                     bool boosting = Math.Abs(error) > 7 && steerer && (left ? s.LeftStamina : s.RightStamina) > .09f;
                     bool coast = Math.Abs(error) > 16 && !steerer &&
                         (Math.Floor(manager.ServerTime.Time * 5) % 3 == 0);
-                    if (boosting) SetKeys(Key.W, Key.LeftShift);
+                    if (boosting || flee) SetKeys(Key.W, Key.LeftShift);
                     else if (coast) SetKeys();
                     else SetKeys(Key.W);
                 }
@@ -176,6 +210,7 @@ namespace TwinEdge.Gameplay
                 {
                     if (error > 6) SetKeys(Key.W, Key.D);
                     else if (error < -6) SetKeys(Key.W, Key.A);
+                    else if (flee) SetKeys(Key.W, Key.LeftShift);
                     else SetKeys(Key.W);
                 }
 
@@ -254,6 +289,7 @@ namespace TwinEdge.Gameplay
 
         void Fail(string reason)
         {
+            if (fullMatch != null) return; // The coordinator saves both the exception and current match evidence.
             if (failed) return;
             failed = true;
             Debug.LogError("RIVER FAIL " + reason);

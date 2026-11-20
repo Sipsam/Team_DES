@@ -13,7 +13,8 @@ namespace TwinEdge.Gameplay
 {
     public sealed class BridgeRelaySmoke : MonoBehaviour
     {
-        bool host, failed, carryDisconnect;
+        bool host, failed, carryDisconnect, contactWithoutFall;
+        FullMatchRelayReplay fullMatch;
         string output, peer;
         BridgeGameplay bridge;
         PlayerMovement player;
@@ -29,6 +30,7 @@ namespace TwinEdge.Gameplay
             var test = new GameObject("BridgeRelaySmoke").AddComponent<BridgeRelaySmoke>();
             test.host = args[mode + 1] == "host";
             test.carryDisconnect = Array.IndexOf(args, "-bridgeCarryDisconnect") >= 0;
+            test.contactWithoutFall = Array.IndexOf(args, "-bridgeContactWithoutFall") >= 0;
             test.peer = test.host ? "host" : "client";
             test.output = args[Array.IndexOf(args, "-bridgeEvidence") + 1];
             Directory.CreateDirectory(test.output);
@@ -36,6 +38,7 @@ namespace TwinEdge.Gameplay
 
         IEnumerator Start()
         {
+            if (fullMatch != null) yield break;
             Application.runInBackground = true;
             Application.targetFrameRate = 60;
             Application.logMessageReceived += Log;
@@ -75,15 +78,51 @@ namespace TwinEdge.Gameplay
             Teleport(bridge.SupplyPoint + side);
             yield return Barrier("station");
 
+            yield return BuildAndCross(sessions, manager, game, side);
+            if (carryDisconnect) yield break;
+            if (host)
+            {
+                Check(game.AdvanceFoundation(FoundationPhase.SealPending), "Seal test transition");
+                Check(game.AdvanceFoundation(FoundationPhase.Return), "Return test transition");
+            }
+            yield return ReturnCrossing(side);
+            File.WriteAllText(output + "/" + peer + "-pass.txt", "PASS outbound and independent Return crossings with one permanently collapsed plank.");
+            yield return Barrier("finish");
+            Application.Quit(0);
+        }
+
+        internal IEnumerator ReplayOutbound(FullMatchRelayReplay match)
+        {
+            fullMatch = match;
+            host = match.Host;
+            peer = match.Role;
+            output = match.Output;
+            bridge = BridgeGameplay.Current;
+            player = match.Player;
+            keyboard = match.Keyboard;
+            planks = FindObjectsByType<BridgePlankV3>(FindObjectsSortMode.None).OrderBy(p => p.plankId).ToArray();
+            var side = Vector3.right * (host ? -bridge.GripHalfWidth : bridge.GripHalfWidth);
+            yield return BuildAndCross(null, match.Manager, match.Game, side);
+        }
+
+        internal IEnumerator ReplayReturn()
+        {
+            contactWithoutFall = true;
+            var side = Vector3.right * (host ? -bridge.GripHalfWidth : bridge.GripHalfWidth);
+            yield return ReturnCrossing(side);
+        }
+
+        IEnumerator BuildAndCross(MultiplayerSessionManager sessions, NetworkManager manager, GameStateManager game, Vector3 side)
+        {
             for (int delivery = 0; delivery < bridge.TotalDeliveries; delivery++)
             {
                 yield return WalkTo(bridge.SupplyPoint + side, true);
                 yield return Barrier("supply" + delivery);
                 if (host) yield return Tap(Key.E);
                 yield return Until(() => bridge.Load.supplied, "E supply " + delivery);
-                yield return Until(() => player.GetComponent<PlayerInteraction>().CurrentTarget == bridge, "Grip target " + delivery);
+                yield return Until(() => ReferenceEquals(player.GetComponent<PlayerInteraction>().CurrentTarget, bridge), "Grip target " + delivery);
                 if (!host) yield return Until(() => bridge.Load.left != BridgeGameplay.LoadState.Empty, "Left grip occupied");
-                if (host && delivery == 0)
+                if (host && delivery == 0 && fullMatch == null)
                 {
                     yield return Tap(Key.E);
                     yield return Until(() => bridge.Holds(player.OwnerClientId), "Solo grip");
@@ -99,7 +138,7 @@ namespace TwinEdge.Gameplay
                     yield return Tap(Key.E);
                     yield return Until(() => bridge.Load.supplied, "Timber supplied again");
                 }
-                if (!host && delivery == 0)
+                if (!host && delivery == 0 && fullMatch == null)
                 {
                     yield return Until(() => File.Exists(output + "/host-cancel.txt") && !bridge.Load.supplied, "Cancellation replicated");
                     File.WriteAllText(output + "/client-cancel-observed.txt", "PASS");
@@ -108,7 +147,7 @@ namespace TwinEdge.Gameplay
                 yield return Tap(Key.E);
                 yield return Until(() => bridge.Load.Paired, "Both ends grabbed " + delivery);
                 float startZ = bridge.Load.center.z;
-                if (delivery == 0)
+                if (delivery == 0 && fullMatch == null)
                 {
                     if (host) Keys(Key.W);
                     yield return Barrier("single-input");
@@ -168,7 +207,8 @@ namespace TwinEdge.Gameplay
                     yield break;
                 }
                 yield return Barrier("socket" + delivery);
-                if (host && delivery == 0) SaveRender("carry", bridge.Load.center + Vector3.up, new Vector3(6, 5, -8));
+                if (host && delivery == 0 && fullMatch == null) SaveRender("carry", bridge.Load.center + Vector3.up, new Vector3(6, 5, -8));
+                if (delivery == 0) fullMatch?.Capture("bridge-first-delivery");
                 yield return new WaitForSeconds(.4f);
                 Check(bridge.Load.center.z - startZ > 4f && Vector3.Distance(player.transform.position,
                     bridge.Load.Grip(!host, bridge.GripHalfWidth)) < .65f, "Load travelled and owner aligned " + delivery);
@@ -185,21 +225,15 @@ namespace TwinEdge.Gameplay
             Check(player.transform.position.z > bridge.EndPoint.z && player.GetComponent<GameplayCharacter>().RespawnCount.Value == respawns,
                 "Continuous summit-to-Canyon outbound crossing");
             yield return Barrier("outbound");
-            if (host) SaveRender("outbound", bridge.EndPoint - Vector3.forward * 12, new Vector3(9, 6, 12));
+            if (host && fullMatch == null) SaveRender("outbound", bridge.EndPoint - Vector3.forward * 12, new Vector3(9, 6, 12));
             File.WriteAllText(output + "/" + peer + "-outbound-pass.txt", "PASS real Relay, 13 deliveries, original support colliders and outbound crossing.");
-            yield return ReturnCrossing(game, side);
-            File.WriteAllText(output + "/" + peer + "-pass.txt", "PASS outbound and independent Return crossings with one permanently collapsed plank.");
-            yield return Barrier("finish");
-            Application.Quit(0);
         }
 
-        IEnumerator ReturnCrossing(GameStateManager game, Vector3 side)
+        IEnumerator ReturnCrossing(Vector3 side)
         {
             var character = player.GetComponent<GameplayCharacter>();
             if (host)
             {
-                Check(game.AdvanceFoundation(FoundationPhase.SealPending), "Seal test transition");
-                Check(game.AdvanceFoundation(FoundationPhase.Return), "Return test transition");
                 yield return Until(() => bridge.ReadServerHazardsForTest() != null, "Server selected Return hazards");
                 // Out-of-band driving instructions only for the automated route. The gameplay client receives no hazard map.
                 var hazards = bridge.ReadServerHazardsForTest();
@@ -211,8 +245,9 @@ namespace TwinEdge.Gameplay
             if (!host) Check(bridge.ReadServerHazardsForTest() == null, "Client has no hazard assignment");
             yield return Barrier("hidden-hazards");
             var route = File.ReadAllText(output + "/route.txt").Select(value => value == '1').ToArray();
-            int hole = Enumerable.Range(16, planks.Length - 32).First(i => route[i] && !route[i + 1]);
-            if (host)
+            int hole = Enumerable.Range(16, planks.Length - 32).First(i =>
+                route[i] && !route[i + 1] && (!contactWithoutFall || !route[i - 1]));
+            if (host && !contactWithoutFall)
             {
                 // Separate Canyon-facing fall station. Footstep and resulting fall use normal movement.
                 Teleport(planks[hole + 1].socket + side);
@@ -229,7 +264,8 @@ namespace TwinEdge.Gameplay
                 File.WriteAllText(output + "/host-fall-pass.txt", "PASS contact, gravity, Lower dock, persistent collapse");
                 Teleport(bridge.EndPoint + side + Vector3.forward * 3);
             }
-            yield return Until(() => bridge.IsCollapsed(hole) && File.Exists(output + "/host-fall-pass.txt"), "Collapse and respawn replicated");
+            if (!contactWithoutFall)
+                yield return Until(() => bridge.IsCollapsed(hole) && File.Exists(output + "/host-fall-pass.txt"), "Collapse and respawn replicated");
             CheckSupport(planks.Length);
             yield return Barrier("return-crossing-start");
             int respawns = character.RespawnCount.Value;
@@ -242,8 +278,19 @@ namespace TwinEdge.Gameplay
                 bool sprint = high - low == 3;
                 var bounds = planks[high].GetComponent<Collider>().bounds;
                 var takeoff = planks[high].socket + side;
-                takeoff.z = bounds.min.z + .17f;
-                yield return WalkTo(takeoff, true, .13f);
+                bool contact = contactWithoutFall && high == hole + 1;
+                takeoff.z = bounds.min.z + (contact && fullMatch == null ? -.21f : .17f);
+                yield return WalkTo(takeoff, true, contact && fullMatch == null ? .05f : .13f);
+                if (contact)
+                {
+                    if (fullMatch != null && host)
+                    {
+                        yield return TouchHazardEdge(hole, bounds.min.z);
+                        yield return WalkTo(takeoff, false, .08f);
+                    }
+                    yield return Until(() => bridge.IsCollapsed(hole), "Bridge contact collapsed a plank");
+                    fullMatch?.Capture("bridge-collapse");
+                }
                 yield return Until(() => player.IsGrounded, "Grounded takeoff " + high);
                 if (sprint) Keys(Key.S, Key.Space, Key.LeftShift);
                 else Keys(Key.S, Key.Space);
@@ -265,6 +312,29 @@ namespace TwinEdge.Gameplay
             File.WriteAllText(output + "/" + peer + "-return-pass.txt", $"PASS {singles} walk jumps and {doubles} sprint jumps, no route teleport or respawn");
         }
 
+        IEnumerator TouchHazardEdge(int hazard, float safeEdge)
+        {
+            // Keep the center in the seam and overlap both supports with the capsule.
+            // The same walk/jump motion is used after retreating to the sound plank.
+            float deadline = Time.realtimeSinceStartup + 3;
+            float target = safeEdge - .135f;
+            while (!bridge.IsCollapsed(hazard) && player.transform.position.z > target)
+            {
+                Check(Time.realtimeSinceStartup < deadline && player.transform.position.y >= bridge.StartPoint.y - .12f,
+                    "Approach collapse contact on the supported edge");
+                var camera = Camera.main.transform;
+                float amount = Mathf.Min(.23f, (player.transform.position.z - target) / .16f);
+                Vector2 input = new(-Vector3.ProjectOnPlane(camera.right, Vector3.up).normalized.z,
+                    -Vector3.ProjectOnPlane(camera.forward, Vector3.up).normalized.z);
+                if (player.transform.position.z - target < .008f) break;
+                fullMatch.SteerPole(input * amount);
+                yield return null;
+            }
+            fullMatch.SteerPole(Vector2.zero);
+            yield return new WaitForSeconds(.24f);
+            Check(bridge.IsCollapsed(hazard), "Real safe-edge contact collapsed the adjacent plank");
+        }
+
         IEnumerator MarkCancel()
         {
             yield return Tap(Key.Escape);
@@ -284,6 +354,11 @@ namespace TwinEdge.Gameplay
 
         IEnumerator WalkTo(Vector3 target, bool sprint, float tolerance = .28f)
         {
+            if (fullMatch != null)
+            {
+                yield return fullMatch.Walk(target, tolerance, sprint);
+                yield break;
+            }
             float deadline = Time.realtimeSinceStartup + 25;
             while (true)
             {

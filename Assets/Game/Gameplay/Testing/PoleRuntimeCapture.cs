@@ -5,6 +5,7 @@ namespace TwinEdge.Gameplay {
  // Opt-in test capture of live scene state. Does not move either participant or the pole.
  public static class PoleRuntimeCapture {
   public static void Save(CooperativePole pole,string path) {
+   if (SystemInfo.graphicsDeviceType == UnityEngine.Rendering.GraphicsDeviceType.Null) return;
    Directory.CreateDirectory(Path.GetDirectoryName(path));
    var go=new GameObject("TemporaryPoleEvidenceCamera"){hideFlags=HideFlags.HideAndDontSave};
    var cam=go.AddComponent<Camera>();cam.enabled=false;cam.fieldOfView=45;cam.farClipPlane=3000;

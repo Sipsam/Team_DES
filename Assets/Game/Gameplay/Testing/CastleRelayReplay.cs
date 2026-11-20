@@ -18,6 +18,7 @@ namespace TwinEdge.Gameplay
         string output, role, room;
         bool host, failed, screenshots, outboundReconnect;
         int slot;
+        FullMatchRelayReplay fullMatch;
         Keyboard keyboard;
         CastleGameplay castle;
         GameStateManager game;
@@ -45,6 +46,7 @@ namespace TwinEdge.Gameplay
 
         IEnumerator Start()
         {
+            if (fullMatch != null) yield break;
             Application.targetFrameRate = 60;
             Application.runInBackground = true;
             Application.logMessageReceived += WatchLogs;
@@ -85,6 +87,32 @@ namespace TwinEdge.Gameplay
             player.PlaceAtOwner(position, Quaternion.identity);
             Debug.Log("CASTLE SETUP placed outside the curtain gate");
             yield return new WaitForSeconds(.5f);
+            yield return ReplayCourse();
+            if (outboundReconnect) yield break;
+            File.WriteAllText(Path.Combine(output, role + "-pass.txt"), "PASS: Relay, castle stage inputs, physical gate, underground seal and gem, castle exit");
+            yield return Wait(() => File.Exists(Path.Combine(output, (host ? "client" : "host") + "-pass.txt")),
+                "both routes completed", 190);
+            yield return new WaitForSeconds(1.2f);
+            Application.Quit();
+        }
+
+        internal IEnumerator ReplayFromGate(FullMatchRelayReplay match)
+        {
+            fullMatch = match;
+            host = match.Host;
+            role = match.Role;
+            output = match.Output;
+            manager = match.Manager;
+            game = match.Game;
+            keyboard = match.Keyboard;
+            castle = CastleGameplay.Current;
+            slot = host ? 0 : 1;
+            yield return BindPlayer();
+            yield return ReplayCourse();
+        }
+
+        IEnumerator ReplayCourse()
+        {
             yield return Walk(1.2f, 45);
             Capture("gate-entry");
             var initial = castle.RoomPlan(0, slot);
@@ -95,7 +123,7 @@ namespace TwinEdge.Gameplay
             {
                 Rect plan = castle.RoomPlan(stage, slot);
                 float exit = castle.RoomPlan(Mathf.Min(stage + 1, 3), slot).center.x;
-                if (stage == 0)
+                if (stage == 0 && fullMatch == null)
                 {
                     var foreign = Station(CastleGameplay.Action.Pad, 1 - slot, stage, 0);
                     var before = castle.Progress(slot);
@@ -113,10 +141,10 @@ namespace TwinEdge.Gameplay
                 int code;
                 if (slot == stage % 2)
                 {
-                    yield return Use(Station(CastleGameplay.Action.ReadHint, slot, stage));
-                    yield return Wait(() => castle.LocalHint(stage) != 0, $"private hint for stage {stage + 1}");
+                    yield return UseAndConfirm(Station(CastleGameplay.Action.ReadHint, slot, stage),
+                        () => castle.LocalHint(stage) != 0, $"private hint for stage {stage + 1}");
                     code = castle.LocalHint(stage);
-                    if (stage == 0)
+                    if (stage == 0 && fullMatch == null)
                     {
                         yield return Use(Station(CastleGameplay.Action.Signal, slot, stage));
                         yield return Wait(() => CastleGameplay.SignalLength(castle.Signal) == 1, "partial wall message");
@@ -127,8 +155,8 @@ namespace TwinEdge.Gameplay
                     {
                         int glyph = ((code >> (i * 2)) & 3) - 1;
                         int count = i + 1;
-                        yield return Use(Station(CastleGameplay.Action.Signal, slot, stage, glyph));
-                        yield return Wait(() => CastleGameplay.SignalLength(castle.Signal) == count, $"message stone {count} at stage {stage + 1}");
+                        yield return UseAndConfirm(Station(CastleGameplay.Action.Signal, slot, stage, glyph),
+                            () => CastleGameplay.SignalLength(castle.Signal) == count, $"message stone {count} at stage {stage + 1}");
                     }
                 }
                 else
@@ -139,8 +167,9 @@ namespace TwinEdge.Gameplay
                     code = castle.Signal;
                 }
                 Capture($"stage-{stage + 1}-signal");
+                if (stage == 0) fullMatch?.Capture("castle-wall-signal");
 
-                if (stage == 0)
+                if (stage == 0 && fullMatch == null)
                 {
                     var wrong = Station(CastleGameplay.Action.Pad, slot, stage, (code & 3) % 3);
                     yield return Use(wrong);
@@ -154,10 +183,9 @@ namespace TwinEdge.Gameplay
                     sewerAnswer[stage * 3 + i] = glyph;
                     var pad = Station(CastleGameplay.Action.Pad, slot, stage, glyph);
                     int oldRevision = castle.Progress(slot).Revision;
-                    yield return Use(pad);
-                    yield return Wait(() => castle.Stage > stage || castle.Progress(slot).Revision > oldRevision,
+                    yield return UseAndConfirm(pad, () => castle.Stage > stage || castle.Progress(slot).Revision > oldRevision,
                         $"accepted symbol {i + 1} of stage {stage + 1}");
-                    if (i == 0 && stage == 0)
+                    if (i == 0 && stage == 0 && fullMatch == null)
                     {
                         int revision = castle.Progress(slot).Revision;
                         castle.UseRpc(pad.Id, stage, oldRevision);
@@ -178,14 +206,17 @@ namespace TwinEdge.Gameplay
 
             Require(!castle.CanUse(Station(CastleGameplay.Action.SewerPad, -1, 4), slot),
                 "server keeps sewer input disabled before return");
-            yield return Use(Station(CastleGameplay.Action.Collect, slot, 4));
-            yield return Wait(() => castle.LocalNumber >= 0, "private four-digit number");
-            yield return Use(Station(CastleGameplay.Action.Keypad, slot, 4));
-            yield return Wait(() => castle.KeypadForLocal == slot, "local keypad opened");
-            int old = castle.Progress(slot).Revision;
-            castle.SubmitNumberRpc((castle.LocalNumber + 1) % 10000, old);
-            yield return Wait(() => castle.Progress(slot).Revision != old && castle.Progress(slot).Feedback == -1,
-                "incorrect four-digit number rejected");
+            yield return UseAndConfirm(Station(CastleGameplay.Action.Collect, slot, 4),
+                () => castle.LocalNumber >= 0, "private four-digit number");
+            yield return UseAndConfirm(Station(CastleGameplay.Action.Keypad, slot, 4),
+                () => castle.KeypadForLocal == slot, "local keypad opened");
+            if (fullMatch == null)
+            {
+                int old = castle.Progress(slot).Revision;
+                castle.SubmitNumberRpc((castle.LocalNumber + 1) % 10000, old);
+                yield return Wait(() => castle.Progress(slot).Revision != old && castle.Progress(slot).Feedback == -1,
+                    "incorrect four-digit number rejected");
+            }
             castle.SubmitNumberRpc(castle.LocalNumber, castle.Progress(slot).Revision);
             yield return Wait(() => castle.DoorOpen, "both four-digit codes open basement", 30);
             yield return Walk(host ? 1.7f : -1.7f, 242.6f);
@@ -198,22 +229,39 @@ namespace TwinEdge.Gameplay
             yield return Wait(() => castle.PartitionsOpen && castle.Crossed == 3, "both physically crossed the basement door");
             Require(game.Phase == FoundationPhase.Outbound && !castle.Returning && castle.PartitionsDisabled,
                 "basement passage opens partitions and keeps outbound rules");
+            if (fullMatch != null) yield return fullMatch.Barrier("basement-door");
             var underground = UndergroundGameplay.Current;
             yield return TraverseUnderground(underground);
             yield return Wait(() => castle.Returning && game.Phase == FoundationPhase.Return, "gem pickup starts the castle return traps");
             Capture("return-corridor");
             CaptureView("return-layout", castle.World(5, 5.5f, 232), castle.World(2, 1, 181));
 
-            if (host) yield return RunTraps();
+            if (fullMatch != null)
+            {
+                // Keep the approach clear until the player entering the glyphs leaves the keypad.
+                if (!host) yield return Walk(-2.3f, 239);
+                yield return fullMatch.Barrier("sewer-approach-clear");
+                if (host)
+                {
+                    yield return GoToSewer();
+                    yield return EnterSewer(sewerAnswer);
+                    yield return Walk(-32, 242);
+                }
+                yield return Wait(() => castle.SewerOpen, "twelve-glyph sewer opened", 40);
+                yield return fullMatch.Barrier("sewer-keypad-clear");
+                if (!host)
+                {
+                    yield return GoToSewer();
+                    yield return Walk(-32, 242);
+                }
+                yield return Walk(-32, 46, sprint: true);
+                yield return Walk(-32, 41);
+            }
+            else if (host) yield return RunTraps();
             else yield return RunSewer();
             yield return Walk(1.2f, 39);
             yield return Walk(host ? -1.7f : 2.6f, -19);
             Capture("gate-exit");
-            File.WriteAllText(Path.Combine(output, role + "-pass.txt"), "PASS: Relay, castle stage inputs, physical gate, underground seal and gem, castle exit");
-            yield return Wait(() => File.Exists(Path.Combine(output, (host ? "client" : "host") + "-pass.txt")),
-                "both routes completed", 190);
-            yield return new WaitForSeconds(1.2f);
-            Application.Quit();
         }
 
         IEnumerator CheckOutboundRecovery()
@@ -369,13 +417,31 @@ namespace TwinEdge.Gameplay
             {
                 var pad = Station(CastleGameplay.Action.SewerPad, -1, 4, glyphs[i]);
                 int revision = castle.Progress(slot).Revision;
-                yield return Use(pad);
-                yield return Wait(() => castle.Progress(slot).Revision != revision, $"sewer input {i + 1}/12");
+                yield return UseAndConfirm(pad, () => castle.Progress(slot).Revision != revision, $"sewer input {i + 1}/12");
             }
         }
 
         CastleStation Station(CastleGameplay.Action kind, int path, int stage, int value = 0) =>
             castle.stations.Single(s => s.Kind == kind && s.Slot == path && s.Stage == stage && s.Value == value);
+
+        IEnumerator UseAndConfirm(CastleStation station, Func<bool> confirmed, string label)
+        {
+            yield return Use(station);
+            if (fullMatch != null)
+            {
+                // Owner movement and the station RPC can reach the server on different frames.
+                // Give the replicated response time to arrive before sending another ordinary E press.
+                for (int retry = 0; retry < 2 && !confirmed(); retry++)
+                {
+                    float retryAt = Time.realtimeSinceStartup + 1f;
+                    while (!confirmed() && Time.realtimeSinceStartup < retryAt) yield return null;
+                    if (confirmed()) break;
+                    Debug.Log($"CASTLE RETRY {station.Kind} {station.Value}: {label}");
+                    yield return Use(station);
+                }
+            }
+            yield return Wait(confirmed, label);
+        }
 
         IEnumerator Use(CastleStation station)
         {

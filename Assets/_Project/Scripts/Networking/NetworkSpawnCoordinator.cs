@@ -8,6 +8,7 @@ public sealed class NetworkSpawnCoordinator : MonoBehaviour
     [SerializeField] private Transform[] spawnPoints;
 
     private readonly Dictionary<ulong, int> clientSpawnSlots = new Dictionary<ulong, int>();
+    private readonly Dictionary<ulong, (Pose Pose, string Checkpoint)> approvedV3Spawns = new();
 
     private void Awake()
     {
@@ -55,8 +56,10 @@ public sealed class NetworkSpawnCoordinator : MonoBehaviour
         }
 
         Transform spawnPoint = spawnPoints[spawnIndex];
-        Pose pose = GetSpawnPose(spawnPoint, spawnIndex, out _);
+        Pose pose = GetSpawnPose(spawnPoint, spawnIndex, out string checkpoint);
         clientSpawnSlots[request.ClientNetworkId] = spawnIndex;
+        if (networkManager.NetworkConfig.PlayerPrefab.GetComponent<TwinEdge.Gameplay.GameplayCharacter>() != null)
+            approvedV3Spawns[request.ClientNetworkId] = (pose, checkpoint);
 
         response.Approved = true;
         response.CreatePlayerObject = true;
@@ -105,15 +108,28 @@ public sealed class NetworkSpawnCoordinator : MonoBehaviour
             return;
         }
 
-        Pose pose = GetSpawnPose(spawnPoint, spawnIndex, out string label);
+        var character = playerObject.GetComponent<TwinEdge.Gameplay.GameplayCharacter>();
+        bool hasApprovedPose = approvedV3Spawns.Remove(clientId, out var approved);
+        // River recovery can assign a dock and start the owner's respawn while NGO
+        // is still synchronizing the connecting player. Preserve that placement.
+        if (networkManager.IsServer && character != null && character.RespawnCount.Value > 0) return;
+
+        // Region presence may change during sync as the new player appears at the
+        // reconnect point. Keep the server's decision from connection approval.
+        string label = approved.Checkpoint;
+        Pose pose = hasApprovedPose ? approved.Pose : GetSpawnPose(spawnPoint, spawnIndex, out label);
         playerObject.transform.SetPositionAndRotation(pose.position, pose.rotation);
-        playerObject.GetComponent<PlayerMovement>()?.ResetVerticalVelocity();
+        var movement = playerObject.GetComponent<PlayerMovement>();
+        movement?.ResetVerticalVelocity();
         if (networkManager.IsServer)
         {
             RespawnManager respawnManager = FindFirstObjectByType<RespawnManager>();
-            var movement = playerObject.GetComponent<PlayerMovement>();
             respawnManager?.RegisterSpawn(movement);
             if (label != null) respawnManager?.SetCheckpoint(movement, pose.position, pose.rotation, label);
+            // Commit the approved pose through the owner after NGO scene synchronization.
+            // Moving just the server replica leaves the owner transform's spawn state in control.
+            if (movement != null && character != null)
+                movement.ApplyApprovedSpawnRpc(pose.position, pose.rotation);
         }
         Debug.Log($"Placed client {clientId} at {label ?? spawnPoint.name}: {pose.position}.", playerObject);
     }
@@ -173,5 +189,6 @@ public sealed class NetworkSpawnCoordinator : MonoBehaviour
     private void HandleClientDisconnected(ulong clientId)
     {
         clientSpawnSlots.Remove(clientId);
+        approvedV3Spawns.Remove(clientId);
     }
 }

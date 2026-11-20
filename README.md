@@ -11,13 +11,18 @@ cd Team_DES
 
 Install Unity 6000.3.27f1 through Unity Hub with Windows Build Support (IL2CPP if needed). In Hub, add this repository root (the folder containing Assets, Packages, ProjectSettings) and open it. Allow package restore and initial import to finish. Commit both package manifest and lock file; Library is regenerated locally. Relay gameplay also requires access to the team's Unity Services project; cloning does not grant service access.
 
-**Publication status:** at the restructuring audit, `Assets/Game` and shared `Docs` existed only locally. These shared files must be reviewed, staged with their metadata and required generated dependencies, and committed before a fresh clone contains the current level tools. Internal documents under `Docs/Development/` are local-only and must never be staged. No commit or push was made by this task.
+## Play V3 over Relay
 
-## Scenes and tools
+1. Open `Assets/Game/Gameplay/Scenes/V3Gameplay.unity` in Unity and enter Play. The bootstrap loads `LevelBlockoutV3.unity` additively.
+2. For a standalone Windows player, use **Tools > Twin Edge > Gameplay > Build Full Match Development Player**. Launch two copies of `Builds/FullMatch/V3Gameplay.exe`, or use the Editor and one copy.
+3. Select **Create room** on one instance. On the other instance enter the room code and select **Join room**. When both players are present, select **Start game** on Host.
+4. Use WASD to move, Shift to sprint, Space to jump and E to interact. Complete the cooperative route to the altar, then pick up the unsealed gem with E. Return to the starting summit with the gem to win.
 
-Open `Assets/Game/Level/Scenes/LevelBlockoutV3.unity` alone for V3 spatial review. For multiplayer, open `Assets/Game/Gameplay/Scenes/V3Gameplay.unity` and follow [V3 Gameplay](Docs/Architecture/V3Gameplay.md) and [River Gameplay](Docs/Architecture/RiverGameplay.md). `LevelBlockoutV2.unity` is the retained V2 review scene. `LevelBlockout.unity` is V1; `LevelBlockout 1.unity` and `LevelBlockoutV2_InitialDraft.unity` are retained comparison scenes. Avoid additive overlapping blockouts for traversal checks.
+The shared Build Settings still start with `MainPrototype.unity`. The explicit V3 build command puts the V3 boot scene first and includes the additive level. See the route, controls and verification status in [Full match gameplay](Docs/Architecture/FullMatchGameplay.md).
 
-The enabled first Build Settings scene is still `Assets/_Project/Scenes/MainPrototype.unity`. Use the explicit V3 Gameplay build command for a current Windows Development build. Some disabled build entries point to missing local scenes. The initial scene opened in the Editor is a local session preference, not a shared default.
+## Level review and historical tools
+
+Open `Assets/Game/Level/Scenes/LevelBlockoutV3.unity` alone for a spatial review. `LevelBlockoutV2.unity` is the retained V2 review scene. `LevelBlockout.unity` is V1. `LevelBlockout 1.unity` and `LevelBlockoutV2_InitialDraft.unity` are comparison scenes. Open one blockout at a time when checking traversal.
 
 - `Tools > Twin Edge > Level Blockout`: select/create the V2 spatial layout; generate an entire blockout or one section. Work on a new scene or reviewed copy; generation replaces the selected Generated hierarchy. Put authored edits under Manual. Existing Undo is supported.
 - `Tools > Twin Edge > Level Visualization`: select a root/section and Top, Side X, Side Z, or Perspective; inspect routes, markers and Elevation Profile without editing geometry.

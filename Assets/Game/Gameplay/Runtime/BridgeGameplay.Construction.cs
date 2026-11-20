@@ -1,4 +1,6 @@
 using System;
+using System.Linq;
+using TwinEdge.Levels;
 using Unity.Netcode;
 using UnityEngine;
 
@@ -95,6 +97,7 @@ namespace TwinEdge.Gameplay
             if (bridgeVisuals != null) Destroy(bridgeVisuals);
             bridgeVisuals = new GameObject("Bridge Gameplay Visuals");
             bridgeVisuals.transform.SetParent(transform, false);
+            BuildSummitApproach();
             if (frameModel != null)
             {
                 int modules = Mathf.CeilToInt(Length / nominalFrameLength);
@@ -147,6 +150,25 @@ namespace TwinEdge.Gameplay
             leftInteraction = MakeInteraction("Left timber grip", Vector3.one * .45f);
             rightInteraction = MakeInteraction("Right timber grip", Vector3.one * .45f);
             RenderLoad();
+        }
+
+        void BuildSummitApproach()
+        {
+            var mountain = levelScene.GetRootGameObjects().SelectMany(root => root.GetComponentsInChildren<MountainSectionV3>())
+                .Single().config;
+            Vector3 anchor = mountain.bridgeAnchor;
+            Vector3 start = V3GameplayBootstrap.SafeGround(anchor - Forward * 4f) - Vector3.up * .12f;
+            if (start.y >= anchor.y - .15f) return;
+            Vector3 end = anchor + Forward * .4f;
+            Vector3 rise = end - start;
+            const float thickness = .24f;
+            var ramp = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            ramp.name = "Summit to bridge ramp";
+            ramp.transform.SetParent(bridgeVisuals.transform, false);
+            ramp.transform.rotation = Quaternion.LookRotation(rise);
+            ramp.transform.position = (start + end) * .5f - ramp.transform.up * (thickness * .5f);
+            ramp.transform.localScale = new Vector3(mountain.bridgeWidth, thickness, rise.magnitude);
+            ramp.GetComponent<Renderer>().sharedMaterial = plankRenderers[0][0].sharedMaterial;
         }
 
         static GameObject CloneVisual(GameObject prefab, Transform parent)

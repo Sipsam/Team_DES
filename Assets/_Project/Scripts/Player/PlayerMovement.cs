@@ -294,6 +294,12 @@ public sealed class PlayerMovement : NetworkBehaviour
         externalVelocity += Vector3.ClampMagnitude(velocity, 12f);
     }
 
+    [Rpc(SendTo.Owner, InvokePermission = RpcInvokePermission.Server)]
+    internal void ApplyApprovedSpawnRpc(Vector3 position, Quaternion rotation)
+    {
+        PlaceAtOwner(position, rotation);
+    }
+
     [Rpc(SendTo.SpecifiedInParams, InvokePermission = RpcInvokePermission.Server)]
     public void RespawnAtOwnerClientRpc(Vector3 position, Quaternion rotation, int life,
         RpcParams rpcParams = default)

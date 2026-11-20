@@ -35,7 +35,8 @@ public sealed class RespawnManager : NetworkBehaviour
 
     private void Update()
     {
-        if (!IsServer || !IsSpawned) return;
+        if (!IsServer || !IsSpawned || (gameStateManager != null && gameStateManager.foundationMode && !gameStateManager.CanPlay))
+            return;
         foreach (NetworkClient client in NetworkManager.ConnectedClientsList)
         {
             if (client.PlayerObject == null) continue;

@@ -14,6 +14,7 @@ namespace TwinEdge.Gameplay
     {
         [Serializable] public class Leg { public string from, to; public Vector3 start, end, initial; public float yaw, pitch, charge; }
         [Serializable] public class Plan { public List<Leg> legs; }
+        FullMatchRelayReplay fullMatch;
         bool host, failed, recoveryOnly, concurrentOnly, postOnly, inputOnly;
         string output, planFile, prefix;
         MountainReturnLaunch launch;
@@ -33,6 +34,7 @@ namespace TwinEdge.Gameplay
         }
         IEnumerator Start()
         {
+            if (fullMatch != null) yield break;
             Application.runInBackground = true; Application.targetFrameRate = 60; Application.logMessageReceived += Log;
             manager = FindFirstObjectByType<NetworkManager>(); var sessions = FindFirstObjectByType<MultiplayerSessionManager>();
             yield return Until(() => FindObjectsByType<Checkpoint>(FindObjectsSortMode.None).Length >= 4, "Level ready", 90);
@@ -75,24 +77,7 @@ namespace TwinEdge.Gameplay
             }
             if (!host && !postOnly) yield return Until(() => File.Exists(output + "/host-route.txt"), "Host route then independent client", 360);
             if (!host && !postOnly) yield return WalkTo(plan.legs[0].start);
-            int count = 0;
-            if (!postOnly) foreach (var leg in plan.legs)
-            {
-                yield return Until(() => launch.State.Value == LaunchState.Ready, "Launch available");
-                yield return WalkTo(leg.start);
-                yield return new WaitForSeconds(.4f);
-                uint revision = launch.Revision.Value;
-                launch.PrepareRpc(revision); yield return Until(() => launch.State.Value == LaunchState.Charging, "Charge authorized");
-                yield return Until(() => launch.Charge >= leg.charge, "Authoritative charge reached requested strength", 5);
-                launch.FireRpc(revision, float.NaN, leg.pitch, leg.charge); yield return new WaitForSeconds(.1f);
-                Check(launch.State.Value == LaunchState.Charging, "Nonfinite launch rejected");
-                launch.FireRpc(revision, leg.yaw, leg.pitch, leg.charge);
-                yield return Until(() => launch.State.Value == LaunchState.Flying, "Launch accepted");
-                launch.FireRpc(revision, leg.yaw, leg.pitch, leg.charge);
-                yield return Until(() => launch.State.Value != LaunchState.Flying, "Actual flight completed", 12);
-                Check(launch.LastLanding.Value.ToString() == leg.to, "Actual landing " + leg.to);
-                File.AppendAllText(output + "/" + prefix + "-landings.txt", (++count) + " " + leg.from + " -> " + leg.to + " position=" + launch.transform.position + "\n");
-            }
+            if (!postOnly) yield return FlyRoute(plan);
             yield return Until(() => launch.State.Value == LaunchState.Ready, "Post-route ready");
             var center = new Vector3(0, launch.transform.position.y, -225);
             yield return WalkTo(launch.transform.position + Vector3.ProjectOnPlane(center - launch.transform.position, Vector3.up).normalized * (host ? 8 : 4));
@@ -138,6 +123,48 @@ namespace TwinEdge.Gameplay
             File.WriteAllText(output + "/" + prefix + "-pass.txt", (postOnly ? "PASS post-route subset only; NO route proof. " : "PASS route. ") + "PASS stale/nonfinite/uncharged rejection, cancel, fall/Final retry, concurrent independent hop / remote position and animation. Manual input separate.");
             Application.Quit(0);
         }
+        int count;
+
+        internal IEnumerator ReplayFromSummit(FullMatchRelayReplay match, string routeFile)
+        {
+            fullMatch = match;
+            output = match.Output;
+            prefix = match.Role;
+            launch = match.Player.GetComponent<MountainReturnLaunch>();
+            launch.DevelopmentInputDriver = true;
+            var plan = JsonUtility.FromJson<Plan>(File.ReadAllText(routeFile));
+            Check(plan.legs.Count > 0, "Collider route exists");
+            yield return FlyRoute(plan);
+            yield return Until(() => launch.State.Value == LaunchState.Ready, "Controls restored on Start");
+        }
+
+        IEnumerator FlyRoute(Plan plan)
+        {
+            count = 0;
+            foreach (var leg in plan.legs)
+            {
+                yield return Until(() => launch.State.Value == LaunchState.Ready, "Launch available");
+                if (fullMatch == null) yield return WalkTo(leg.start);
+                else yield return fullMatch.Walk(leg.start, .08f, false);
+                yield return new WaitForSeconds(.4f);
+                uint revision = launch.Revision.Value;
+                launch.PrepareRpc(revision); yield return Until(() => launch.State.Value == LaunchState.Charging, "Charge authorized");
+                yield return Until(() => launch.Charge >= leg.charge, "Authoritative charge reached requested strength", 5);
+                if (fullMatch == null)
+                {
+                    launch.FireRpc(revision, float.NaN, leg.pitch, leg.charge);
+                    yield return new WaitForSeconds(.1f);
+                    Check(launch.State.Value == LaunchState.Charging, "Nonfinite launch rejected");
+                }
+                launch.FireRpc(revision, leg.yaw, leg.pitch, leg.charge);
+                yield return Until(() => launch.State.Value == LaunchState.Flying, "Launch accepted");
+                if (fullMatch == null) launch.FireRpc(revision, leg.yaw, leg.pitch, leg.charge);
+                yield return Until(() => launch.State.Value != LaunchState.Flying, "Actual flight completed", 12);
+                Check(launch.LastLanding.Value.ToString() == leg.to, "Actual landing " + leg.to);
+                File.AppendAllText(output + "/" + prefix + "-landings.txt", (++count) + " " + leg.from + " -> " + leg.to + " position=" + launch.transform.position + "\n");
+            }
+        }
+
         IEnumerator InputCase()
         {
             InputSystem.settings = Instantiate(InputSystem.settings);

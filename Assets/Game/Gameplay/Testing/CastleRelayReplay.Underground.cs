@@ -97,12 +97,13 @@ namespace TwinEdge.Gameplay
                 yield return Walk(40, 240);
             }
             Require(Mathf.Abs(player.transform.position.y - cave.Entry.y) < 1, "physical descent reaches the lava start");
+            fullMatch?.Capture("cavern-entry");
             Capture("cavern-entry");
             CaptureView("cavern-overview", cave.Entry + new Vector3(-8, 6, 1), cave.Entry + new Vector3(-12, -4, -55));
             yield return Split(cave);
             yield return Rendezvous("at-start");
 
-            if (!isolated) yield return CheckLavaExpiry(cave);
+            if (!isolated && fullMatch == null) yield return CheckLavaExpiry(cave);
 
             for (int round = 0; round < 8; round++)
             {
@@ -142,21 +143,24 @@ namespace TwinEdge.Gameplay
                 "both players at altar while still in Cooperation");
             var gem = GemOwnership.Current;
             bool testReconnect = isolated && Array.IndexOf(Environment.GetCommandLineArgs(), "-castleCavernReconnect") >= 0;
-            if (host) gem.RequestAcquire();
-            yield return Rendezvous("sealed-attempt");
-            Require(gem.State == GemState.Sealed && game.CurrentState == GameState.Cooperation, "sealed gem refused");
-            if (host)
+            if (fullMatch == null)
             {
-                yield return UseUnderground(cave.SealPad(slot));
-                yield return Wait(() => cave.Participants == 1, "one seal participant");
-                yield return new WaitForSeconds(3);
-                Require(cave.Seal == UndergroundSeal.ReadyForCooperation, "one player cannot unseal");
-                SetKeys(Key.Escape);
-                yield return new WaitForSeconds(.15f);
-                SetKeys();
-                yield return Wait(() => cave.Participants == 0, "Escape cancels participation");
+                if (host) gem.RequestAcquire();
+                yield return Rendezvous("sealed-attempt");
+                Require(gem.State == GemState.Sealed && game.CurrentState == GameState.Cooperation, "sealed gem refused");
+                if (host)
+                {
+                    yield return UseUnderground(cave.SealPad(slot));
+                    yield return Wait(() => cave.Participants == 1, "one seal participant");
+                    yield return new WaitForSeconds(3);
+                    Require(cave.Seal == UndergroundSeal.ReadyForCooperation, "one player cannot unseal");
+                    SetKeys(Key.Escape);
+                    yield return new WaitForSeconds(.15f);
+                    SetKeys();
+                    yield return Wait(() => cave.Participants == 0, "Escape cancels participation");
+                }
+                yield return Rendezvous("seal-cancel");
             }
-            yield return Rendezvous("seal-cancel");
             if (testReconnect)
             {
                 yield return UseUnderground(cave.SealPad(slot));
@@ -183,7 +187,7 @@ namespace TwinEdge.Gameplay
 
             yield return WalkPoint(cave.Altar + Vector3.right * (host ? -1.1f : 1.1f));
             yield return Rendezvous("gem-ready");
-            if (!testReconnect || host)
+            if (host || (!testReconnect && fullMatch == null))
             {
                 SetKeys(Key.E);
                 yield return new WaitForSeconds(.16f);
@@ -196,49 +200,58 @@ namespace TwinEdge.Gameplay
             Require(File.ReadAllText(Path.Combine(output, "host-carrier.txt")) == File.ReadAllText(Path.Combine(output, "client-carrier.txt")),
                 "both Relay peers see the same carrier");
             Require(cave.AllGroupsPermanent, "all eight cooperative groups physically present in Return");
-            yield return CheckReturnHazards(cave);
-
-            int returnDeaths = character.RespawnCount.Value;
-            if (carrier)
+            if (fullMatch != null)
             {
-                yield return WalkPoint(cave.Altar + Vector3.forward * 12);
-                yield return Wait(() => character.RespawnCount.Value > returnDeaths, "carrier falls and respawns at the seal");
-                Require(Vector3.Distance(player.transform.position, cave.Altar) < 6, "player respawn stays at altar");
+                fullMatch.Capture("altar-gem-carried");
+                yield return fullMatch.Barrier("seal-and-gem");
+                yield return CrossReturn(cave);
             }
-            yield return Wait(() => gem.State == GemState.Relocated && Vector3.Distance(gem.Position, cave.Entry) < 1.5f,
-                "gem relocates independently to the lava start");
-            Require(game.Phase == FoundationPhase.Return, "carrier death preserves Return");
+            else
+            {
+                yield return CheckReturnHazards(cave);
 
-            yield return CrossReturn(cave);
-            if (!carrier)
-            {
-                yield return UseUnderground(cave.Station(11));
-                yield return Wait(() => gem.Owner == player.OwnerClientId, "the partner recovers the relocated gem");
-            }
-            yield return Wait(() => gem.State == GemState.Carried, "relocated gem owned again");
-            Require(character.RespawnCount.Value == returnDeaths + (carrier ? 1 : 0), "reverse cavern was traversed without additional deaths");
-            if (testReconnect)
-            {
-                yield return Rendezvous("gem-disconnect-start");
-                if (!host) yield return RejoinCavern();
-                else
+                int returnDeaths = character.RespawnCount.Value;
+                if (carrier)
                 {
-                    yield return Wait(() => !game.IsGameReady && gem.State == GemState.Relocated, "carrier disconnect releases and relocates gem");
-                    yield return Wait(() => game.IsGameReady, "partner reconnected after gem ownership", 90);
+                    yield return WalkPoint(cave.Altar + Vector3.forward * 12);
+                    yield return Wait(() => character.RespawnCount.Value > returnDeaths, "carrier falls and respawns at the seal");
+                    Require(Vector3.Distance(player.transform.position, cave.Altar) < 6, "player respawn stays at altar");
                 }
-                yield return Wait(() => cave.Seal == UndergroundSeal.Unsealed && cave.AllGroupsPermanent &&
-                    game.Phase == FoundationPhase.Return && gem.State == GemState.Relocated, "reconnect preserves return and relocated gem");
-                yield return Rendezvous("gem-rejoined");
-                if (host)
+                yield return Wait(() => gem.State == GemState.Relocated && Vector3.Distance(gem.Position, cave.Entry) < 1.5f,
+                    "gem relocates independently to the lava start");
+                Require(game.Phase == FoundationPhase.Return, "carrier death preserves Return");
+
+                yield return CrossReturn(cave);
+                if (!carrier)
                 {
                     yield return UseUnderground(cave.Station(11));
-                    yield return Wait(() => gem.Owner == player.OwnerClientId, "gem can be reclaimed after carrier disconnect");
+                    yield return Wait(() => gem.Owner == player.OwnerClientId, "the partner recovers the relocated gem");
                 }
-                yield return Wait(() => gem.State == GemState.Carried, "new carrier replicates after reconnect");
-                if (!host)
+                yield return Wait(() => gem.State == GemState.Carried, "relocated gem owned again");
+                Require(character.RespawnCount.Value == returnDeaths + (carrier ? 1 : 0), "reverse cavern was traversed without additional deaths");
+                if (testReconnect)
                 {
-                    // The returning reconnect checkpoint is the seal terrace. Cross the route again.
-                    yield return CrossReturn(cave);
+                    yield return Rendezvous("gem-disconnect-start");
+                    if (!host) yield return RejoinCavern();
+                    else
+                    {
+                        yield return Wait(() => !game.IsGameReady && gem.State == GemState.Relocated, "carrier disconnect releases and relocates gem");
+                        yield return Wait(() => game.IsGameReady, "partner reconnected after gem ownership", 90);
+                    }
+                    yield return Wait(() => cave.Seal == UndergroundSeal.Unsealed && cave.AllGroupsPermanent &&
+                        game.Phase == FoundationPhase.Return && gem.State == GemState.Relocated, "reconnect preserves return and relocated gem");
+                    yield return Rendezvous("gem-rejoined");
+                    if (host)
+                    {
+                        yield return UseUnderground(cave.Station(11));
+                        yield return Wait(() => gem.Owner == player.OwnerClientId, "gem can be reclaimed after carrier disconnect");
+                    }
+                    yield return Wait(() => gem.State == GemState.Carried, "new carrier replicates after reconnect");
+                    if (!host)
+                    {
+                        // The returning reconnect checkpoint is the seal terrace. Cross the route again.
+                        yield return CrossReturn(cave);
+                    }
                 }
             }
             Capture("cavern-return");

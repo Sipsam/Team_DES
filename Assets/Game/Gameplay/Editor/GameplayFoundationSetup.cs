@@ -108,7 +108,21 @@ namespace TwinEdge.Gameplay.Editor
         }
         public static void BuildPlayer()
         {
-            var report = BuildPipeline.BuildPlayer(new BuildPlayerOptions { scenes = new[] { ScenePath, LevelPath }, locationPathName = "Builds/V3Gameplay/V3Gameplay.exe", target = BuildTarget.StandaloneWindows64, options = BuildOptions.Development });
+            BuildWindowsDevelopment("Builds/V3Gameplay/V3Gameplay.exe");
+        }
+
+        [MenuItem("Tools/Twin Edge/Gameplay/Build Full Match Development Player")]
+        public static void BuildFullMatchPlayer()
+        {
+            string directory = Environment.GetEnvironmentVariable("TWIN_EDGE_FULL_MATCH_BUILD") ?? "Builds/FullMatch";
+            BuildWindowsDevelopment(Path.Combine(directory, "V3Gameplay.exe"));
+        }
+
+        static void BuildWindowsDevelopment(string path)
+        {
+            var options = BuildOptions.Development;
+            if (Environment.GetCommandLineArgs().Contains("-v3BuildScriptsOnly")) options |= BuildOptions.BuildScriptsOnly;
+            var report = BuildPipeline.BuildPlayer(new BuildPlayerOptions { scenes = new[] { ScenePath, LevelPath }, locationPathName = path, target = BuildTarget.StandaloneWindows64, options = options });
             if (report.summary.result != UnityEditor.Build.Reporting.BuildResult.Succeeded) throw new Exception("V3 build failed");
         }
     }

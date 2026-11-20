@@ -5,6 +5,8 @@ using System.IO;
 using System.Linq;
 using TwinEdge.Gameplay;
 using Unity.Netcode;
+using Unity.Netcode.Transports.UTP;
+using Unity.Networking.Transport;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.InputSystem.LowLevel;
@@ -66,6 +68,28 @@ public sealed partial class V3GameplaySmoke : MonoBehaviour
         File.WriteAllText(evidence + (host ? "/host-input-ready.txt" : "/client-input-ready.txt"), "ready");
         yield return Until(() => File.Exists(evidence + "/host-input-ready.txt") && File.Exists(evidence + "/client-input-ready.txt"), "Input barrier");
         var remote = FindObjectsByType<GameplayCharacter>(FindObjectsSortMode.None).Single(x => !x.IsOwner);
+        bool impaired = Environment.GetCommandLineArgs().Contains("-v3ImpairedRelay");
+        if (impaired)
+        {
+            var transport = (UnityTransport)manager.NetworkConfig.NetworkTransport;
+            string peer = host ? "host" : "client";
+            ulong beforeRtt = transport.GetCurrentRtt(remote.OwnerClientId);
+            transport.GetNetworkDriver().ModifyNetworkSimulatorParameters(new NetworkSimulatorParameter
+            {
+                SendDelayMS = 60,
+                SendJitterMS = 10,
+                SendPacketLossPercent = 3
+            });
+            File.WriteAllText(Path.Combine(evidence, peer + "-impairment.txt"),
+                $"Each process: 60 ms send delay, 10 ms jitter, 3% outbound loss. Before RTT: {beforeRtt} ms.");
+            yield return Until(() => File.Exists(Path.Combine(evidence, (host ? "client" : "host") + "-impairment.txt")),
+                "Both Unity Transport simulators active");
+            yield return new WaitForSeconds(4);
+            ulong afterRtt = transport.GetCurrentRtt(remote.OwnerClientId);
+            File.AppendAllText(Path.Combine(evidence, peer + "-impairment.txt"), $"\nAfter RTT: {afterRtt} ms.");
+            // The idle client may still report its last reliable-send RTT until movement starts.
+            if (host) Check(afterRtt > beforeRtt + 30, "Measured Relay RTT increased with packet simulation");
+        }
         if (Environment.GetCommandLineArgs().Contains("-v3Contest"))
         {
             yield return RunContest(game, remote);
@@ -135,12 +159,11 @@ public sealed partial class V3GameplaySmoke : MonoBehaviour
         if (host)
         {
             yield return Until(() => File.Exists(evidence + "/client-pass.txt"), "Client complete");
-            yield return Until(() => !game.IsGameReady, "Disconnect pauses gameplay");
+            var transport = (UnityTransport)manager.NetworkConfig.NetworkTransport;
+            yield return Until(() => !game.IsGameReady, "Disconnect pauses gameplay", transport.DisconnectTimeoutMS / 1000f + 10);
         }
-        yield return new WaitForSeconds(.5f);
-        yield return null;
-        _ = sessions.LeaveRoomAsync();
-        yield return new WaitForSeconds(2);
+        var leaveRoom = sessions.LeaveRoomAsync();
+        yield return Until(() => leaveRoom.IsCompleted && !manager.IsListening, "Local Relay session closed", 60);
         Application.Quit(failed ? 2 : 0);
     }
     void Teleport(Vector3 position)
