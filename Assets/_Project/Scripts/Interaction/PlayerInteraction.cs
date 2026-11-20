@@ -41,6 +41,7 @@ public sealed class PlayerInteraction : NetworkBehaviour
 
         if (gameplayInput != null && Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame)
         {
+            TwinEdge.Gameplay.UndergroundGameplay.Current?.CancelOwner(this);
             foreach (var target in FindObjectsByType<TwinEdge.Gameplay.NetworkInteractionTarget>(FindObjectsSortMode.None)) target.Cancel(this);
         }
         if (GetComponent<TwinEdge.Gameplay.MountainReturnLaunch>()?.ControlsMovement == true) return;

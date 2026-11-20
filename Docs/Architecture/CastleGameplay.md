@@ -11,7 +11,7 @@ Run `Assets/Game/Gameplay/Scenes/V3Gameplay.unity` with the configured Unity Ser
 
 ## Return
 
-The server opens the return corridor after both crossing records are set. For this V3 slice the same event advances Foundation through SealPending to Return so downstream return mechanics can run. When the seal and underground jump-map module ships, it will own the global Return transition. The physical basement crossing remains the event that converts the castle layout.
+The server removes the outbound partitions after both physical door crossings. The players then descend and complete the underground puzzle in Cooperation. The corridor traps and sewer activate when a player acquires the unsealed gem and the phase becomes Return. See [Underground gameplay](UndergroundGameplay.md).
 
 Traps warn before attacking and recharge between attacks. The first hit slows movement and disables sprint. The second returns the player to the basement door. At the sewer entrance, enter the twelve outbound glyphs in order using E on the three pads. Clear erases a partial entry. A wrong full entry causes a hit and a retry delay. An opened sewer stays open and returns to the keep entrance beyond the trap rows.
 

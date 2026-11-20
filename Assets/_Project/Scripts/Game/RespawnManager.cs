@@ -40,6 +40,8 @@ public sealed class RespawnManager : NetworkBehaviour
             if (client.PlayerObject == null) continue;
             if (TwinEdge.Gameplay.RiverGameplay.Current?.IsSeated(client.ClientId) == true) continue;
             if (client.PlayerObject.GetComponent<TwinEdge.Gameplay.MountainReturnLaunch>()?.InFlight == true) continue;
+            var underground = TwinEdge.Gameplay.UndergroundGameplay.Current;
+            if (underground != null && underground.HandleFall(client.PlayerObject.GetComponent<PlayerMovement>())) continue;
             var position = client.PlayerObject.transform.position;
             bool fallen = position.y < fallRecoveryHeight;
             if (client.PlayerObject.GetComponent<TwinEdge.Gameplay.GameplayCharacter>() != null)
@@ -94,10 +96,13 @@ public sealed class RespawnManager : NetworkBehaviour
             return;
         lastRespawnTimes[player.OwnerClientId] = Time.time;
 
-        bool castleCheckpoint = !useAssignedCheckpoint && TwinEdge.Gameplay.CastleGameplay.Current?.AssignDeathCheckpoint(player) == true;
+        TwinEdge.Gameplay.GemOwnership.Current?.BeforeRespawnServer(player);
+        bool regionalCheckpoint = !useAssignedCheckpoint &&
+            (TwinEdge.Gameplay.UndergroundGameplay.Current?.AssignDeathCheckpoint(player) == true ||
+             TwinEdge.Gameplay.CastleGameplay.Current?.AssignDeathCheckpoint(player) == true);
         var bridge = TwinEdge.Gameplay.BridgeGameplay.Current;
         bridge?.BeforeRespawnServer(player);
-        if (lastBridgeFeet.Remove(player.OwnerClientId, out Vector3 feet) && !useAssignedCheckpoint && !castleCheckpoint && bridge != null &&
+        if (lastBridgeFeet.Remove(player.OwnerClientId, out Vector3 feet) && !useAssignedCheckpoint && !regionalCheckpoint && bridge != null &&
             bridge.TryFallCheckpoint(feet, out Pose bridgeCheckpoint, out string bridgeLabel))
             SetCheckpoint(player, bridgeCheckpoint.position, bridgeCheckpoint.rotation, bridgeLabel);
         TwinEdge.Gameplay.CooperativePole.Current?.BeforeRespawnServer(player.OwnerClientId);

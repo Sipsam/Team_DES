@@ -286,7 +286,7 @@ namespace TwinEdge.Gameplay
             return block;
         }
 
-        static void Model(Transform parent, GameObject prefab, Vector3 size, bool fitAxes = false)
+        internal static void Model(Transform parent, GameObject prefab, Vector3 size, bool fitAxes = false)
         {
             if (prefab == null) return;
             var frame = Group(parent, prefab.name + " display");
@@ -325,8 +325,8 @@ namespace TwinEdge.Gameplay
                 labelMaterial.mainTexture = labelFont.material.mainTexture;
             bool returning = IsSpawned && Returning;
             foreach (var reservation in reservations) SetActive(reservation, false);
-            SetActive(partitions.gameObject, !returning);
-            SetActive(chambers.gameObject, !returning);
+            SetActive(partitions.gameObject, !IsSpawned || !PartitionsOpen);
+            SetActive(chambers.gameObject, !IsSpawned || !PartitionsOpen);
             SetActive(returnLayout.gameObject, returning);
             SetActive(basementGate, !IsSpawned || !DoorOpen);
             for (int lane = 0; lane < 2; lane++)

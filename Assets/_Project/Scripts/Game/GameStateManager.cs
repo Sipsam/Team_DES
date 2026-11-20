@@ -24,11 +24,10 @@ public sealed class GameStateManager : NetworkBehaviour
 
     public void RequestDevelopmentReturn()
     {
-        if (AdvanceFoundation(FoundationPhase.SealPending))
-        {
-            developmentReturnRequested.Value = true;
-            AdvanceFoundation(FoundationPhase.Return);
-        }
+        if (Phase == FoundationPhase.Outbound && !AdvanceFoundation(FoundationPhase.SealPending)) return;
+        if (!IsServer || !IsGameReady || Phase != FoundationPhase.SealPending) return;
+        developmentReturnRequested.Value = true;
+        AdvanceFoundation(FoundationPhase.Return);
     }
 #endif
     public string FoundationPhaseLabel => foundationMode ? foundationPhase.Value.ToString() : CurrentState.ToString();
@@ -38,7 +37,7 @@ public sealed class GameStateManager : NetworkBehaviour
         if (IsServer && foundationMode && IsGameReady && foundationPhase.Value == FoundationPhase.Preparing)
             foundationPhase.Value = FoundationPhase.Outbound;
     }
-    // Trusted server hook only. Gem, seal and winner rules deliberately remain in future modules.
+    // Trusted server hook. SealPending stays cooperative until GemOwnership commits acquisition.
     public bool AdvanceFoundation(FoundationPhase next)
     {
         if (!IsServer || !foundationMode || !IsGameReady ||

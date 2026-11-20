@@ -122,6 +122,8 @@ public sealed class NetworkSpawnCoordinator : MonoBehaviour
 
     private static Pose GetSpawnPose(Transform spawnPoint, int slot, out string label)
     {
+        var underground = TwinEdge.Gameplay.UndergroundGameplay.Current;
+        if (underground != null && underground.TryResume(slot, out Pose undergroundPose, out label)) return undergroundPose;
         var castle = TwinEdge.Gameplay.CastleGameplay.Current;
         if (castle != null && castle.TryResume(slot, out Pose castlePose, out label)) return castlePose;
         var bridge = TwinEdge.Gameplay.BridgeGameplay.Current;

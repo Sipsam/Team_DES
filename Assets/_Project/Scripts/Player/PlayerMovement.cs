@@ -27,6 +27,7 @@ public sealed class PlayerMovement : NetworkBehaviour
     private float verticalSpeed;
     private float bridgeJumpSpeed;
     private Vector3 externalVelocity;
+    private Vector3 undergroundSupportDelta;
     private readonly NetworkVariable<float> movementSpeedMultiplier = new NetworkVariable<float>(
         1f, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
     private Pose initialSpawnPose;
@@ -94,6 +95,7 @@ public sealed class PlayerMovement : NetworkBehaviour
 
         var bridge = TwinEdge.Gameplay.BridgeGameplay.Current;
         var castle = IsSpawned ? TwinEdge.Gameplay.CastleGameplay.Current : null;
+        float undergroundSpeed = IsSpawned ? TwinEdge.Gameplay.UndergroundGameplay.Current?.SpeedScale(this) ?? 1f : 1f;
         bool sprint = gameplayInput?.Sprint?.IsPressed() == true && castle?.SprintBlocked(this) != true;
         if (IsSpawned && bridge != null && bridge.Holds(OwnerClientId))
         {
@@ -122,10 +124,11 @@ public sealed class PlayerMovement : NetworkBehaviour
 
         verticalSpeed -= gravity * Time.deltaTime;
         float horizontalSpeed = bridgeJumpSpeed > 0 ? bridgeJumpSpeed : moveSpeed * (sprint ? 1.6f : 1f);
-        Vector3 velocity = moveDirection * (horizontalSpeed * movementSpeedMultiplier.Value * (castle?.SpeedScale(this) ?? 1f));
+        Vector3 velocity = moveDirection * (horizontalSpeed * movementSpeedMultiplier.Value * (castle?.SpeedScale(this) ?? 1f) * undergroundSpeed);
         velocity += externalVelocity;
         velocity.y = verticalSpeed + externalVelocity.y;
-        characterController.Move(velocity * Time.deltaTime);
+        characterController.Move(velocity * Time.deltaTime + undergroundSupportDelta);
+        undergroundSupportDelta = Vector3.zero;
         externalVelocity = Vector3.MoveTowards(
             externalVelocity, Vector3.zero, externalVelocityDecay * Time.deltaTime);
 
@@ -190,6 +193,7 @@ public sealed class PlayerMovement : NetworkBehaviour
         bridgeJumpSpeed = 0f;
         verticalSpeed = 0f;
         externalVelocity = Vector3.zero;
+        undergroundSupportDelta = Vector3.zero;
         IsGrounded = false;
     }
 
@@ -202,6 +206,8 @@ public sealed class PlayerMovement : NetworkBehaviour
 
         movementSpeedMultiplier.Value = grabbed ? Mathf.Clamp01(moveMultiplier) : 1f;
     }
+
+    internal void CarryUndergroundPlatform(Vector3 delta) => undergroundSupportDelta = delta;
 
     public void ApplyMovingPlatformDelta(Vector3 displacement, Quaternion rotationDelta)
     {

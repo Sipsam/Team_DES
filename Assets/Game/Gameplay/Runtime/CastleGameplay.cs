@@ -71,6 +71,7 @@ namespace TwinEdge.Gameplay
         public static CastleGameplay Current { get; private set; }
         internal int Stage => stage.Value;
         internal bool DoorOpen => accepted.Value == Both;
+        internal bool PartitionsOpen => crossed.Value == Both;
         internal bool Returning => returnStart.Value > 0;
         internal bool SewerOpen => sewerOpen.Value;
         internal bool IsReady => ready;
@@ -139,7 +140,7 @@ namespace TwinEdge.Gameplay
         {
             if (!ready) return false;
             Vector3 p = position - config.origin;
-            return p.z >= config.keep.yMin - 5 && p.z <= config.keep.yMax + 5 &&
+            return p.y >= -3 && p.z >= config.keep.yMin - 5 && p.z <= config.keep.yMax + 5 &&
                 p.x >= config.keep.xMin - 1 && p.x <= config.keep.xMax + 1 && p.y <= 13;
         }
 
@@ -172,6 +173,7 @@ namespace TwinEdge.Gameplay
             progress[slot] = p;
             sewerCodes[slot] = 0;
             crossings[slot] = default;
+            if (!PartitionsOpen) crossed.Value &= ~(1 << slot);
             graceUntil[slot] = Now + respawnGrace;
             return true;
         }
@@ -198,6 +200,7 @@ namespace TwinEdge.Gameplay
                 sewerCodes[slot] = 0;
                 occupants[slot] = ulong.MaxValue;
                 crossings[slot] = default;
+                if (!PartitionsOpen) crossed.Value &= ~(1 << slot);
             }
 
             foreach (var peer in NetworkManager.ConnectedClientsList)
@@ -222,19 +225,22 @@ namespace TwinEdge.Gameplay
                     TrackCrossing(slot, position - config.origin);
             }
 
-            if (game.CanPlay && !Returning && crossed.Value == Both &&
-                game.AdvanceFoundation(FoundationPhase.SealPending) && game.AdvanceFoundation(FoundationPhase.Return))
+            if (!Returning && PartitionsOpen && game.Phase == FoundationPhase.Return)
                 returnStart.Value = Now;
             if (Returning && game.CanPlay) TickTrapDamage();
         }
 
         void TrackCrossing(int slot, Vector3 position)
         {
-            if ((crossed.Value & (1 << slot)) != 0) return;
+            if (PartitionsOpen) return;
             ref var track = ref crossings[slot];
             Vector3 delta = position - config.undergroundDoor;
             bool inOpening = Mathf.Abs(delta.x) < 3.5f && delta.y >= -.3f && delta.y < 4;
-            if (inOpening && delta.z >= -3 && delta.z < -.6f) track.Armed = true;
+            if (inOpening && delta.z >= -3 && delta.z < -.6f)
+            {
+                track.Armed = true;
+                crossed.Value &= ~(1 << slot);
+            }
             if (!inOpening || Mathf.Abs(delta.z) > 4 || Vector3.Distance(track.Last, position) > 3f)
                 track.Armed = inOpening && delta.z >= -3 && delta.z < -.6f;
             else if (track.Armed && delta.z >= .65f)

@@ -37,6 +37,7 @@ namespace TwinEdge.Gameplay
             state.GetComponent<BridgeGameplay>()?.Bind(scene);
             state.GetComponent<RiverGameplay>()?.Bind(scene);
             state.GetComponent<CastleGameplay>()?.Bind(scene);
+            state.GetComponent<UndergroundGameplay>()?.Bind(scene);
         }
 
         IEnumerator Start()
@@ -133,6 +134,7 @@ namespace TwinEdge.Gameplay
                     BridgeGameplay construction => construction.Prompt,
                     RiverDockInteraction dock => dock.Prompt,
                     CastleStation castle => castle.Prompt,
+                    UndergroundStation station => station.Prompt,
                     _ => "E: interact"
                 });
                 var movement = player.GetComponent<PlayerMovement>();
@@ -140,6 +142,8 @@ namespace TwinEdge.Gameplay
                 string riverHud = river?.Hud(movement);
                 if (riverHud != null) GUILayout.Label(riverHud);
                 CastleGameplay.Current?.DrawHud(player, debug);
+                UndergroundGameplay.Current?.DrawHud(player, debug);
+                GemOwnership.Current?.DrawHud();
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
                 string riverDebug = debug ? river?.DebugHud(movement) : null;
                 if (riverDebug != null) GUILayout.Label(riverDebug);

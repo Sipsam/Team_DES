@@ -13,7 +13,7 @@ using UnityEngine.Rendering.Universal;
 namespace TwinEdge.Gameplay
 {
     // Real Relay peers. The only initial placement is outside the castle gate.
-    public sealed class CastleRelayReplay : MonoBehaviour
+    public sealed partial class CastleRelayReplay : MonoBehaviour
     {
         string output, role, room;
         bool host, failed, screenshots, outboundReconnect;
@@ -76,6 +76,11 @@ namespace TwinEdge.Gameplay
             if (host) game.StartFoundation();
             yield return Wait(() => game.Phase == FoundationPhase.Outbound, "foundation outbound");
             yield return BindPlayer();
+            if (Array.IndexOf(Environment.GetCommandLineArgs(), "-castleCavernProbe") >= 0)
+            {
+                yield return RunCavernProbe();
+                yield break;
+            }
             var position = V3GameplayBootstrap.SafeGround(castle.World(host ? -1 : 2, 0, -19));
             player.PlaceAtOwner(position, Quaternion.identity);
             Debug.Log("CASTLE SETUP placed outside the curtain gate");
@@ -190,9 +195,12 @@ namespace TwinEdge.Gameplay
                 Require(!castle.Returning, "door-front proximity does not convert corridor");
             }
             yield return Walk(host ? 1.7f : -1.7f, 248.5f);
-            yield return Wait(() => castle.Returning && castle.Crossed == 3 && game.Phase == FoundationPhase.Return,
-                "both physically crossed and converted the corridor");
-            Require(castle.PartitionsDisabled, "saved removable Collider group disabled");
+            yield return Wait(() => castle.PartitionsOpen && castle.Crossed == 3, "both physically crossed the basement door");
+            Require(game.Phase == FoundationPhase.Outbound && !castle.Returning && castle.PartitionsDisabled,
+                "basement passage opens partitions and keeps outbound rules");
+            var underground = UndergroundGameplay.Current;
+            yield return TraverseUnderground(underground);
+            yield return Wait(() => castle.Returning && game.Phase == FoundationPhase.Return, "gem pickup starts the castle return traps");
             Capture("return-corridor");
             CaptureView("return-layout", castle.World(5, 5.5f, 232), castle.World(2, 1, 181));
 
@@ -201,7 +209,7 @@ namespace TwinEdge.Gameplay
             yield return Walk(1.2f, 39);
             yield return Walk(host ? -1.7f : 2.6f, -19);
             Capture("gate-exit");
-            File.WriteAllText(Path.Combine(output, role + "-pass.txt"), "PASS: Relay, castle stage inputs, physical gate and basement traversal, castle exit");
+            File.WriteAllText(Path.Combine(output, role + "-pass.txt"), "PASS: Relay, castle stage inputs, physical gate, underground seal and gem, castle exit");
             yield return Wait(() => File.Exists(Path.Combine(output, (host ? "client" : "host") + "-pass.txt")),
                 "both routes completed", 190);
             yield return new WaitForSeconds(1.2f);
@@ -409,7 +417,9 @@ namespace TwinEdge.Gameplay
 
         void Capture(string label)
         {
-            if (screenshots) ScreenCapture.CaptureScreenshot(Path.Combine(output, role + "-" + label + ".png"));
+            if (!screenshots) return;
+            var view = Camera.main.transform;
+            CaptureView(label, view.position, view.position + view.forward);
         }
 
         void CaptureView(string label, Vector3 position, Vector3 lookAt)

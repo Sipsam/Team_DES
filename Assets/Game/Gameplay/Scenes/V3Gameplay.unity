@@ -656,6 +656,8 @@ GameObject:
   - component: {fileID: 1013249413}
   - component: {fileID: 1013249414}
   - component: {fileID: 1013249415}
+  - component: {fileID: 1013249417}
+  - component: {fileID: 1013249416}
   m_Layer: 0
   m_Name: GameState
   m_TagString: Untagged
@@ -840,6 +842,61 @@ MonoBehaviour:
   trapWarning: 1.1
   trapAttack: 1.35
   trapRecovery: 2.95
+--- !u!114 &1013249416
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1013249408}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 48fcd87e74e104e4cae8652330fed771, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::TwinEdge.Gameplay.UndergroundGameplay
+  ShowTopMostFoldoutHeaderGroup: 1
+  trapWarning: 1.2
+  trapAttack: 1.1
+  trapRecovery: 6
+  slowSeconds: 1.3
+  trapSpeed: 0.78
+  knockback: 1.65
+  movingPeriod: 8
+  vanishPeriod: 8
+  vanishWarning: 1.25
+  vanishAbsent: 2
+  platformModel: {fileID: 1738828524111118393, guid: fb9717276106de0489d04876cce13817, type: 3}
+  leftSwitchModel: {fileID: 589600593838282001, guid: a031f05502e443241b1f411586e1b8ad, type: 3}
+  rightSwitchModel: {fileID: 8401844995838892548, guid: 0a4018f8a229a644db805a86419f5a45, type: 3}
+  altarModel: {fileID: 3786043168720688690, guid: cec19f3931241c24dbee3170d1c902f4, type: 3}
+  sealModel: {fileID: 3905695503492173423, guid: bd00c260aa3de774d965c9bcca1ca7db, type: 3}
+  gemModel: {fileID: 3134053773408127134, guid: 1957df8794ac8cd42945379f2e3118f4, type: 3}
+  flameModel: {fileID: 5812028425063935952, guid: 3b23429bc9b70f9488b4f6eb8b5b1900, type: 3}
+  arrowModel: {fileID: 6663240412609322937, guid: 9341ef79f68d1124e9003341fdc8f7fc, type: 3}
+  spikesModel: {fileID: 2220372562359086639, guid: 344b280bb4eb32c4dacbdc599322ad8b, type: 3}
+  movingModel: {fileID: 8509150300877193925, guid: 478ee3760e6722445b880657c1c74399, type: 3}
+  vanishModel: {fileID: 4137733382187006812, guid: 0faff894bbd7e404ebaf7c6863560702, type: 3}
+  leftMaterial: {fileID: 2100000, guid: 62b0aee63436d164fbdfc3f0987a513f, type: 2}
+  rightMaterial: {fileID: 2100000, guid: 9bc4fae7a3b8ab44ea9e18a90cdf336f, type: 2}
+  warningMaterial: {fileID: 2100000, guid: 4c74dd51b24e67e4eb0f149a5085620b, type: 2}
+  signShader: {fileID: 4800000, guid: 7d5926cd87662824fa764c8d341ab635, type: 3}
+  platformSeconds: 25
+  sealSeconds: 2.5
+  participationSeconds: 8
+--- !u!114 &1013249417
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1013249408}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6b7f8a67105b14342be8e11803b98edc, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::TwinEdge.Gameplay.GemOwnership
+  ShowTopMostFoldoutHeaderGroup: 1
+  dropProtectionSeconds: 1.5
 --- !u!1 &1657298009
 GameObject:
   m_ObjectHideFlags: 0
