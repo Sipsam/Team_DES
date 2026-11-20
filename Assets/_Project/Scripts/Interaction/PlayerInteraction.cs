@@ -33,14 +33,18 @@ public sealed class PlayerInteraction : NetworkBehaviour
         }
 
         if (IsSpawned && TwinEdge.Gameplay.CooperativePole.Current != null &&
-            TwinEdge.Gameplay.CooperativePole.Current.IsAttached(OwnerClientId)) return;
+            TwinEdge.Gameplay.CooperativePole.Current.IsAttached(OwnerClientId))
+        {
+            CurrentTarget = null;
+            return;
+        }
 
         var bridge = TwinEdge.Gameplay.BridgeGameplay.Current;
         if (IsSpawned && bridge != null && bridge.Holds(OwnerClientId))
         {
             CurrentTarget = bridge;
             if (Keyboard.current?.escapeKey.wasPressedThisFrame == true) bridge.Cancel(this);
-            else if (gameplayInput?.AcceptsInput == true && gameplayInput.Interact?.WasPressedThisFrame() == true)
+            else if (gameplayInput?.TryConsumeInteract() == true)
                 bridge.Interact(this);
             return;
         }
@@ -50,9 +54,15 @@ public sealed class PlayerInteraction : NetworkBehaviour
             TwinEdge.Gameplay.UndergroundGameplay.Current?.CancelOwner(this);
             foreach (var target in FindObjectsByType<TwinEdge.Gameplay.NetworkInteractionTarget>(FindObjectsSortMode.None)) target.Cancel(this);
         }
-        if (GetComponent<TwinEdge.Gameplay.MountainReturnLaunch>()?.ControlsMovement == true) return;
+        if (GetComponent<TwinEdge.Gameplay.MountainReturnLaunch>()?.ControlsMovement == true)
+        {
+            CurrentTarget = null;
+            return;
+        }
         if (puzzleUiInputBlocked || (gameplayInput != null && !gameplayInput.AcceptsInput))
         {
+            if (CurrentTarget is not TwinEdge.Gameplay.NetworkInteractionTarget active || !active.IsInteracting(this))
+                CurrentTarget = null;
             return;
         }
 
@@ -64,7 +74,7 @@ public sealed class PlayerInteraction : NetworkBehaviour
         if (!(CurrentTarget is TwinEdge.Gameplay.NetworkInteractionTarget busy && busy.IsInteracting(this)))
             CurrentTarget = FindClosestInteractable();
         Keyboard keyboard = Keyboard.current;
-        if (gameplayInput != null ? gameplayInput.Interact == null || !gameplayInput.Interact.WasPressedThisFrame() : keyboard == null || !keyboard.eKey.wasPressedThisFrame)
+        if (gameplayInput != null ? !gameplayInput.TryConsumeInteract() : keyboard == null || !keyboard.eKey.wasPressedThisFrame)
         {
             return;
         }
@@ -97,6 +107,7 @@ public sealed class PlayerInteraction : NetworkBehaviour
 
         IInteractable closestInteractable = null;
         float closestDistance = float.PositiveInfinity;
+        float closestCenter = float.PositiveInfinity;
 
         for (int i = 0; i < hitCount; i++)
         {
@@ -115,9 +126,13 @@ public sealed class PlayerInteraction : NetworkBehaviour
                 }
 
                 float distance = (hit.ClosestPoint(interactionPoint) - interactionPoint).sqrMagnitude;
-                if (distance < closestDistance)
+                // Overlapping triggers can both have a surface distance of zero.
+                float center = (hit.bounds.center - interactionPoint).sqrMagnitude;
+                if (distance < closestDistance ||
+                    (gameplayInput != null && distance == closestDistance && center < closestCenter))
                 {
                     closestDistance = distance;
+                    closestCenter = center;
                     closestInteractable = candidate;
                 }
 

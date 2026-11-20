@@ -23,16 +23,26 @@ namespace TwinEdge.Gameplay
         BoxCollider finish;
         ulong finishCandidate = ulong.MaxValue;
         double finishEnteredAt;
-        bool ready, debug;
+        bool ready;
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+        bool debug;
+#endif
         string code = "";
         string error;
+        public static V3GameplayBootstrap Current { get; private set; }
+
         void OnEnable()
         {
+            Current = this;
             SceneManager.sceneLoaded += DisableLevelPreview;
             var scene = SceneManager.GetSceneByName(levelScene);
             if (scene.IsValid() && scene.isLoaded) DisableLevelPreview(scene, LoadSceneMode.Additive);
         }
-        void OnDisable() => SceneManager.sceneLoaded -= DisableLevelPreview;
+        void OnDisable()
+        {
+            SceneManager.sceneLoaded -= DisableLevelPreview;
+            if (Current == this) Current = null;
+        }
         void DisableLevelPreview(Scene scene, LoadSceneMode mode)
         {
             if (scene.name != levelScene) return;
@@ -61,6 +71,10 @@ namespace TwinEdge.Gameplay
             CreateFinish(SafeGround(start.transform.position));
             state.ContestInteractionSample = interactionSample.GetComponent<NetworkInteractionTarget>();
             interactionSample.position = SafeGround(start.transform.position + start.transform.forward * 3);
+#if !UNITY_EDITOR && !DEVELOPMENT_BUILD
+            interactionSample.GetComponent<Collider>().enabled = false;
+            interactionSample.GetComponent<Renderer>().enabled = false;
+#endif
             standbyCamera.transform.SetPositionAndRotation(start.transform.position + new Vector3(0, 6, -9), Quaternion.Euler(22, 0, 0));
             // Existing marker IDs are the source of truth. Only planning-approved outbound destinations are enabled.
             AddCheckpoint("Mountain.V3.Final", "Big summit", CheckpointPhase.Cooperation);
@@ -143,85 +157,161 @@ namespace TwinEdge.Gameplay
             if (label == "Big summit" && cooperativePole != null && cooperativePole.mountain != null)
                 checkpoint.RequireSummitLanding(cooperativePole, cooperativePole.mountain.destination.id);
         }
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
         void Update()
         {
             var keyboard = UnityEngine.InputSystem.Keyboard.current;
             if (keyboard != null && keyboard.f3Key.wasPressedThisFrame) debug = !debug;
         }
+#endif
+
         void OnGUI()
         {
-            GUILayout.BeginArea(new Rect(12, 12, 380, Mathf.Min(620, Screen.height - 24)), GUI.skin.box);
-            GUILayout.Label("TWIN EDGE / V3 GAMEPLAY");
-            if (!ready) GUILayout.Label(error ?? "Loading V3 colliders...");
-            GUILayout.Label(sessions.CurrentStatus);
-            GUILayout.Label("Room: " + sessions.CurrentJoinCode);
-            GUI.enabled = ready && !sessions.IsBusy && !manager.IsListening;
-            if (GUILayout.Button("Create room (Relay Host)")) _ = sessions.CreateRoomAsync();
-            code = GUILayout.TextField(code, 24);
-            if (GUILayout.Button("Join room code")) _ = sessions.JoinRoomAsync(code);
-            GUI.enabled = !sessions.IsBusy && sessions.HasSession;
-            if (GUILayout.Button("Leave room")) _ = sessions.LeaveRoomAsync();
-            GUI.enabled = manager.IsServer && state.IsGameReady;
-            if (GUILayout.Button("Start game")) state.StartFoundation();
-            #if UNITY_EDITOR || DEVELOPMENT_BUILD
-            if (GUILayout.Button("DEV: Return (server phase transition)"))
-            {
-                state.RequestDevelopmentReturn();
-            }
-#endif
-            GUI.enabled = true;
-            GUILayout.Label($"Players: {state.ConnectedPlayerCount}/2 | Phase: {state.FoundationPhaseLabel}");
+            if (MenuVisible) DrawRoomMenu();
             var player = manager.LocalClient?.PlayerObject;
+            if (player != null && state.Phase >= FoundationPhase.Outbound) DrawMatchHud(player);
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+            if (debug) DrawDiagnostics(player);
+#endif
+        }
+
+        bool InMatch => manager.IsListening && state.Phase >= FoundationPhase.Outbound;
+        bool MenuVisible => !InMatch || Cursor.lockState != CursorLockMode.Locked;
+        Rect RoomArea => InMatch
+            ? new Rect(12, Screen.height - 184, Mathf.Min(360, Screen.width - 24), 172)
+            : new Rect(12, 12, Mathf.Min(360, Screen.width - 24), 260);
+        Rect HudArea => new(12, 12, Mathf.Min(390, Screen.width - 24), Mathf.Max(0, Screen.height - 202));
+
+        void DrawRoomMenu()
+        {
+            GUILayout.BeginArea(RoomArea);
+            GUILayout.BeginVertical(GUI.skin.box);
+            GUILayout.Label(InMatch ? "ROOM MENU" : "TWIN EDGE");
+            GUILayout.Label(sessions.CurrentStatus);
+            if (!string.IsNullOrEmpty(sessions.CurrentJoinCode))
+            {
+                GUILayout.BeginHorizontal();
+                GUILayout.Label("Room code " + sessions.CurrentJoinCode);
+                if (GUILayout.Button("Copy", GUILayout.Width(64))) GUIUtility.systemCopyBuffer = sessions.CurrentJoinCode;
+                GUILayout.EndHorizontal();
+                GUILayout.Label($"Players {state.ConnectedPlayerCount}/2");
+            }
+            if (!sessions.HasSession && !manager.IsListening)
+            {
+                GUI.enabled = ready && !sessions.IsBusy;
+                if (!ready) GUILayout.Label(error ?? "Loading V3 level...");
+                if (GUILayout.Button("Create room")) _ = sessions.CreateRoomAsync();
+                code = GUILayout.TextField(code, 24);
+                if (GUILayout.Button("Join room")) _ = sessions.JoinRoomAsync(code);
+                GUI.enabled = !sessions.IsBusy;
+                if (GUILayout.Button("Quit game")) Application.Quit();
+            }
+            else
+            {
+                if (manager.IsServer && !InMatch)
+                {
+                    GUI.enabled = state.Phase == FoundationPhase.Preparing && state.IsGameReady;
+                    if (GUILayout.Button("Start game")) state.StartFoundation();
+                }
+                GUI.enabled = !sessions.IsBusy && sessions.HasSession;
+                if (GUILayout.Button("Leave room")) _ = sessions.LeaveRoomAsync();
+            }
+            GUI.enabled = true;
+            GUILayout.Label(InMatch
+                ? "WASD move | Shift sprint | Space jump | E interact\nClick to capture / attack | F grab, throw or resist"
+                : "Share the room code with one partner.");
+            GUILayout.EndVertical();
+            GUILayout.EndArea();
+        }
+
+        void DrawMatchHud(NetworkObject player)
+        {
+            var character = player.GetComponent<GameplayCharacter>();
+            bool finished = state.Phase == FoundationPhase.Finished && state.HasWinner;
+            GUILayout.BeginArea(HudArea);
+            GUILayout.BeginVertical(GUI.skin.box);
+            GUILayout.Label(finished
+                ? (player.OwnerClientId == state.WinnerClientId ? "VICTORY" : "DEFEAT") + $"  /  {state.ElapsedSeconds:F1}s"
+                : state.Phase switch
+                {
+                    FoundationPhase.Return => "RETURN  /  Race to the starting summit with the gem",
+                    FoundationPhase.SealPending => "OUTBOUND  /  Unseal the gem together",
+                    _ => "OUTBOUND  /  Reach the underground altar together"
+                });
+            if (!finished)
+            {
+                if (state.ConnectedPlayerCount < 2) GUILayout.Label("Waiting for your partner to reconnect");
+                DrawCourseHud(player);
+                character.DrawContestHud();
+            }
+            GemOwnership.Current?.DrawHud();
+            GUILayout.Label($"Checkpoint {character.CheckpointName.Value} | Respawns {character.RespawnCount.Value}");
+            GUILayout.Label(Cursor.lockState == CursorLockMode.Locked ? "Esc: release mouse / cancel" : "Click the world to capture the mouse");
+            GUILayout.EndVertical();
+            GUILayout.EndArea();
+        }
+
+        void DrawCourseHud(NetworkObject player)
+        {
+            if (BridgeGameplay.Current is { } bridge && bridge.PlankCount > 0 &&
+                Vector3.Distance(player.transform.position, bridge.StartPoint) <= bridge.Length + 10 &&
+                Mathf.Abs(player.transform.position.x - bridge.StartPoint.x) < 12 &&
+                Mathf.Abs(player.transform.position.y - bridge.StartPoint.y) < 8 &&
+                player.transform.position.z >= bridge.StartPoint.z - 16)
+                GUILayout.Label(state.Phase == FoundationPhase.Return ? "Bridge / Jump the gaps" :
+                    $"Bridge / Timber deliveries {bridge.CompletedDeliveries}/{bridge.TotalDeliveries}");
+
+            string prompt = player.GetComponent<PlayerInteraction>().CurrentTarget switch
+            {
+                NetworkInteractionTarget target when target.transform != interactionSample => target.Prompt,
+                BridgeGameplay construction => construction.Prompt,
+                RiverDockInteraction dock => dock.Prompt,
+                CastleStation castle => castle.Prompt,
+                UndergroundStation station => station.Prompt,
+                _ => null
+            };
+            if (prompt != null) GUILayout.Label(prompt);
+            var riverHud = RiverGameplay.Current?.Hud(player.GetComponent<PlayerMovement>());
+            if (riverHud != null) GUILayout.Label(riverHud);
+            cooperativePole?.DrawPlaytestHud(player);
+            player.GetComponent<MountainReturnLaunch>()?.DrawPlaytestHud();
+            CastleGameplay.Current?.DrawHud(player);
+            UndergroundGameplay.Current?.DrawHud(player);
+        }
+
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+        Rect DiagnosticsArea => new(Mathf.Max(410, Screen.width - 380), 12, 368, Screen.height - 24);
+
+        void DrawDiagnostics(NetworkObject player)
+        {
+            GUILayout.BeginArea(DiagnosticsArea);
+            GUILayout.BeginVertical(GUI.skin.box);
+            GUILayout.Label("DEVELOPMENT / F3");
+            if (manager.IsServer && state.IsGameReady && GUILayout.Button("DEV: Return (server phase transition)"))
+                state.RequestDevelopmentReturn();
             if (player != null)
             {
-                var character = player.GetComponent<GameplayCharacter>();
-                var interaction = player.GetComponent<PlayerInteraction>();
-                GUILayout.Label($"Player {player.OwnerClientId} | Checkpoint: {character.CheckpointName.Value}");
-                GUILayout.Label($"Respawns: {character.RespawnCount.Value} | Time {state.ElapsedSeconds:F1}s");
-                character.DrawContestHud();
-                if (state.Phase == FoundationPhase.Return)
-                    GUILayout.Label("Finish: return to the starting summit with the gem");
-
-                if (BridgeGameplay.Current is { } bridge && bridge.PlankCount > 0 &&
-                    Vector3.Distance(player.transform.position, bridge.StartPoint) <= bridge.Length + 10 &&
-                    Mathf.Abs(player.transform.position.x - bridge.StartPoint.x) < 12 &&
-                    Mathf.Abs(player.transform.position.y - bridge.StartPoint.y) < 8 &&
-                    player.transform.position.z >= bridge.StartPoint.z - 16)
-                    GUILayout.Label(bridge.CompletedDeliveries == bridge.TotalDeliveries
-                        ? "Bridge complete. The timber creaks."
-                        : $"Bridge construction {bridge.CompletedDeliveries}/{bridge.TotalDeliveries}");
-                GUILayout.Label(interaction.CurrentTarget switch
-                {
-                    NetworkInteractionTarget target => target.Prompt,
-                    BridgeGameplay construction => construction.Prompt,
-                    RiverDockInteraction dock => dock.Prompt,
-                    CastleStation castle => castle.Prompt,
-                    UndergroundStation station => station.Prompt,
-                    _ => "E: interact"
-                });
                 var movement = player.GetComponent<PlayerMovement>();
-                var river = RiverGameplay.Current;
-                string riverHud = river?.Hud(movement);
-                if (riverHud != null) GUILayout.Label(riverHud);
-                CastleGameplay.Current?.DrawHud(player, debug);
-                UndergroundGameplay.Current?.DrawHud(player, debug);
-                GemOwnership.Current?.DrawHud();
-#if UNITY_EDITOR || DEVELOPMENT_BUILD
-                string riverDebug = debug ? river?.DebugHud(movement) : null;
-                if (riverDebug != null) GUILayout.Label(riverDebug);
-#endif
-                if (debug && riverHud == null) GUILayout.Label($"DEBUG (F3)\nPosition: {player.transform.position:F2}\nGrounded: {player.GetComponent<PlayerMovement>().IsGrounded}\nOwner: {player.IsOwner}\nAnimator: {character.AnimationState}\nTarget: {(interaction.CurrentTarget as MonoBehaviour)?.name}");
+                GUILayout.Label($"Position {player.transform.position:F2} | Grounded {movement.IsGrounded}");
+                var river = RiverGameplay.Current?.DebugHud(movement);
+                if (river != null) GUILayout.Label(river);
+                CastleGameplay.Current?.DrawDiagnostics(player);
+                UndergroundGameplay.Current?.DrawDiagnostics(player);
             }
-            GUILayout.Label("WASD / Shift / Space / E | Esc: menu, cancel\nLeft click: hit | F: grab / throw / resist\nClick world: capture mouse | F3: debug");
+            GUILayout.EndVertical();
             GUILayout.EndArea();
-            if (player != null && state.Phase == FoundationPhase.Finished && state.HasWinner)
-            {
-                GUILayout.BeginArea(new Rect((Screen.width - 300) * .5f, Screen.height * .32f, 300, 100), GUI.skin.box);
-                GUILayout.Label(player.OwnerClientId == state.WinnerClientId ? "Victory" : "Defeat");
-                GUILayout.Label($"Winner: Player {state.WinnerClientId} | Time {state.ElapsedSeconds:F1}s");
-                GUILayout.EndArea();
-            }
         }
-        public static bool PointerOverMenu(Vector2 point) => point.x < 404 && point.y > Screen.height - Mathf.Min(644, Screen.height);
+#endif
+
+        public static bool PointerOverMenu(Vector2 point)
+        {
+            if (Current == null || !Current.MenuVisible) return false;
+            var guiPoint = new Vector2(point.x, Screen.height - point.y);
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+            if (Current.debug && Current.DiagnosticsArea.Contains(guiPoint)) return true;
+#endif
+            return Current.RoomArea.Contains(guiPoint) ||
+                (CastleGameplay.Current?.IsKeypadOpen == true);
+        }
     }
 }

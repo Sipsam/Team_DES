@@ -142,14 +142,16 @@ namespace TwinEdge.Gameplay
         {
             if (!IsSpawned) return;
             var keyboard = Keyboard.current;
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
             if (keyboard != null && keyboard.f4Key.wasPressedThisFrame) debug = !debug;
+#endif
             var local = NetworkManager.LocalClient?.PlayerObject;
             var s = snapshot.Value;
             if (local != null && s.Has(local.OwnerClientId))
             {
                 var input = local.GetComponent<GameplayInput>();
                 if (keyboard != null && keyboard.escapeKey.wasPressedThisFrame) CancelRpc(s.revision);
-                if (input.AcceptsInput && input.Interact.WasPressedThisFrame()) UseRpc(s.revision);
+                else if (input.TryConsumeInteract()) UseRpc(s.revision);
                 if (Time.unscaledTime >= nextSend && s.Paired)
                 {
                     nextSend = Time.unscaledTime + .05f;
@@ -264,20 +266,29 @@ namespace TwinEdge.Gameplay
                 foreach (var cc in FindObjectsByType<CharacterController>(FindObjectsSortMode.None))
                     Physics.IgnoreCollision(supportCollider, cc, cc.GetComponent<NetworkObject>()?.OwnerClientId != s.Orbit);
         }
-        void OnGUI()
+        internal bool DrawPlaytestHud(NetworkObject local)
         {
-            if (!IsSpawned) return;
+            if (!Outbound || local == null) return false;
             var s = snapshot.Value;
-            var local = NetworkManager.LocalClient?.PlayerObject;
-            if (local != null && CastleGameplay.Current?.Contains(local.transform.position) == true) return;
-            GUILayout.BeginArea(new Rect(Screen.width - 370, 12, 358, debug ? 400 : 210), GUI.skin.box);
-            GUILayout.Label("COOPERATIVE POLE (outbound)");
-            GUILayout.Label($"Attached: {(s.left != ulong.MaxValue ? 1 : 0) + (s.right != ulong.MaxValue ? 1 : 0)}/2 | {s.phase}");
-            GUILayout.Label(local != null && s.Has(local.OwnerClientId) ? $"You: {(s.Pivot == local.OwnerClientId ? "Pivot" : "Orbit")} | Partner: {(s.Pivot == local.OwnerClientId ? "Orbit" : "Pivot")}" : "Approach an end / E: grab");
-            GUILayout.Label("Orbit: A/D yaw, W/S elevation\nPivot: WASD carry while both on same summit\nStop on next summit; E: exchange roles\nEsc: release | F4: pole debug");
-            GUILayout.Label($"Landing: {s.surface} | Last failure: {s.failure}");
-            if (debug) GUILayout.Label($"Peer: {(IsServer ? "Server" : "Client")} / revision {s.revision}\nLength: {length:F2} | Distance: {Vector3.Distance(s.a,s.b):F2}\nPivot: {s.PivotPoint:F2}\nYaw: {s.yaw:F2} Pitch: {s.pitch:F2}\nSpeed: {angularSpeed} / {pitchSpeed} deg/s\nCandidate: {candidate ?? "none"} | dwell {stable:F2}\nActual mesh support: {SafeLanding(s.OrbitPoint, out _)}\nTarget summit: aim manually; no auto target");
-            GUILayout.EndArea();
+            bool attached = s.Has(local.OwnerClientId);
+            var feet = local.transform.position;
+            var span = s.b - s.a;
+            float along = Mathf.Clamp01(Vector3.Dot(feet - s.a, span) / Mathf.Max(.01f, span.sqrMagnitude));
+            if (!attached && (feet - (s.a + span * along)).sqrMagnitude > 64) return false;
+            int count = (s.left != ulong.MaxValue ? 1 : 0) + (s.right != ulong.MaxValue ? 1 : 0);
+            GUILayout.Label($"Mountain / Cooperative pole {count}/2");
+            if (!attached) GUILayout.Label("Approach one end and press E to grab");
+            else
+            {
+                GUILayout.Label(s.Pivot == local.OwnerClientId
+                    ? "Pivot: WASD to carry while both are on the same summit"
+                    : "Orbit: A/D turn, W/S raise or lower the pole");
+                GUILayout.Label("Land on the next summit, then E to swap roles | Esc to release");
+            }
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+            if (debug) GUILayout.Label($"Pole {s.phase} / rev {s.revision} | {s.yaw:F1}°, {s.pitch:F1}°\nLanding {s.surface} | Candidate {candidate} | Failure {s.failure}");
+#endif
+            return true;
         }
     }
 }

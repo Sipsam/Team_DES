@@ -13,12 +13,12 @@ Install Unity 6000.3.27f1 through Unity Hub with Windows Build Support (IL2CPP i
 
 ## Play V3 over Relay
 
-1. Open `Assets/Game/Gameplay/Scenes/V3Gameplay.unity` in Unity and enter Play. The bootstrap loads `LevelBlockoutV3.unity` additively.
-2. For a standalone Windows player, use **Tools > Twin Edge > Gameplay > Build Full Match Development Player**. Launch two copies of `Builds/FullMatch/V3Gameplay.exe`, or use the Editor and one copy.
-3. Select **Create room** on one instance. On the other instance enter the room code and select **Join room**. When both players are present, select **Start game** on Host.
-4. Use WASD to move, Shift to sprint, Space to jump and E to interact. Complete the cooperative route to the altar, then pick up the unsealed gem with E. Return to the starting summit with the gem to win.
+1. In Unity, select **Tools > Twin Edge > Gameplay > Build V3 Windows Playtest Player**. Package the `Builds/V3Playtest/` runtime files together and leave the `*_DoNotShip` debug folder on the build machine. Each tester launches `V3Gameplay.exe` from their own extracted copy.
+2. Host selects **Create room**, then shares the room code. Client pastes it and selects **Join room**. Once the Host sees **Players 2/2**, select **Start game**.
+3. Click the world to capture the mouse. Use WASD to move, Left Shift to sprint, Space to jump and E to interact. Press Esc to release the mouse or cancel the active interaction. Both players work toward the altar, then race back to the starting summit with the gem.
+4. Press Esc and select **Leave room** to disconnect. A disconnected Client can enter the Host's code again while the room is active. After Host leaves, create a new room and share its new code.
 
-The shared Build Settings still start with `MainPrototype.unity`. The explicit V3 build command puts the V3 boot scene first and includes the additive level. See the route, controls and verification status in [Full match gameplay](Docs/Architecture/FullMatchGameplay.md).
+The playtest build starts in `V3Gameplay.unity` and loads `LevelBlockoutV3.unity` additively. The general Build Settings still start with `MainPrototype.unity`. For Editor play, open `Assets/Game/Gameplay/Scenes/V3Gameplay.unity` first. Use **Build Full Match Development Player** for the existing Relay replay at `Builds/FullMatch/V3Gameplay.exe`. The full control reference, route and two-person test sheets are in the [V3 playtest guide](Docs/Architecture/PlaytestGuide.md). See [full match gameplay](Docs/Architecture/FullMatchGameplay.md) for replay commands.
 
 ## Level review and historical tools
 

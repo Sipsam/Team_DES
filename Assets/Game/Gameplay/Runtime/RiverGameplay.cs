@@ -280,8 +280,7 @@ namespace TwinEdge.Gameplay
         public bool HandleOwnerInteraction(PlayerInteraction player, GameplayInput input)
         {
             if (!IsSpawned || !TrySeat(player.OwnerClientId, out int index, out _, out var state)) return false;
-            if (input?.LaunchCancel?.WasPressedThisFrame() == true ||
-                (input?.AcceptsInput == true && input.Interact?.WasPressedThisFrame() == true))
+            if (input?.LaunchCancel?.WasPressedThisFrame() == true || input?.TryConsumeInteract() == true)
                 CancelRpc(index, state.Voyage);
             return true;
         }

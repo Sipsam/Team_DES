@@ -18,6 +18,7 @@ public sealed class PlayerMovement : NetworkBehaviour
 
     private TwinEdge.Gameplay.GameplayInput gameplayInput;
     private TwinEdge.Gameplay.GameplayCharacter contest;
+    private ThirdPersonCamera ownerCamera;
     public Vector3 Velocity => characterController != null ? characterController.velocity : Vector3.zero;
     private CharacterController characterController;
     private RaftController raftController;
@@ -185,15 +186,15 @@ public sealed class PlayerMovement : NetworkBehaviour
 
         raftController = FindFirstObjectByType<RaftController>();
 
-        Camera mainCamera = Camera.main;
-        ThirdPersonCamera thirdPersonCamera = mainCamera != null
+        Camera mainCamera = TwinEdge.Gameplay.V3GameplayBootstrap.Current?.standbyCamera ?? Camera.main;
+        ownerCamera = mainCamera != null
             ? mainCamera.GetComponent<ThirdPersonCamera>()
             : null;
 
-        if (thirdPersonCamera != null)
+        if (ownerCamera != null)
         {
-            cameraTransform = thirdPersonCamera.transform;
-            thirdPersonCamera.SetTarget(transform.Find("CameraTarget"));
+            cameraTransform = ownerCamera.transform;
+            ownerCamera.SetTarget(transform.Find("CameraTarget"));
         }
     }
 
@@ -205,15 +206,8 @@ public sealed class PlayerMovement : NetworkBehaviour
         }
 
         if (hasRiverSeat) ReleaseRiverSeat();
-        Camera mainCamera = Camera.main;
-        ThirdPersonCamera thirdPersonCamera = mainCamera != null
-            ? mainCamera.GetComponent<ThirdPersonCamera>()
-            : null;
-
-        if (thirdPersonCamera != null)
-        {
-            thirdPersonCamera.ClearTarget(transform.Find("CameraTarget"));
-        }
+        if (ownerCamera != null) ownerCamera.ClearTarget(transform.Find("CameraTarget"));
+        ownerCamera = null;
     }
 
     public void ResetVerticalVelocity()

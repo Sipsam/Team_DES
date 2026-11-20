@@ -204,7 +204,7 @@ namespace TwinEdge.Gameplay
             DrawHazards();
         }
 
-        internal void DrawHud(NetworkObject player, bool debug)
+        internal void DrawHud(NetworkObject player)
         {
             if (!IsSpawned || !InCavern(player.transform.position)) return;
             string title = Returning ? "Underground return | follow the permanent stones" :
@@ -219,7 +219,12 @@ namespace TwinEdge.Gameplay
                     (Participants == 0 ? "" : " | Esc: cancel"));
             if (RecoveryCount != 0 && !Returning) GUILayout.Label("Lava resets both routes at the underground start");
             if (Returning) GUILayout.Label("Lava respawn: seal terrace");
-            if (!debug) return;
+        }
+
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+        internal void DrawDiagnostics(NetworkObject player)
+        {
+            if (!IsSpawned || !InCavern(player.transform.position)) return;
             int a = Enumerable.Range(0, Step).Count(i => Receiver(i) == 0);
             GUILayout.Label($"Crossings A {a}/4 · B {Step - a}/4 | arrivals A {(Arrivals & 1) != 0} B {(Arrivals & 2) != 0}");
             GUILayout.Label($"Phase: {game.Phase}; gem: {gem.State} / {gem.Owner} | lava resets: {RecoveryCount} | recent: {recentFailure.Value}");
@@ -227,6 +232,7 @@ namespace TwinEdge.Gameplay
                 GUILayout.Label(string.Join("  ", Enumerable.Range(first, 4)
                     .Select(i => $"{i + 1}:{(GroupActive(i) ? '+' : '-')}{Deadline(i):F1}")));
         }
+#endif
 
         static string SwitchName(int id) => (id < Stages ? "A" : "B") + (id % Stages);
 

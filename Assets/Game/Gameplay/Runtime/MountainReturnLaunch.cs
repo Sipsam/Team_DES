@@ -34,7 +34,12 @@ namespace TwinEdge.Gameplay
         uint applied;
         float yaw, pitch = 45, nextLandingRequest;
         bool returnCheckpoint;
-        bool debug, flight;
+        bool flight;
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+        bool debug;
+#endif
+        float nextLaunchHint;
+        bool launchAvailable;
         string collision;
         public bool ControlsMovement => IsSpawned && (preparePending || State.Value == LaunchState.Charging || State.Value == LaunchState.Flying || State.Value == LaunchState.Landing || flight);
         public bool InFlight => IsSpawned && State.Value == LaunchState.Flying;
@@ -125,8 +130,10 @@ namespace TwinEdge.Gameplay
             }
             if (!IsOwner) return;
             if (State.Value != LaunchState.Ready || !ReturnEnabled || Time.unscaledTime >= prepareDeadline) preparePending = false;
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
             var keys = Keyboard.current;
             if (keys != null && keys.f5Key.wasPressedThisFrame) debug = !debug;
+#endif
             if (State.Value != LaunchState.Flying && flight) ResetOwner();
             if (!ReturnEnabled) { if (flight) ResetOwner(); return; }
             if (State.Value == LaunchState.Flying && applied != Revision.Value)
@@ -167,7 +174,9 @@ namespace TwinEdge.Gameplay
                 }
             }
             FlightVelocity.Value = velocity;
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
             if (debug) Debug.DrawLine(previous + Vector3.up, transform.position + Vector3.up, Color.cyan, 15);
+#endif
             previous = transform.position;
         }
         // Diagnostic candidate only: exact ballistic height-plane crossing, without future collision/aim assistance.
@@ -188,23 +197,25 @@ namespace TwinEdge.Gameplay
             return candidate;
         }
         void OnControllerColliderHit(ControllerColliderHit hit) { if (flight) collision = hit.collider.name; }
-        void OnGUI()
+        internal void DrawPlaytestHud()
         {
-            if (!IsSpawned || !IsOwner || !ReturnEnabled || CastleGameplay.Current?.Contains(transform.position) == true) return;
-            GUILayout.BeginArea(new Rect(420, 12, 390, debug ? 390 : 175), GUI.skin.box);
-            GUILayout.Label($"Mountain Return: {(preparePending ? "Preparing" : State.Value.ToString())} | Last summit: {LastLanding.Value}");
-            GUILayout.Label(preparePending ? "Preparing launch..." : State.Value == LaunchState.Ready ? (Supported(out _) ? "Launch available" : "Stand on a safe mountain summit to launch") : "Launch busy / recovering");
-            GUILayout.Label("Hold R: charge / release: launch | Mouse: direction\nW/S: elevation | Esc: cancel | F5: diagnostics");
-            GUILayout.HorizontalSlider(Charge, 0, 1);
-            GUILayout.Label($"Charge {Charge:P0} | yaw {yaw:F0} / pitch {pitch:F0} | Wait {System.Math.Max(0, availableAt.Value - NetworkManager.ServerTime.Time):F1}s");
+            if (!ReturnEnabled || !IsOwner) return;
+            if (Time.unscaledTime >= nextLaunchHint)
+            {
+                nextLaunchHint = Time.unscaledTime + .15f;
+                launchAvailable = Supported(out _);
+            }
+            if (!ControlsMovement && !launchAvailable) return;
+            GUILayout.Label($"Mountain / {(preparePending ? "Preparing launch" : State.Value.ToString())}");
+            GUILayout.Label("Hold R to charge, release to launch\nMouse aim | W/S angle | Esc cancel");
+            if (State.Value == LaunchState.Charging) GUILayout.Label($"Charge {Charge:P0} | Angle {pitch:F0}°");
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
             if (debug)
             {
                 var predicted = InFlight ? velocity : config.Velocity(yaw, pitch, Charge);
-                GUILayout.Label("Target candidate (height-plane only): " + EstimateCandidate(config, CooperativePole.Current?.mountain, transform.position, predicted, controller.radius + .25f));
-                GUILayout.Label("Future collision is not predicted; no target lock.");
+                GUILayout.Label($"Candidate {EstimateCandidate(config, CooperativePole.Current?.mountain, transform.position, predicted, controller.radius + .25f)}\nTicket {Revision.Value} | Collision {collision} | Recovery {Failure.Value}");
             }
-            if (debug) GUILayout.Label($"Ticket {Revision.Value} | Owner {OwnerClientId}\nVelocity {FlightVelocity.Value:F2}\nInitial {InitialVelocity.Value:F2}\nCollision: {collision}\nLast recovery: {Failure.Value}\nCyan: actual trail (Scene view). No predicted landing guarantee.");
-            GUILayout.EndArea();
+#endif
         }
     }
 }

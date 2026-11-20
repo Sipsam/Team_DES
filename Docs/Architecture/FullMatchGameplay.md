@@ -1,5 +1,7 @@
 # V3 full match
 
+For a regular Windows player and two-person test sheets, use the [V3 playtest guide](PlaytestGuide.md).
+
 The current boot scene is `Assets/Game/Gameplay/Scenes/V3Gameplay.unity`. It loads the saved `LevelBlockoutV3.unity` additively. Use Unity 6000.3.27f1 and the linked Unity Services project with Authentication and Relay access. Build with **Tools > Twin Edge > Gameplay > Build Full Match Development Player** or run `TwinEdge.Gameplay.Editor.GameplayFoundationSetup.BuildFullMatchPlayer` in batch mode. The output is `Builds/FullMatch/V3Gameplay.exe`.
 
 Host creates the room, Client enters its join code, and Host starts when both players are present. The server moves from `WaitingForPlayers` to `Preparing` and then `Outbound`. If a client disconnects, active play waits for two players again. Host termination ends the session.

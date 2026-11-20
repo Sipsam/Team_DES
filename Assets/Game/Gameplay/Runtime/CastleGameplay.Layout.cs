@@ -362,7 +362,7 @@ namespace TwinEdge.Gameplay
         static string ReadGlyphs(int code) => string.Join("  ", Enumerable.Range(0, SignalLength(code))
             .Select(i => Glyphs[((code >> (i * 2)) & 3) - 1]));
 
-        internal void DrawHud(NetworkObject player, bool debug)
+        internal void DrawHud(NetworkObject player)
         {
             if (!ready) return;
             int slot = Slot(player.OwnerClientId);
@@ -407,14 +407,16 @@ namespace TwinEdge.Gameplay
                 else pendingKeypad = -1;
             }
 
-#if UNITY_EDITOR || DEVELOPMENT_BUILD
-            if (debug)
-            {
-                GUILayout.Label($"Castle (F3) · Stage {Stage} · Crossed {Crossed} · Traps {ActiveTrapCount()}");
-                GUILayout.Label(IsServer ? string.Join(" | ", Enumerable.Range(0, Stages).Select(i => ReadGlyphs(CodeForStage(i)))) +
-                    $"\nNumbers {numbers[0]:D4} / {numbers[1]:D4}" : "Authoritative answers available on Host");
-            }
-#endif
         }
+
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+        internal void DrawDiagnostics(NetworkObject player)
+        {
+            if (!ready || Slot(player.OwnerClientId) < 0 || !Contains(player.transform.position)) return;
+            GUILayout.Label($"Castle / Stage {Stage} / Crossed {Crossed} / Traps {ActiveTrapCount()}");
+            GUILayout.Label(IsServer ? string.Join(" | ", Enumerable.Range(0, Stages).Select(i => ReadGlyphs(CodeForStage(i)))) +
+                $"\nNumbers {numbers[0]:D4} / {numbers[1]:D4}" : "Authoritative answers available on Host");
+        }
+#endif
     }
 }

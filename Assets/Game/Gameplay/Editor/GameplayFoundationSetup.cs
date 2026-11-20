@@ -118,10 +118,21 @@ namespace TwinEdge.Gameplay.Editor
             BuildWindowsDevelopment(Path.Combine(directory, "V3Gameplay.exe"));
         }
 
+        [MenuItem("Tools/Twin Edge/Gameplay/Build V3 Windows Playtest Player")]
+        public static void BuildPlaytestPlayer()
+        {
+            BuildWindows("Builds/V3Playtest/V3Gameplay.exe", BuildOptions.None);
+        }
+
         static void BuildWindowsDevelopment(string path)
         {
             var options = BuildOptions.Development;
             if (Environment.GetCommandLineArgs().Contains("-v3BuildScriptsOnly")) options |= BuildOptions.BuildScriptsOnly;
+            BuildWindows(path, options);
+        }
+
+        static void BuildWindows(string path, BuildOptions options)
+        {
             var report = BuildPipeline.BuildPlayer(new BuildPlayerOptions { scenes = new[] { ScenePath, LevelPath }, locationPathName = path, target = BuildTarget.StandaloneWindows64, options = options });
             if (report.summary.result != UnityEditor.Build.Reporting.BuildResult.Succeeded) throw new Exception("V3 build failed");
         }

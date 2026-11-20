@@ -65,6 +65,7 @@ namespace TwinEdge.Gameplay
         readonly Pose[] dockPoses = new Pose[2];
         Scene boundScene;
         int hintStage = -1, hintCode, localNumber = -1, pendingKeypad = -1;
+        internal bool IsKeypadOpen => pendingKeypad >= 0;
         string numberEntry = "";
         bool ready;
 
@@ -181,6 +182,9 @@ namespace TwinEdge.Gameplay
         void Update()
         {
             if (!ready) return;
+            if (pendingKeypad >= 0 && (!game.CanPlay || Returning ||
+                UnityEngine.InputSystem.Keyboard.current?.escapeKey.wasPressedThisFrame == true))
+                pendingKeypad = -1;
             if (IsSpawned && IsServer) TickServer();
             ApplyViews();
         }

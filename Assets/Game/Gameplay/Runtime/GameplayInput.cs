@@ -13,6 +13,7 @@ namespace TwinEdge.Gameplay
         public InputAction Attack { get; private set; }
         public InputAction Grab { get; private set; }
         bool capturedLastFrame;
+        int interactFrame = -1;
         public bool AttackReady => capturedLastFrame;
         void LateUpdate() => capturedLastFrame = CapturedCursor;
         public InputAction Move { get; private set; }
@@ -33,7 +34,17 @@ namespace TwinEdge.Gameplay
                 return Cursor.lockState == CursorLockMode.Locked;
             }
         }
-        public bool AcceptsInput => CapturedCursor && !DoorPuzzleUI.IsPanelVisible;
+        public bool AcceptsInput => CapturedCursor && !DoorPuzzleUI.IsPanelVisible &&
+            LaunchCancel?.WasPressedThisFrame() != true;
+
+        public bool TryConsumeInteract()
+        {
+            if (!AcceptsInput || interactFrame == Time.frameCount || Interact?.WasPressedThisFrame() != true)
+                return false;
+            interactFrame = Time.frameCount;
+            return true;
+        }
+
         public void Activate()
         {
             if (instance != null) return;
