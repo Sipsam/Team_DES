@@ -1,3 +1,4 @@
+using System.Linq;
 using Unity.Netcode;
 using UnityEngine;
 
@@ -13,7 +14,15 @@ namespace TwinEdge.Gameplay
         readonly NetworkVariable<GemState> status = new();
         readonly NetworkVariable<ulong> owner = new(ulong.MaxValue);
         readonly NetworkVariable<Vector3> position = new();
-        double pickedUpAt;
+        [SerializeField, Min(.5f)] float dropGroundSearch = 3;
+        readonly NetworkVariable<uint> revision = new();
+        double pickedUpAt, nextGroundCheck;
+        int droppedFrame = -1;
+        ulong lastDroppedCarrier = ulong.MaxValue;
+        Vector3? lastSafeDrop;
+        Vector3 dropFallback;
+        BoxCollider finish;
+        string finalApproach;
         Vector3 home, caveStart, upperDock, lowerDock, bigSummit, lastCarrierFeet;
         GameStateManager game;
         UndergroundGameplay underground;
@@ -51,12 +60,24 @@ namespace TwinEdge.Gameplay
             bound = true;
         }
 
+        internal void BindFinish(BoxCollider collider, TwinEdge.Levels.MountainConfigV3 mountain)
+        {
+            finish = collider;
+            finalApproach = mountain != null ? mountain.poleCanyons.FirstOrDefault(edge =>
+                edge.from == mountain.start.id || edge.to == mountain.start.id)?.island : null;
+        }
+
         public override void OnNetworkSpawn()
         {
             if (!IsServer) return;
             status.Value = GemState.Sealed;
             owner.Value = ulong.MaxValue;
             position.Value = home;
+            revision.Value = 0;
+            droppedFrame = -1;
+            lastDroppedCarrier = ulong.MaxValue;
+            lastSafeDrop = null;
+            nextGroundCheck = 0;
             NetworkManager.OnClientDisconnectCallback += Disconnected;
         }
 
@@ -70,27 +91,37 @@ namespace TwinEdge.Gameplay
             if (!IsSpawned || !IsServer || State != GemState.Sealed) return;
             position.Value = point;
             status.Value = GemState.Available;
+            revision.Value++;
         }
 
-        internal void RequestAcquire() => AcquireRpc();
+        internal void RequestAcquire()
+        {
+            var character = NetworkManager.LocalClient?.PlayerObject?.GetComponent<GameplayCharacter>();
+            if (character != null) AcquireRpc(revision.Value, character.OwnerLife);
+        }
 
         [Rpc(SendTo.Server, InvokePermission = RpcInvokePermission.Everyone)]
-        void AcquireRpc(RpcParams rpc = default)
+        void AcquireRpc(uint expectedRevision, int life, RpcParams rpc = default)
         {
             ulong sender = rpc.Receive.SenderClientId;
-            if (!bound || !IsServer || !CanAcquire || !game.CanPlay ||
+            if (!bound || !IsServer || !CanAcquire || !game.CanPlay || expectedRevision != revision.Value ||
+                NetworkManager.ConnectedClientsList.Count != 2 || Time.frameCount == droppedFrame ||
                 game.Phase is not (FoundationPhase.SealPending or FoundationPhase.Return) ||
-                !NetworkManager.ConnectedClients.TryGetValue(sender, out var peer) || peer.PlayerObject == null) return;
+                !NetworkManager.ConnectedClients.TryGetValue(sender, out var peer) || peer.PlayerObject == null ||
+                !peer.PlayerObject.TryGetComponent<GameplayCharacter>(out var character) ||
+                !character.IsCurrentLifeServer(life) || !character.CanContestFinish) return;
             Vector3 eye = peer.PlayerObject.transform.position + Vector3.up;
             if ((eye - Position).sqrMagnitude > 2.7f * 2.7f ||
                 Physics.Linecast(eye, Position, out _, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore)) return;
 
-            // Reserve the item before changing the phase. RPCs are serialized on the server.
+            // Reserve before committing Return. The first accepted request changes the revision.
             GemState previous = State;
             lastCarrierFeet = peer.PlayerObject.transform.position;
+            lastSafeDrop = TryDropPoint(lastCarrierFeet, out var safe) ? safe : null;
             owner.Value = sender;
             status.Value = GemState.Carried;
             pickedUpAt = NetworkManager.ServerTime.Time;
+            revision.Value++;
             if (game.Phase == FoundationPhase.SealPending && !game.AdvanceFoundation(FoundationPhase.Return))
             {
                 owner.Value = ulong.MaxValue;
@@ -98,31 +129,79 @@ namespace TwinEdge.Gameplay
             }
         }
 
-        public bool TryDropServer(ulong carrier, Vector3 feet)
+        internal bool TryDropServer(ulong carrier, Vector3 feet)
         {
             if (!IsSpawned || !IsServer || State != GemState.Carried || Owner != carrier ||
                 NetworkManager.ServerTime.Time < pickedUpAt + dropProtectionSeconds) return false;
-            Release(GemState.Dropped, feet + Vector3.up * .55f);
+            lastDroppedCarrier = carrier;
+            droppedFrame = Time.frameCount;
+            dropFallback = lastSafeDrop ?? RecoveryPoint(feet);
+            Release(GemState.Dropped, TryDropPoint(feet, out var safe) ? safe : dropFallback);
             return true;
         }
 
-        internal void BeforeRespawnServer(PlayerMovement player)
+        bool TryDropPoint(Vector3 feet, out Vector3 point)
         {
-            if (!bound || !IsSpawned || !IsServer || State != GemState.Carried || Owner != player.OwnerClientId) return;
-            Relocate(player.transform.position);
+            point = default;
+            if (underground.InLava(feet) || RiverGameplay.Current?.InWater(feet) == true) return false;
+            foreach (var hit in Physics.RaycastAll(feet + Vector3.up * .25f, Vector3.down, dropGroundSearch,
+                ~0, QueryTriggerInteraction.Ignore).OrderBy(hit => hit.distance))
+            {
+                if (hit.collider.GetComponentInParent<PlayerMovement>() != null) continue;
+                if (hit.normal.y < .65f || underground.InLava(hit.point) || RiverGameplay.Current?.InWater(hit.point) == true) return false;
+                point = hit.point + Vector3.up * .65f;
+                return !Physics.OverlapSphere(point, .23f, ~0, QueryTriggerInteraction.Ignore)
+                    .Any(collider => collider.GetComponentInParent<PlayerMovement>() == null);
+            }
+            return false;
+        }
+
+        internal void BeforeRespawnServer(PlayerMovement player, Vector3? bridgeFeet, Vector3? supportedFeet)
+        {
+            if (!bound || !IsSpawned || !IsServer || game.Phase != FoundationPhase.Return) return;
+            ulong id = player.OwnerClientId;
+            if (!(State == GemState.Carried && Owner == id) &&
+                !(State == GemState.Dropped && lastDroppedCarrier == id && droppedFrame == Time.frameCount)) return;
+            Release(GemState.Relocated, RegionalDestination(player.transform.position, bridgeFeet, supportedFeet));
+        }
+
+        internal void BeforeRaftDeathServer(ulong rider)
+        {
+            if (IsSpawned && IsServer && game.Phase == FoundationPhase.Return && State == GemState.Carried && Owner == rider)
+                Release(GemState.Relocated, lowerDock);
         }
 
         void Disconnected(ulong id)
         {
-            if (State == GemState.Carried && Owner == id) Relocate(lastCarrierFeet);
+            if (game.Phase == FoundationPhase.Finished || State != GemState.Carried || Owner != id) return;
+            Release(GemState.Relocated, RegionalDestination(lastCarrierFeet, null, null));
         }
 
-        void Relocate(Vector3 feet)
+        Vector3 RegionalDestination(Vector3 feet, Vector3? bridgeFeet, Vector3? supportedFeet) =>
+            underground.Contains(feet) ? caveStart :
+            CastleGameplay.Current?.Contains(feet) == true ? upperDock :
+            bridgeFeet.HasValue ? bigSummit :
+            RiverGameplay.Current?.InGemDeathRegion(feet) == true ? lowerDock :
+            DeathDestination(feet, supportedFeet);
+
+        Vector3 RecoveryPoint(Vector3 feet)
         {
-            Vector3 destination = underground.Contains(feet) ? caveStart :
-                feet.z >= upperDock.z - 12 ? upperDock :
-                feet.z > lowerDock.z ? lowerDock : bigSummit;
-            Release(GemState.Relocated, destination);
+            if (underground.Contains(feet)) return home;
+            if (CastleGameplay.Current?.Contains(feet) == true) return upperDock;
+            if (RiverGameplay.Current?.InGemDeathRegion(feet) == true) return lowerDock;
+            return DeathDestination(feet, null);
+        }
+
+        Vector3 DeathDestination(Vector3 feet, Vector3? supportedFeet)
+        {
+            var mountain = CooperativePole.Current?.mountain;
+            string summit = PoleGeometry.Summit(feet, mountain, 0);
+            if (summit == null && supportedFeet.HasValue)
+                summit = PoleGeometry.Summit(supportedFeet.Value, mountain, 0);
+            if (mountain != null && (summit == mountain.start.id || finalApproach != null && summit == finalApproach))
+                return lastSafeDrop ?? (supportedFeet.HasValue ? supportedFeet.Value + Vector3.up * .65f :
+                    finish.transform.position + Vector3.up * .65f);
+            return bigSummit;
         }
 
         void Release(GemState next, Vector3 point)
@@ -130,6 +209,17 @@ namespace TwinEdge.Gameplay
             position.Value = point;
             owner.Value = ulong.MaxValue;
             status.Value = next;
+            revision.Value++;
+        }
+
+        internal void TickDroppedServer()
+        {
+            if (State != GemState.Dropped || NetworkManager.ServerTime.Time < nextGroundCheck) return;
+            nextGroundCheck = NetworkManager.ServerTime.Time + .25;
+            if (!TryDropPoint(Position - Vector3.up * .65f, out Vector3 point) &&
+                !TryDropPoint(dropFallback - Vector3.up * .65f, out point))
+                point = RecoveryPoint(Position);
+            if ((point - Position).sqrMagnitude > .01f) Release(GemState.Dropped, point);
         }
 
         void LateUpdate()
@@ -150,7 +240,15 @@ namespace TwinEdge.Gameplay
                 if (carrier != null)
                 {
                     point = carrier.TransformPoint(new Vector3(.46f, 1.32f, -.24f));
-                    if (IsServer) lastCarrierFeet = carrier.position;
+                    if (IsServer)
+                    {
+                        lastCarrierFeet = carrier.position;
+                        if (NetworkManager.ServerTime.Time >= nextGroundCheck)
+                        {
+                            nextGroundCheck = NetworkManager.ServerTime.Time + .15;
+                            if (TryDropPoint(lastCarrierFeet, out var safe)) lastSafeDrop = safe;
+                        }
+                    }
                 }
             }
 
@@ -165,7 +263,8 @@ namespace TwinEdge.Gameplay
             if (!IsSpawned || State == GemState.Sealed) return;
             GUILayout.Label(State == GemState.Carried
                 ? Owner == NetworkManager.LocalClientId ? "Gem: you carry it" : "Gem: partner carries it"
-                : State == GemState.Relocated ? "Gem relocated to the next return checkpoint" : "Gem available");
+                : State == GemState.Relocated ? "Gem respawned at a return checkpoint" :
+                    State == GemState.Dropped ? "Gem dropped | E to pick up" : "Gem available");
         }
     }
 }

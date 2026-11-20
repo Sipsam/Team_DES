@@ -284,6 +284,28 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::TwinEdge.Gameplay.GameplayCharacter
   ShowTopMostFoldoutHeaderGroup: 1
   animator: {fileID: 4447214307476119673}
+  maximumStamina: 100
+  jumpCost: 3
+  sprintPerSecond: 2
+  strongRowPerSecond: 23
+  holdPerSecond: 22
+  staminaRecovery: 16
+  emptyRecoveryDelay: 5
+  hitRange: 2.65
+  grabRange: 1.85
+  aimHalfAngle: 60
+  hitStun: 0.1
+  hitCooldown: 1
+  grabCooldown: 3
+  hitSpeed: 7
+  hitLift: 1.6
+  holdMoveScale: 0.55
+  chargeSeconds: 2
+  throwMinSpeed: 4
+  throwMaxSpeed: 11
+  throwLift: 5
+  throwControlSeconds: 0.8
+  resistancePresses: 7
 --- !u!114 &749905564856991976
 MonoBehaviour:
   m_ObjectHideFlags: 0

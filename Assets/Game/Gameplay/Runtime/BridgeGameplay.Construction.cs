@@ -251,7 +251,7 @@ namespace TwinEdge.Gameplay
             ulong id = rpc.Receive.SenderClientId;
             if (!CanInteract || current.revision != revision) return;
             var player = Player(id);
-            if (player == null || CooperativePole.Current?.IsAttached(id) == true ||
+            if (player == null || player.GetComponent<GameplayCharacter>()?.BlocksServerInteraction == true || CooperativePole.Current?.IsAttached(id) == true ||
                 player.GetComponent<MountainReturnLaunch>()?.ControlsMovement == true) return;
             var position = player.transform.position;
             if (!current.supplied)
@@ -325,7 +325,7 @@ namespace TwinEdge.Gameplay
             direction.y = 0;
             int side = id == current.left ? 0 : 1;
             directions[side] = Vector3.ClampMagnitude(direction, 1);
-            efforts[side] = sprint ? 1.25f : 1f;
+            efforts[side] = sprint && Player(id)?.GetComponent<GameplayCharacter>()?.SprintAllowed == true ? 1.25f : 1f;
             inputAt[side] = NetworkManager.ServerTime.Time;
         }
 

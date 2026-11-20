@@ -56,7 +56,7 @@ namespace TwinEdge.Gameplay
         [Rpc(SendTo.Server)]
         public void PrepareRpc(uint revision, RpcParams rpc = default)
         {
-            if (!Valid(rpc, revision) || State.Value != LaunchState.Ready || NetworkManager.ServerTime.Time < availableAt.Value ||
+            if (!Valid(rpc, revision) || State.Value != LaunchState.Ready || GetComponent<GameplayCharacter>().BlocksServerInteraction || NetworkManager.ServerTime.Time < availableAt.Value ||
                 CooperativePole.Current == null || CooperativePole.Current.IsAttached(OwnerClientId) || !Supported(out _)) return;
             began = NetworkManager.ServerTime.Time; chargeLevel.Value = 0; State.Value = LaunchState.Charging;
         }
@@ -141,7 +141,7 @@ namespace TwinEdge.Gameplay
                 pitch = Mathf.Clamp(pitch + input.Move.ReadValue<Vector2>().y * config.aimDegreesPerSecond * Time.deltaTime, config.minPitch, config.maxPitch);
                 if (!input.Launch.IsPressed()) FireRpc(Revision.Value, yaw, pitch, Charge);
             }
-            else if (State.Value == LaunchState.Ready && input.AcceptsInput && input.Launch.WasPressedThisFrame() && Supported(out _))
+            else if (State.Value == LaunchState.Ready && !GetComponent<GameplayCharacter>().BlocksOwnerInteraction && input.AcceptsInput && input.Launch.WasPressedThisFrame() && Supported(out _))
             {
                 // Freeze local walking immediately; the server's grant may take a Relay round trip.
                 preparePending = true; prepareDeadline = Time.unscaledTime + 2;

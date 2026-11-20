@@ -13,6 +13,7 @@ public sealed class RespawnManager : NetworkBehaviour
     private GameStateManager gameStateManager;
     private readonly Dictionary<ulong, float> lastSupportedHeight = new();
     private readonly Dictionary<ulong, Vector3> lastBridgeFeet = new();
+    private readonly Dictionary<ulong, Vector3> lastSupportedFeet = new();
     public void SetSharedCheckpointServer(Vector3 position, Quaternion rotation, string label, bool resolveGround = false)
     {
         if (!IsServer) return;
@@ -54,7 +55,11 @@ public sealed class RespawnManager : NetworkBehaviour
                     bridge.InBridgeAirspace(position, 1f) && Mathf.Abs(position.y - bridge.StartPoint.y) < 1.2f)
                     lastBridgeFeet[client.ClientId] = position;
                 else if (supported && !fallen) lastBridgeFeet.Remove(client.ClientId);
-                if (supported) lastSupportedHeight[client.ClientId] = position.y;
+                if (supported)
+                {
+                    lastSupportedHeight[client.ClientId] = position.y;
+                    lastSupportedFeet[client.ClientId] = position;
+                }
                 else if (lastSupportedHeight.TryGetValue(client.ClientId, out float height)) fallen |= position.y < height - 18f;
             }
             if (fallen) RespawnPlayer(client.PlayerObject.GetComponent<PlayerMovement>());
@@ -96,7 +101,13 @@ public sealed class RespawnManager : NetworkBehaviour
             return;
         lastRespawnTimes[player.OwnerClientId] = Time.time;
 
-        TwinEdge.Gameplay.GemOwnership.Current?.BeforeRespawnServer(player);
+        lastBridgeFeet.TryGetValue(player.OwnerClientId, out Vector3 bridgeFeet);
+        lastSupportedFeet.TryGetValue(player.OwnerClientId, out Vector3 supportedFeet);
+        TwinEdge.Gameplay.GemOwnership.Current?.BeforeRespawnServer(player,
+            lastBridgeFeet.ContainsKey(player.OwnerClientId) ? bridgeFeet : null,
+            lastSupportedFeet.ContainsKey(player.OwnerClientId) ? supportedFeet : null);
+        var character = player.GetComponent<TwinEdge.Gameplay.GameplayCharacter>();
+        character?.BeforeContestRespawnServer();
         bool regionalCheckpoint = !useAssignedCheckpoint &&
             (TwinEdge.Gameplay.UndergroundGameplay.Current?.AssignDeathCheckpoint(player) == true ||
              TwinEdge.Gameplay.CastleGameplay.Current?.AssignDeathCheckpoint(player) == true);
@@ -116,11 +127,11 @@ public sealed class RespawnManager : NetworkBehaviour
             checkpoints[player.OwnerClientId] = checkpoint;
         }
 
-        var character = player.GetComponent<TwinEdge.Gameplay.GameplayCharacter>();
         if (character != null) { character.RespawnCount.Value++; character.SetCarryingServer(false); }
         lastSupportedHeight[player.OwnerClientId] = checkpoint.position.y;
+        lastSupportedFeet[player.OwnerClientId] = checkpoint.position;
         player.SetGrabbedServer(false);
-        player.RespawnAtOwnerClientRpc(checkpoint.position, checkpoint.rotation,
+        player.RespawnAtOwnerClientRpc(checkpoint.position, checkpoint.rotation, character?.RespawnCount.Value ?? 0,
             RpcTarget.Single(player.OwnerClientId, RpcTargetUse.Temp));
     }
 
@@ -132,6 +143,7 @@ public sealed class RespawnManager : NetworkBehaviour
             lastRespawnTimes.Clear();
             lastSupportedHeight.Clear();
             lastBridgeFeet.Clear();
+            lastSupportedFeet.Clear();
             gameStateManager = GetComponent<GameStateManager>();
             if (gameStateManager != null) gameStateManager.StateChanged += HandleGameStateChanged;
         }
@@ -157,6 +169,7 @@ public sealed class RespawnManager : NetworkBehaviour
         lastRespawnTimes.Remove(clientId);
         lastSupportedHeight.Remove(clientId);
         lastBridgeFeet.Remove(clientId);
+        lastSupportedFeet.Remove(clientId);
     }
 
     private void HandleGameStateChanged(GameState previous, GameState next)

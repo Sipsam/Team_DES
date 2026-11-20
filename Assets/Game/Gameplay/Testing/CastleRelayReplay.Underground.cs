@@ -129,7 +129,9 @@ namespace TwinEdge.Gameplay
                     Vector3 start = cave.Landing(slot, index / 2);
                     yield return WalkPoint(start);
                     foreach (var deck in cave.GroupDecks(index)) yield return JumpTo(deck.Top);
-                    yield return JumpTo(index / 2 == 3 ? cave.EndOfRoute(slot) : cave.Landing(slot, index / 2 + 1));
+                    int destination = index / 2 + 1;
+                    Vector3 landing = destination == 4 ? cave.EndOfRoute(slot) : cave.Landing(slot, destination);
+                    yield return JumpTo(landing, cave.ReplayLandingSupport(slot, destination));
                     Require(cave.Now <= cave.Deadline(index), $"physical crossing {index + 1} completed before deadline");
                 }
                 yield return Wait(() => cave.Step > index, $"server registers arrival for crossing {index + 1}", 36);
@@ -255,9 +257,12 @@ namespace TwinEdge.Gameplay
             {
                 int group = stage * 2 + (slot == 0 ? 1 : 0);
                 yield return WalkPoint(stage == 3 ? cave.EndOfRoute(slot) : cave.Landing(slot, stage + 1));
+                // Permanent Return decks allow a normal stamina break on each fixed landing.
+                yield return Wait(() => character.StaminaFraction >= .95f, "stamina recovered on fixed Return landing", 14);
                 var decks = cave.GroupDecks(group);
-                for (int i = decks.Count - 1; i >= 0; i--) yield return JumpTo(decks[i].Top);
-                yield return JumpTo(cave.Landing(slot, stage));
+                for (int i = decks.Count - 1; i >= 0; i--)
+                    yield return JumpTo(decks[i].Top);
+                yield return JumpTo(cave.Landing(slot, stage), cave.ReplayLandingSupport(slot, stage));
             }
             yield return Walk(slot == 0 ? -17 : 47, 240);
             yield return Walk(slot == 0 ? 37.7f : 42.3f, 240);
@@ -303,7 +308,11 @@ namespace TwinEdge.Gameplay
             if (!host)
             {
                 yield return WalkPoint(cave.Landing(1, 0));
-                for (int i = 0; i < 4; i++) yield return JumpTo(cave.GroupDecks(0)[i].Top);
+                for (int i = 0; i < 4; i++)
+                {
+                    var deck = cave.GroupDecks(0)[i];
+                    yield return JumpTo(deck.Top);
+                }
                 yield return Wait(() => !cave.GroupActive(0), "server deadline retracts the occupied support", 34);
                 Require(!cave.GroupDecks(0)[3].Object.activeInHierarchy && cave.Deadline(0) == expiry, "expiry removes collider and view");
             }
@@ -335,13 +344,24 @@ namespace TwinEdge.Gameplay
             yield return new WaitForSeconds(.10f);
         }
 
-        IEnumerator JumpTo(Vector3 top)
+        IEnumerator JumpTo(Vector3 top, Collider fixedShelf = null)
         {
             yield return Wait(() => player.IsGrounded && UndergroundGameplay.Current.SpeedScale(player) >= 1,
                 $"grounded and ready to jump towards {top:F2}", 2.5f);
-            float started = Time.realtimeSinceStartup;
-            bool tookOff = false;
             Vector3 start = player.transform.position;
+            // Press Space from confirmed support before advancing toward the next waypoint.
+            // Losing ground over the edge alone is not evidence of an accepted jump.
+            for (int attempt = 0; attempt < 2 && player.transform.position.y < start.y + .055f; attempt++)
+            {
+                SetKeys();
+                yield return new WaitForSeconds(.04f);
+                SetKeys(Key.Space, Key.LeftShift);
+                float takeoffDeadline = Time.realtimeSinceStartup + .27f;
+                while (player.transform.position.y < start.y + .055f && Time.realtimeSinceStartup < takeoffDeadline)
+                    yield return null;
+            }
+            Require(player.transform.position.y >= start.y + .055f, $"Space did not take off from {start:F2} toward {top:F2}; feet={player.transform.position:F2}, grounded={player.IsGrounded}, stamina={character.StaminaFraction:P0}, {character.StaminaTuningForTest}", log: false);
+            float started = Time.realtimeSinceStartup;
             do
             {
                 Vector3 delta = Vector3.ProjectOnPlane(top - player.transform.position, Vector3.up);
@@ -356,17 +376,20 @@ namespace TwinEdge.Gameplay
                     if (Mathf.Abs(forward) > .36f) keys.Add(forward > 0 ? Key.W : Key.S);
                     if (Mathf.Abs(right) > .36f) keys.Add(right > 0 ? Key.D : Key.A);
                 }
-                if (!tookOff) keys.Add(Key.Space);
                 SetKeys(keys.ToArray());
                 yield return null;
-                tookOff |= !player.IsGrounded;
                 Require(Time.realtimeSinceStartup - started < 2 && player.transform.position.y > top.y - 1,
                     $"jump from {start:F2} missed {top:F2}, feet at {player.transform.position:F2}", log: false);
-            } while (!tookOff || !player.IsGrounded);
+            } while (!player.IsGrounded);
             SetKeys();
             Vector3 offset = player.transform.position - top;
-            Require(offset.y > -.65f && offset.y < 1.1f && Vector3.ProjectOnPlane(offset, Vector3.up).magnitude < 1.65f,
-                $"jump from {start:F2} towards {top:F2} landed at {player.transform.position:F2}", log: false);
+            // A timed waypoint may overlap the preceding shelf. The arrival at a fixed shelf
+            // is registered against that shelf's collider, including the walkable edge of its footprint.
+            bool reachedTarget = fixedShelf == null
+                ? offset.y > -.65f && offset.y < 1.1f && Vector3.ProjectOnPlane(offset, Vector3.up).magnitude < 1.65f
+                : fixedShelf.Raycast(new Ray(player.transform.position + Vector3.up * .22f, Vector3.down),
+                    out var contact, .57f) && contact.normal.y > .65f;
+            Require(reachedTarget, $"jump from {start:F2} towards {top:F2} landed at {player.transform.position:F2}", log: false);
             yield return null;
             if (Mathf.Abs(offset.y) < .45f && Vector3.ProjectOnPlane(offset, Vector3.up).sqrMagnitude > .33f * .33f)
                 yield return WalkPoint(top);
@@ -410,6 +433,7 @@ namespace TwinEdge.Gameplay
         internal Vector3[] Stairs => config.stairs;
         internal int SwitchFor(int index) => SwitchOrder[index];
         internal UndergroundStation SealPad(int slot) => stations[SealStation + slot];
+        internal Collider ReplayLandingSupport(int lane, int stage) => stage == Stages ? altarSurface : landingSurfaces[lane, stage];
         internal Vector3 EndOfRoute(int slot) => Altar + new Vector3(slot == 0 ? -8 : 8, 0, 5);
         internal bool AllGroupsPermanent => Returning && System.Linq.Enumerable.All(groups, g =>
             System.Linq.Enumerable.All(g, d => d.Object.activeInHierarchy));

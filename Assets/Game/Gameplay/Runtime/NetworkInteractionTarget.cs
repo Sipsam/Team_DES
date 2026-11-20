@@ -22,6 +22,7 @@ namespace TwinEdge.Gameplay
         void BeginRpc(NetworkObjectReference reference, RpcParams rpc = default)
         {
             if (!reference.TryGet(out var obj) || !obj.IsPlayerObject || !obj.IsSpawned || obj.OwnerClientId != rpc.Receive.SenderClientId || !CanInteract) return;
+            if (obj.GetComponent<GameplayCharacter>()?.BlocksServerInteraction == true) return;
             var state = FindFirstObjectByType<GameStateManager>();
             if (state == null || !state.CanPlay || !InRange(obj.transform.position)) return;
             activePlayer = obj.GetComponent<PlayerInteraction>();
@@ -39,6 +40,10 @@ namespace TwinEdge.Gameplay
             var state = FindFirstObjectByType<GameStateManager>();
             if (activePlayer == null || !activePlayer.IsSpawned || !InRange(activePlayer.transform.position) || state == null || !state.CanPlay) { End(false); return; }
             if (NetworkManager.ServerTime.Time >= endsAt) End(true);
+        }
+        internal void InterruptServer(ulong id)
+        {
+            if (IsSpawned && IsServer && user.Value == id) End(false);
         }
         void End(bool completed)
         {

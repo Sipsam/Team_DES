@@ -248,6 +248,17 @@ namespace TwinEdge.Gameplay
             track.Last = position;
         }
 
+        internal void InterruptContestServer(ulong client)
+        {
+            int slot = Slot(client);
+            if (!IsSpawned || !IsServer || slot < 0 || occupants[slot] != client) return;
+            occupants[slot] = ulong.MaxValue;
+            CloseKeypadRpc(RpcTarget.Single(client, RpcTargetUse.Temp));
+        }
+
+        [Rpc(SendTo.SpecifiedInParams, InvokePermission = RpcInvokePermission.Server)]
+        void CloseKeypadRpc(RpcParams rpc = default) => pendingKeypad = -1;
+
         bool TryPlayer(RpcParams rpc, out NetworkObject player, out int slot)
         {
             slot = Slot(rpc.Receive.SenderClientId);
@@ -255,7 +266,7 @@ namespace TwinEdge.Gameplay
             if (!ready || !IsServer || !game.CanPlay || slot < 0 ||
                 !NetworkManager.ConnectedClients.TryGetValue(rpc.Receive.SenderClientId, out var peer)) return false;
             player = peer.PlayerObject;
-            return player != null && Contains(player.transform.position);
+            return player != null && player.GetComponent<GameplayCharacter>()?.BlocksServerInteraction != true && Contains(player.transform.position);
         }
 
         static bool Near(NetworkObject player, CastleStation station)

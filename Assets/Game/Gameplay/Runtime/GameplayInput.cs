@@ -10,6 +10,11 @@ namespace TwinEdge.Gameplay
         InputActionAsset instance;
         public InputAction Launch { get; private set; }
         public InputAction LaunchCancel { get; private set; }
+        public InputAction Attack { get; private set; }
+        public InputAction Grab { get; private set; }
+        bool capturedLastFrame;
+        public bool AttackReady => capturedLastFrame;
+        void LateUpdate() => capturedLastFrame = CapturedCursor;
         public InputAction Move { get; private set; }
         public InputAction Jump { get; private set; }
         public InputAction Sprint { get; private set; }
@@ -36,6 +41,8 @@ namespace TwinEdge.Gameplay
             var map = instance.FindActionMap("Player", true);
             Move = map.FindAction("Move", true); Jump = map.FindAction("Jump", true);
             Sprint = map.FindAction("Sprint", true); Interact = map.FindAction("Interact", true);
+            Attack = map.FindAction("Attack", true);
+            Grab = map.AddAction("GrabOpponent", InputActionType.Button, "<Keyboard>/f");
             Launch = map.AddAction("ReturnLaunch", UnityEngine.InputSystem.InputActionType.Button, "<Keyboard>/r");
             LaunchCancel = map.AddAction("ReturnCancel", UnityEngine.InputSystem.InputActionType.Button, "<Keyboard>/escape");
             map.Enable();

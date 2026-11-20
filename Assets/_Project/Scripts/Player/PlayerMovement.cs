@@ -17,6 +17,7 @@ public sealed class PlayerMovement : NetworkBehaviour
     [SerializeField, Min(0f)] private float externalVelocityDecay = 8f;
 
     private TwinEdge.Gameplay.GameplayInput gameplayInput;
+    private TwinEdge.Gameplay.GameplayCharacter contest;
     public Vector3 Velocity => characterController != null ? characterController.velocity : Vector3.zero;
     private CharacterController characterController;
     private RaftController raftController;
@@ -26,6 +27,8 @@ public sealed class PlayerMovement : NetworkBehaviour
     private GameStateManager gameStateManager;
     private float verticalSpeed;
     private float bridgeJumpSpeed;
+    private bool sprintJump;
+    private float bufferedJumpUntil = float.NegativeInfinity;
     private Vector3 externalVelocity;
     private Vector3 undergroundSupportDelta;
     private readonly NetworkVariable<float> movementSpeedMultiplier = new NetworkVariable<float>(
@@ -39,6 +42,7 @@ public sealed class PlayerMovement : NetworkBehaviour
     {
         characterController = GetComponent<CharacterController>();
         gameplayInput = GetComponent<TwinEdge.Gameplay.GameplayInput>();
+        contest = GetComponent<TwinEdge.Gameplay.GameplayCharacter>();
     }
 
     private void Update()
@@ -72,13 +76,18 @@ public sealed class PlayerMovement : NetworkBehaviour
 
         // A pole release/respawn can arrive before its LateUpdate restores the controller.
         if (!characterController.enabled) return;
+        if (IsSpawned && contest?.ApplyOwnerContestMovement() == true) return;
 
         bool canReadInput = (gameplayInput == null || gameplayInput.AcceptsInput) && !puzzleUiInputBlocked && (!IsSpawned ||
             (gameStateManager != null && gameStateManager.CanPlay));
 
         IsGrounded = characterController.isGrounded;
 
-        if (IsGrounded) bridgeJumpSpeed = 0f;
+        if (IsGrounded)
+        {
+            bridgeJumpSpeed = 0f;
+            sprintJump = false;
+        }
         if (IsGrounded && verticalSpeed < 0f)
         {
             verticalSpeed = -groundedDownForce;
@@ -96,7 +105,9 @@ public sealed class PlayerMovement : NetworkBehaviour
         var bridge = TwinEdge.Gameplay.BridgeGameplay.Current;
         var castle = IsSpawned ? TwinEdge.Gameplay.CastleGameplay.Current : null;
         float undergroundSpeed = IsSpawned ? TwinEdge.Gameplay.UndergroundGameplay.Current?.SpeedScale(this) ?? 1f : 1f;
-        bool sprint = gameplayInput?.Sprint?.IsPressed() == true && castle?.SprintBlocked(this) != true;
+        bool wantsSprint = canReadInput && gameplayInput?.Sprint?.IsPressed() == true && castle?.SprintBlocked(this) != true;
+        bool sprint = wantsSprint && (IsSpawned && contest != null
+            ? contest.ReadSprint(input.sqrMagnitude > .001f) : true);
         if (IsSpawned && bridge != null && bridge.Holds(OwnerClientId))
         {
             bridge.MoveHolder(this, characterController, moveDirection, sprint);
@@ -116,15 +127,32 @@ public sealed class PlayerMovement : NetworkBehaviour
         }
 
         Keyboard keyboard = Keyboard.current;
-        if (canReadInput && IsGrounded && (gameplayInput != null ? gameplayInput.Jump != null && gameplayInput.Jump.WasPressedThisFrame() : keyboard != null && keyboard.spaceKey.wasPressedThisFrame))
+        bool pressedJump = canReadInput && (gameplayInput != null
+            ? gameplayInput.Jump?.WasPressedThisFrame() == true : keyboard?.spaceKey.wasPressedThisFrame == true);
+        bool jump = pressedJump && IsGrounded;
+        bool onBridge = bridge?.UsesBridgeJump(transform.position) == true;
+        if (IsSpawned && contest != null)
+        {
+            if (pressedJump) bufferedJumpUntil = Time.time + .12f;
+            jump = canReadInput && IsGrounded && Time.time <= bufferedJumpUntil;
+            if (jump)
+            {
+                bufferedJumpUntil = float.NegativeInfinity;
+                jump = contest.RequestJump(wantsSprint, out bool fast);
+                if (jump) sprint = fast;
+            }
+        }
+        if (jump)
         {
             verticalSpeed = Mathf.Sqrt(2f * gravity * jumpHeight);
-            if (bridge != null && bridge.UsesBridgeJump(transform.position)) bridgeJumpSpeed = bridge.BridgeJumpSpeed(sprint);
+            sprintJump = sprint;
+            if (onBridge && bridge != null) bridgeJumpSpeed = bridge.BridgeJumpSpeed(sprint);
         }
 
         verticalSpeed -= gravity * Time.deltaTime;
-        float horizontalSpeed = bridgeJumpSpeed > 0 ? bridgeJumpSpeed : moveSpeed * (sprint ? 1.6f : 1f);
-        Vector3 velocity = moveDirection * (horizontalSpeed * movementSpeedMultiplier.Value * (castle?.SpeedScale(this) ?? 1f) * undergroundSpeed);
+        bool fastStride = sprint || sprintJump && wantsSprint && contest?.HasStamina == true;
+        float horizontalSpeed = bridgeJumpSpeed > 0 ? bridgeJumpSpeed : moveSpeed * (fastStride ? 1.6f : 1f);
+        Vector3 velocity = moveDirection * (horizontalSpeed * movementSpeedMultiplier.Value * (castle?.SpeedScale(this) ?? 1f) * undergroundSpeed * (contest?.ContestSpeed ?? 1f));
         velocity += externalVelocity;
         velocity.y = verticalSpeed + externalVelocity.y;
         characterController.Move(velocity * Time.deltaTime + undergroundSupportDelta);
@@ -191,6 +219,8 @@ public sealed class PlayerMovement : NetworkBehaviour
     public void ResetVerticalVelocity()
     {
         bridgeJumpSpeed = 0f;
+        sprintJump = false;
+        bufferedJumpUntil = float.NegativeInfinity;
         verticalSpeed = 0f;
         externalVelocity = Vector3.zero;
         undergroundSupportDelta = Vector3.zero;
@@ -205,6 +235,21 @@ public sealed class PlayerMovement : NetworkBehaviour
         }
 
         movementSpeedMultiplier.Value = grabbed ? Mathf.Clamp01(moveMultiplier) : 1f;
+    }
+
+    internal void ReconcileV3Jump(bool approved, bool sprint)
+    {
+        if (!approved) verticalSpeed = Mathf.Min(0, verticalSpeed);
+        if (IsGrounded) return;
+        if (bridgeJumpSpeed > 0)
+            bridgeJumpSpeed = approved ? TwinEdge.Gameplay.BridgeGameplay.Current?.BridgeJumpSpeed(sprint) ?? 0 : 0;
+        sprintJump = approved && sprint;
+    }
+
+    internal void ContinueContestVelocity(Vector3 velocity, bool preserveHorizontal)
+    {
+        verticalSpeed = velocity.y;
+        if (preserveHorizontal) externalVelocity += Vector3.ProjectOnPlane(velocity, Vector3.up);
     }
 
     internal void CarryUndergroundPlatform(Vector3 delta) => undergroundSupportDelta = delta;
@@ -245,11 +290,12 @@ public sealed class PlayerMovement : NetworkBehaviour
             return;
         }
 
+        if (contest?.BlocksContestImpulse == true) return;
         externalVelocity += Vector3.ClampMagnitude(velocity, 12f);
     }
 
     [Rpc(SendTo.SpecifiedInParams, InvokePermission = RpcInvokePermission.Server)]
-    public void RespawnAtOwnerClientRpc(Vector3 position, Quaternion rotation,
+    public void RespawnAtOwnerClientRpc(Vector3 position, Quaternion rotation, int life,
         RpcParams rpcParams = default)
     {
         if (!IsOwner)
@@ -257,6 +303,7 @@ public sealed class PlayerMovement : NetworkBehaviour
             return;
         }
 
+        contest?.ResetContestOwner(life);
         TwinEdge.Gameplay.RiverGameplay.Current?.SuspendOwnerSeat(OwnerClientId);
         PlaceAtOwner(position, rotation);
     }

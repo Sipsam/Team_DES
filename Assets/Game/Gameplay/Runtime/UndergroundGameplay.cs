@@ -125,6 +125,7 @@ namespace TwinEdge.Gameplay
         }
 
         internal bool Contains(Vector3 position) => InCavern(position);
+        internal bool InLava(Vector3 position) => InCavern(position) && position.y <= lavaBounds.max.y + .1f;
 
         internal bool TryResume(int slot, out Pose pose, out string label)
         {
@@ -223,7 +224,7 @@ namespace TwinEdge.Gameplay
             if (!IsBound || !IsSpawned || !IsServer || !game.CanPlay || !spawns.TryGetSlot(id, out slot) ||
                 slot < 0 || slot >= 2 || !NetworkManager.ConnectedClients.TryGetValue(id, out var peer)) return false;
             player = peer.PlayerObject;
-            return player != null && InCavern(player.transform.position);
+            return player != null && player.GetComponent<GameplayCharacter>()?.BlocksServerInteraction != true && InCavern(player.transform.position);
         }
 
         bool Near(NetworkObject player, UndergroundStation target)
@@ -287,6 +288,13 @@ namespace TwinEdge.Gameplay
         {
             if (!TrySender(rpc.Receive.SenderClientId, out _, out int slot) ||
                 (participants.Value & (1 << slot)) == 0) return;
+            InterruptContestServer(rpc.Receive.SenderClientId);
+        }
+
+        internal void InterruptContestServer(ulong client)
+        {
+            int slot = castle.Slot(client);
+            if (!IsSpawned || !IsServer || slot < 0 || (participants.Value & (1 << slot)) == 0) return;
             ClearParticipation();
             recentFailure.Value = UndergroundFailure.SealCancelled;
             seal.Value = arrivals.Value == Both ? UndergroundSeal.ReadyForCooperation : UndergroundSeal.Sealed;

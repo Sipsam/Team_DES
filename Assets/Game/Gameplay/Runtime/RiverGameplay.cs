@@ -18,9 +18,8 @@ namespace TwinEdge.Gameplay
         [SerializeField, Min(.1f)] float weakSpeed = 11.5f, strongMultiplier = 1.65f;
         [SerializeField, Min(.1f)] float response = 2.4f, turnSpeed = 72f, courseCorrection = 1.45f;
         [SerializeField, Min(.5f)] float sharedRadius = 2.35f, soloRadius = 1.45f;
-        [Header("Recovery and stamina")]
+        [Header("Recovery")]
         [SerializeField, Min(.1f)] float hitInterval = .85f, rebuildDelay = 2f;
-        [SerializeField, Min(.1f)] float staminaUse = .23f, staminaRecovery = .16f, emptyDelay = 2f;
         [SerializeField, Min(.5f)] float boardingRange = 7f;
         [Header("Source models")]
         [SerializeField] GameObject sharedModel, soloModel, oarModel, dockModel, stairsModel;
@@ -66,14 +65,14 @@ namespace TwinEdge.Gameplay
         sealed class Paddle
         {
             public uint Sequence;
-            public float LastAt = float.NegativeInfinity, ExhaustedUntil;
+            public float LastAt = float.NegativeInfinity;
             public float Drive, Steer;
             public bool Sprint;
             public void Clear()
             {
                 Sequence = 0;
                 LastAt = float.NegativeInfinity;
-                ExhaustedUntil = Drive = Steer = 0;
+                Drive = Steer = 0;
                 Sprint = false;
             }
         }
@@ -180,7 +179,8 @@ namespace TwinEdge.Gameplay
         void BoardRpc(bool lower, uint firstVoyage, uint secondVoyage, RpcParams rpc = default)
         {
             ulong id = rpc.Receive.SenderClientId;
-            if (!CanInteract || !game.CanPlay || !TryPlayer(id, out var player) || TrySeat(id, out _, out _, out _) ||
+            if (!CanInteract || !game.CanPlay || !TryPlayer(id, out var player) ||
+                player.GetComponent<GameplayCharacter>()?.BlocksServerInteraction == true || TrySeat(id, out _, out _, out _) ||
                 CooperativePole.Current?.IsAttached(id) == true || BridgeGameplay.Current?.Holds(id) == true ||
                 player.GetComponent<MountainReturnLaunch>()?.ControlsMovement == true) return;
 
@@ -420,27 +420,34 @@ namespace TwinEdge.Gameplay
 
         void Publish(int i) => Stream(i).Value = hulls[i].State;
 
-        float Thrust(Paddle paddle, ref float stamina, float dt)
+        float Thrust(ulong rider, Paddle paddle, ref float stamina, float dt)
         {
             bool fresh = Time.time - paddle.LastAt < InputTimeout;
             float drive = fresh ? paddle.Drive : 0;
-            if (fresh && paddle.Sprint && stamina > 0 && Mathf.Abs(drive) > .01f)
-            {
-                stamina = Mathf.Max(0, stamina - dt * staminaUse);
-                if (stamina == 0) paddle.ExhaustedUntil = Time.time + emptyDelay;
-                return drive * strongMultiplier;
-            }
-            if (Time.time >= paddle.ExhaustedUntil) stamina = Mathf.Min(1, stamina + dt * staminaRecovery);
-            return drive;
+            if (!TryPlayer(rider, out var player) || !player.TryGetComponent<GameplayCharacter>(out var character))
+                return drive;
+            bool strong = paddle.Sprint && Mathf.Abs(drive) > .01f && character.TryStrongRowServer(dt);
+            stamina = character.StaminaFraction;
+            return strong ? drive * strongMultiplier : drive;
         }
+
+        internal bool InWater(Vector3 point)
+        {
+            if (channel == null || point.z < channel.Start || point.z > channel.End) return false;
+            var sample = channel.Sample(point.z);
+            return Mathf.Abs(point.x - sample.center.x) < sample.halfWidth && point.y <= sample.center.y + .15f;
+        }
+
+        internal bool InGemDeathRegion(Vector3 point) => channel != null &&
+            point.z >= channel.LowerDock.bounds.min.z && point.z <= channel.UpperDock.bounds.max.z;
 
         void Sail(int i)
         {
             var hull = hulls[i];
             ref var s = ref hull.State;
             float dt = Time.fixedDeltaTime;
-            float left = Thrust(hull.Left, ref s.LeftStamina, dt);
-            float right = i == 0 ? Thrust(hull.Right, ref s.RightStamina, dt) : 0;
+            float left = Thrust(s.Left, hull.Left, ref s.LeftStamina, dt);
+            float right = i == 0 ? Thrust(s.Right, hull.Right, ref s.RightStamina, dt) : 0;
             s.LeftDrive = left;
             s.RightDrive = right;
             s.Drive = i == 0 ? (left + right) * .5f : left;
@@ -582,6 +589,11 @@ namespace TwinEdge.Gameplay
         {
             var hull = hulls[i];
             if (hull.State.Status == RiverRaftStatus.Destroyed) return;
+            if (reason is not (RiverContact.PhaseChanged or RiverContact.Disconnect))
+            {
+                GemOwnership.Current?.BeforeRaftDeathServer(hull.State.Left);
+                GemOwnership.Current?.BeforeRaftDeathServer(hull.State.Right);
+            }
             hull.State.Status = RiverRaftStatus.Destroyed;
             hull.State.Recovery = reason;
             hull.State.Velocity = Vector3.zero;

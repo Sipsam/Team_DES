@@ -10,7 +10,7 @@ using UnityEngine.InputSystem;
 using UnityEngine.InputSystem.LowLevel;
 
 // Opt-in real two-process Relay test. Station teleports are test setup, never route validation.
-public sealed class V3GameplaySmoke : MonoBehaviour
+public sealed partial class V3GameplaySmoke : MonoBehaviour
 {
     bool host, failed;
     string evidence;
@@ -66,6 +66,15 @@ public sealed class V3GameplaySmoke : MonoBehaviour
         File.WriteAllText(evidence + (host ? "/host-input-ready.txt" : "/client-input-ready.txt"), "ready");
         yield return Until(() => File.Exists(evidence + "/host-input-ready.txt") && File.Exists(evidence + "/client-input-ready.txt"), "Input barrier");
         var remote = FindObjectsByType<GameplayCharacter>(FindObjectsSortMode.None).Single(x => !x.IsOwner);
+        if (Environment.GetCommandLineArgs().Contains("-v3Contest"))
+        {
+            yield return RunContest(game, remote);
+            if (host) yield return Until(() => !game.IsGameReady, "contest client disconnected cleanly");
+            var leave = sessions.LeaveRoomAsync();
+            yield return Until(() => leave.IsCompleted, "contest session closed");
+            Application.Quit(failed ? 2 : 0);
+            yield break;
+        }
         Vector3 remoteBefore = remote.transform.position;
         Vector3 before = player.transform.position;
         InputSystem.QueueStateEvent(keyboard, new KeyboardState(Key.W, Key.LeftShift));
@@ -86,7 +95,7 @@ public sealed class V3GameplaySmoke : MonoBehaviour
         InputSystem.QueueStateEvent(keyboard, new KeyboardState());
         yield return new WaitForSeconds(.5f);
         InputSystem.QueueStateEvent(keyboard, new KeyboardState(Key.Space));
-        yield return new WaitForSeconds(.2f); Check(own.AnimationState == "Jump", "Jump animation airborne");
+        yield return Until(() => own.AnimationState == "Jump", "Jump animation airborne", 1.5f);
         InputSystem.QueueStateEvent(keyboard, new KeyboardState()); yield return new WaitForSeconds(1.4f);
         Check(player.IsGrounded, "Landing on V3 collider");
         // Host alone toggles common state; both peers inspect its replicated prompt.

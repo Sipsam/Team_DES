@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace TwinEdge.Gameplay
 {
-    public sealed class GameplayCharacter : NetworkBehaviour
+    public sealed partial class GameplayCharacter : NetworkBehaviour
     {
         public Animator animator;
         readonly NetworkVariable<byte> motion = new(0, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Owner);
@@ -21,6 +21,7 @@ namespace TwinEdge.Gameplay
         public string AnimationState => new[] { "Idle", "Walk", "Run", "Jump", "Walk_Carry" }[Mathf.Min(motion.Value, 4)];
         public override void OnNetworkSpawn()
         {
+            InitializeContest();
             previous = transform.position; sampleTime = Time.time;
             animator.applyRootMotion = false;
             if (IsOwner) GetComponent<GameplayInput>().Activate();
@@ -49,9 +50,12 @@ namespace TwinEdge.Gameplay
                 bool rowing = RiverGameplay.Current is { } river &&
                     river.IsSeated(OwnerClientId);
                 motion.Value = rowing ? (byte)0 : poleMotor != null && poleMotor.Attached ? (poleMotor.Orbiting ? (byte)3 : (byte)4) : GetComponent<MountainReturnLaunch>()?.State.Value == LaunchState.Landing ? (byte)0 : (GetComponent<MountainReturnLaunch>()?.InFlight == true || !GetComponent<PlayerMovement>().IsGrounded) ? (byte)3 : speed < .15f ? (byte)0 : carrying.Value ? (byte)4 : speed > 4f ? (byte)2 : (byte)1;
+                if (holder.Value != NoPlayer || ownerMotion == ContestMotion.Thrown) motion.Value = 3;
+                else if (held.Value != NoPlayer) motion.Value = (byte)(speed < .15f ? 0 : 4);
                 previous = transform.position; sampleTime = Time.time;
             }
             RenderRaftRider();
+            RenderContest();
             if (rendered != motion.Value)
             {
                 rendered = motion.Value;

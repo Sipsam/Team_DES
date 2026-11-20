@@ -20,6 +20,12 @@ public sealed class PlayerInteraction : NetworkBehaviour
             return;
         }
 
+        if (IsSpawned && GetComponent<TwinEdge.Gameplay.GameplayCharacter>()?.BlocksOwnerInteraction == true)
+        {
+            CurrentTarget = null;
+            return;
+        }
+
         if (IsSpawned && TwinEdge.Gameplay.RiverGameplay.Current?.HandleOwnerInteraction(this, gameplayInput) == true)
         {
             CurrentTarget = null;

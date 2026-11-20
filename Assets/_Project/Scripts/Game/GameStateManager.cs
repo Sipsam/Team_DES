@@ -16,6 +16,7 @@ public enum FoundationPhase { WaitingForPlayers, Preparing, Outbound, SealPendin
 public sealed class GameStateManager : NetworkBehaviour
 {
     public bool foundationMode;
+    internal TwinEdge.Gameplay.NetworkInteractionTarget ContestInteractionSample { get; set; }
     readonly NetworkVariable<FoundationPhase> foundationPhase = new(FoundationPhase.WaitingForPlayers);
     public FoundationPhase Phase => foundationPhase.Value;
     readonly NetworkVariable<bool> developmentReturnRequested = new();
@@ -34,21 +35,36 @@ public sealed class GameStateManager : NetworkBehaviour
     public event Action<FoundationPhase, FoundationPhase> FoundationPhaseChanged;
     public void StartFoundation()
     {
-        if (IsServer && foundationMode && IsGameReady && foundationPhase.Value == FoundationPhase.Preparing)
-            foundationPhase.Value = FoundationPhase.Outbound;
+        if (!IsServer || !foundationMode || !IsGameReady || Phase != FoundationPhase.Preparing) return;
+        courseStartedAt.Value = NetworkManager.ServerTime.Time;
+        foundationPhase.Value = FoundationPhase.Outbound;
     }
     // Trusted server hook. SealPending stays cooperative until GemOwnership commits acquisition.
     public bool AdvanceFoundation(FoundationPhase next)
     {
         if (!IsServer || !foundationMode || !IsGameReady ||
             !((foundationPhase.Value == FoundationPhase.Outbound && next == FoundationPhase.SealPending) ||
-              (foundationPhase.Value == FoundationPhase.SealPending && next == FoundationPhase.Return) ||
-              (foundationPhase.Value == FoundationPhase.Return && next == FoundationPhase.Finished))) return false;
+              (foundationPhase.Value == FoundationPhase.SealPending && next == FoundationPhase.Return))) return false;
         foundationPhase.Value = next;
         if (next == FoundationPhase.Return) currentState.Value = GameState.Competition;
-        if (next == FoundationPhase.Finished) currentState.Value = GameState.Finished;
         return true;
     }
+    internal bool TryFinishFoundation(TwinEdge.Gameplay.GameplayCharacter player, BoxCollider finish)
+    {
+        if (!IsServer || !foundationMode || !CanPlay || Phase != FoundationPhase.Return || HasWinner || NetworkManager.ConnectedClientsList.Count != 2 ||
+            player == null || !player.IsSpawned || !player.CanContestFinish ||
+            TwinEdge.Gameplay.GemOwnership.Current is not { State: TwinEdge.Gameplay.GemState.Carried } gem ||
+            gem.Owner != player.OwnerClientId ||
+            !NetworkManager.ConnectedClients.TryGetValue(player.OwnerClientId, out var peer) || peer.PlayerObject != player.NetworkObject ||
+            finish == null || !finish.enabled || !finish.gameObject.activeInHierarchy ||
+            !finish.bounds.Contains(player.transform.position + Vector3.up * .3f) || !player.HasGround()) return false;
+        courseFinishedAt.Value = NetworkManager.ServerTime.Time;
+        winnerClientId.Value = player.OwnerClientId;
+        currentState.Value = GameState.Finished;
+        foundationPhase.Value = FoundationPhase.Finished;
+        return true;
+    }
+
     void OnFoundationChanged(FoundationPhase before, FoundationPhase after) => FoundationPhaseChanged?.Invoke(before, after);
 
     public event Action<GameState, GameState> StateChanged;
@@ -102,7 +118,7 @@ public sealed class GameStateManager : NetworkBehaviour
             if (count < 2 && foundationPhase.Value < FoundationPhase.Outbound) foundationPhase.Value = FoundationPhase.WaitingForPlayers;
             else if (count == 2 && foundationPhase.Value == FoundationPhase.WaitingForPlayers) foundationPhase.Value = FoundationPhase.Preparing;
         }
-        if (count == 2 && courseStartedAt.Value < 0d)
+        if (!foundationMode && count == 2 && courseStartedAt.Value < 0d)
         {
             courseStartedAt.Value = NetworkManager.ServerTime.Time;
             Debug.Log("Game ready. Cooperation started.");
@@ -174,7 +190,7 @@ public sealed class GameStateManager : NetworkBehaviour
 
     public bool TryFinish(ulong clientId)
     {
-        if (!IsServer || currentState.Value != GameState.Competition || HasWinner ||
+        if (foundationMode || !IsServer || currentState.Value != GameState.Competition || HasWinner ||
             !NetworkManager.ConnectedClients.ContainsKey(clientId))
         {
             return false;
@@ -208,8 +224,7 @@ public sealed class GameStateManager : NetworkBehaviour
             return;
         }
 
-        Debug.Log($"Player {nextValue + 1} Wins");
-        Debug.Log("Prototype Finished");
+        Debug.Log($"Player {nextValue} wins { (foundationMode ? "V3 Foundation" : "Prototype") }.");
     }
 
     private void HandleClientDisconnected(ulong clientId)

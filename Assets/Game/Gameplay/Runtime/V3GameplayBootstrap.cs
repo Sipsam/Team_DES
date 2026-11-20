@@ -18,6 +18,11 @@ namespace TwinEdge.Gameplay
         public Transform interactionSample;
         public Camera standbyCamera;
         public CooperativePole cooperativePole;
+        [SerializeField, Min(1)] float finishWidth = 4.5f;
+        [SerializeField, Min(.1f)] float finishDwell = .35f;
+        BoxCollider finish;
+        ulong finishCandidate = ulong.MaxValue;
+        double finishEnteredAt;
         bool ready, debug;
         string code = "";
         string error;
@@ -53,6 +58,8 @@ namespace TwinEdge.Gameplay
             {
                 spawnPoints[i].SetPositionAndRotation(SafeGround(start.transform.position + start.transform.right * (i == 0 ? -1.5f : 1.5f)), start.transform.rotation);
             }
+            CreateFinish(SafeGround(start.transform.position));
+            state.ContestInteractionSample = interactionSample.GetComponent<NetworkInteractionTarget>();
             interactionSample.position = SafeGround(start.transform.position + start.transform.forward * 3);
             standbyCamera.transform.SetPositionAndRotation(start.transform.position + new Vector3(0, 6, -9), Quaternion.Euler(22, 0, 0));
             // Existing marker IDs are the source of truth. Only planning-approved outbound destinations are enabled.
@@ -65,6 +72,57 @@ namespace TwinEdge.Gameplay
             respawns.ConfigureFallRecovery(colliders.Min(c => c.bounds.min.y) - 15f);
             ready = true;
         }
+        void CreateFinish(Vector3 ground)
+        {
+            var gate = new GameObject("V3 Summit Finish");
+            gate.transform.SetParent(transform);
+            gate.transform.position = ground;
+            finish = gate.AddComponent<BoxCollider>();
+            finish.isTrigger = true;
+            finish.center = Vector3.up * .85f;
+            finish.size = new Vector3(finishWidth, 2f, finishWidth);
+            GemOwnership.Current?.BindFinish(finish, cooperativePole?.mountain);
+
+            var finishMaterial = interactionSample.GetComponent<MeshRenderer>().sharedMaterial;
+            var color = new MaterialPropertyBlock();
+            color.SetColor("_BaseColor", new Color(1f, .72f, .14f));
+            for (int i = 0; i < 4; i++)
+            {
+                var marker = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+                var renderer = marker.GetComponent<MeshRenderer>();
+                renderer.sharedMaterial = finishMaterial;
+                renderer.SetPropertyBlock(color);
+                var markerCollider = marker.GetComponent<Collider>();
+                markerCollider.enabled = false;
+                Destroy(markerCollider);
+                marker.name = "Finish boundary";
+                marker.transform.SetParent(gate.transform, false);
+                marker.transform.localPosition = new Vector3((i < 2 ? -.5f : .5f) * finishWidth, .45f, (i % 2 == 0 ? -.5f : .5f) * finishWidth);
+                marker.transform.localScale = new Vector3(.18f, .48f, .18f);
+            }
+        }
+
+        void LateUpdate()
+        {
+            if (!ready || !manager.IsServer || !state.IsSpawned) return;
+            var gem = GemOwnership.Current;
+            gem?.TickDroppedServer();
+            if (state.CanPlay && state.Phase == FoundationPhase.Return &&
+                gem is { State: GemState.Carried } && manager.ConnectedClients.TryGetValue(gem.Owner, out var peer) &&
+                peer.PlayerObject != null && peer.PlayerObject.TryGetComponent<GameplayCharacter>(out var player) &&
+                player.CanContestFinish && finish.bounds.Contains(player.transform.position + Vector3.up * .3f) && player.HasGround())
+            {
+                double now = manager.ServerTime.Time;
+                if (finishCandidate != gem.Owner)
+                {
+                    finishCandidate = gem.Owner;
+                    finishEnteredAt = now;
+                }
+                else if (now - finishEnteredAt >= finishDwell) state.TryFinishFoundation(player, finish);
+            }
+            else finishCandidate = ulong.MaxValue;
+        }
+
         public static Vector3 SafeGround(Vector3 candidate)
         {
             if (!Physics.Raycast(candidate + Vector3.up * 6, Vector3.down, out var hit, 18, ~0, QueryTriggerInteraction.Ignore))
@@ -119,7 +177,11 @@ namespace TwinEdge.Gameplay
                 var character = player.GetComponent<GameplayCharacter>();
                 var interaction = player.GetComponent<PlayerInteraction>();
                 GUILayout.Label($"Player {player.OwnerClientId} | Checkpoint: {character.CheckpointName.Value}");
-                GUILayout.Label($"Respawns: {character.RespawnCount.Value}");
+                GUILayout.Label($"Respawns: {character.RespawnCount.Value} | Time {state.ElapsedSeconds:F1}s");
+                character.DrawContestHud();
+                if (state.Phase == FoundationPhase.Return)
+                    GUILayout.Label("Finish: return to the starting summit with the gem");
+
                 if (BridgeGameplay.Current is { } bridge && bridge.PlankCount > 0 &&
                     Vector3.Distance(player.transform.position, bridge.StartPoint) <= bridge.Length + 10 &&
                     Mathf.Abs(player.transform.position.x - bridge.StartPoint.x) < 12 &&
@@ -150,8 +212,15 @@ namespace TwinEdge.Gameplay
 #endif
                 if (debug && riverHud == null) GUILayout.Label($"DEBUG (F3)\nPosition: {player.transform.position:F2}\nGrounded: {player.GetComponent<PlayerMovement>().IsGrounded}\nOwner: {player.IsOwner}\nAnimator: {character.AnimationState}\nTarget: {(interaction.CurrentTarget as MonoBehaviour)?.name}");
             }
-            GUILayout.Label("WASD / Shift / Space / E | Esc: menu, cancel\nClick world: capture mouse | F3: debug");
+            GUILayout.Label("WASD / Shift / Space / E | Esc: menu, cancel\nLeft click: hit | F: grab / throw / resist\nClick world: capture mouse | F3: debug");
             GUILayout.EndArea();
+            if (player != null && state.Phase == FoundationPhase.Finished && state.HasWinner)
+            {
+                GUILayout.BeginArea(new Rect((Screen.width - 300) * .5f, Screen.height * .32f, 300, 100), GUI.skin.box);
+                GUILayout.Label(player.OwnerClientId == state.WinnerClientId ? "Victory" : "Defeat");
+                GUILayout.Label($"Winner: Player {state.WinnerClientId} | Time {state.ElapsedSeconds:F1}s");
+                GUILayout.EndArea();
+            }
         }
         public static bool PointerOverMenu(Vector2 point) => point.x < 404 && point.y > Screen.height - Mathf.Min(644, Screen.height);
     }

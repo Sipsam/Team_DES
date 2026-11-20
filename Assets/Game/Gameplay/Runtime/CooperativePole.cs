@@ -80,6 +80,7 @@ namespace TwinEdge.Gameplay
             ulong sender = rpc.Receive.SenderClientId;
             var player = Player(sender);
             if (!Outbound || revision != s.revision || player == null || !player.IsSpawned || player.GetComponent<PoleMotor>() == null) return;
+            if (player.GetComponent<GameplayCharacter>()?.BlocksServerInteraction == true) return;
             if (s.Has(sender))
             {
                 if (s.phase != PolePhase.Landed || sender != s.Orbit || !SafeLanding(s.OrbitPoint, out var landed) || landed == pivotSummit) return;
