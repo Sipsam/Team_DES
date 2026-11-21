@@ -292,6 +292,8 @@ public sealed class PlayerMovement : NetworkBehaviour
     internal void ApplyApprovedSpawnRpc(Vector3 position, Quaternion rotation)
     {
         PlaceAtOwner(position, rotation);
+        if (IsOwner && TwinEdge.Gameplay.V3GameplayBootstrap.Current?.state.Phase < FoundationPhase.Outbound)
+            ownerCamera?.FaceSpawn(rotation);
     }
 
     [Rpc(SendTo.SpecifiedInParams, InvokePermission = RpcInvokePermission.Server)]

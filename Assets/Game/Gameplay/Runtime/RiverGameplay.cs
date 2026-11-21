@@ -432,7 +432,7 @@ namespace TwinEdge.Gameplay
 
         internal bool InWater(Vector3 point)
         {
-            if (channel == null || point.z < channel.Start || point.z > channel.End) return false;
+            if (channel == null || point.z < channel.WaterStart || point.z > channel.WaterEnd) return false;
             var sample = channel.Sample(point.z);
             return Mathf.Abs(point.x - sample.center.x) < sample.halfWidth && point.y <= sample.center.y + .15f;
         }

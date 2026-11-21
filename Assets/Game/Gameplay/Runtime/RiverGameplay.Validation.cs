@@ -106,7 +106,22 @@ namespace TwinEdge.Gameplay
             ValidateDockAccess(true, channel.UpperCheckpoint);
             if (channel.Length < 750 || config.river[0].z != channel.Start || config.river[^1].z != channel.End)
                 throw new System.InvalidOperationException("Saved water and ValleyConfigV3 endpoints differ.");
+            if (channel.WaterStart != config.downstreamEnd.z || channel.WaterEnd != config.upstreamEnd.z)
+                throw new System.InvalidOperationException("Visual river endpoints differ from the configured extensions.");
+            float maxGrade = 0;
+            Vector3 previous = channel.Sample(channel.WaterStart).center;
+            for (float z = channel.WaterStart + 2; z <= channel.WaterEnd; z += 2)
+            {
+                var center = channel.Sample(z).center;
+                var delta = center - previous;
+                if (delta.y <= 0) throw new System.InvalidOperationException("River grade reverses at " + center);
+                maxGrade = Mathf.Max(maxGrade, 100 * delta.y / new Vector2(delta.x, delta.z).magnitude);
+                previous = center;
+            }
+            float rise = channel.Sample(channel.End).center.y - channel.Sample(channel.Start).center.y;
             report = $"RIVER STATIC PASS. {samples} bed and ribbon samples. Center distance {channel.Length:F1} m. " +
+                $"Full water length {channel.WaterLength:F1}m; playable rise {rise:F2}m, mean grade {100 * rise / channel.Length:F2}%, max sampled grade {maxGrade:F2}%. " +
+                $"Deck Y lower {channel.LowerDock.bounds.max.y:F2}, upper {channel.UpperDock.bounds.max.y:F2}. " +
                 $"Minimum water width {minWidth:F1} m, minimum center depth {minDepth:F1} m. " +
                 $"Lower {channel.Start:F0} to upper {channel.End:F0} in +Z, current in -Z. " +
                 $"Both docks support dry feet and connect to their checkpoints, three berths are inside the ribbon, hazard and model wrappers resolve. " +

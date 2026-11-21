@@ -10,6 +10,14 @@
 - Never stage `Docs/Development/` (including with `git add -f`). Inspect tracking before migration. For an already tracked internal report, preserve local bytes and remove only its index entry; report the resulting shared deletion. Never remove shared contracts merely because they are Markdown.
 - When migrating, preserve original bytes and a source-to-destination manifest under the ignored documentation tree. Check Markdown links and code output paths; modify only documentation paths and necessary output-directory creation, preserving generator/gameplay behavior.
 
+## Latest V3 development outputs
+
+- Update relevant shared run instructions and architecture contracts in place. Use the existing versioned development folder for investigation notes, logs, and temporary evidence.
+- Use `Builds/V3Playtest/` and `Builds/V3Development/` for release playtests and validation respectively. Build to staging and verify its output before replacing a usable player.
+- After a map commit, update the ignored root `Screenshots/` with all 14 V3 views named for that commit. Use the Unity capture command or `Tools/Level/Update-MapScreenshots.ps1`. The local post-commit hook can call the same tool. Publish a verified set from a clean project, then retire previous managed captures.
+- Keep final test summaries, relevant errors, and reproducible failure evidence. Preview eligible logs with `Tools/ProjectAudit/clean-development.ps1` after a successful run.
+- Reuse established build, replay, and editor tools. Use Git history for tracked files. Preserve team originals and unrelated local settings. Check scene, prefab, serialized GUID, generator, and dynamic load dependencies before retiring generated assets.
+
 ## Scope and completion
 
 - Preserve existing level generators, scenes, assets, and gameplay functionality. Do not regenerate scenes/assets or change gameplay as part of documentation maintenance.

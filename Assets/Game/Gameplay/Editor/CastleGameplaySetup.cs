@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Linq;
+using TwinEdge.Levels.Editor;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -31,9 +32,11 @@ namespace TwinEdge.Gameplay.Editor
             SetModel(data, "hintModel", "FIX_DOOR_HINT_STONE_01");
             SetModel(data, "numberModel", "ITEM_DOOR_KEY_01");
             SetModel(data, "sequenceModel", "MOV_DOOR_SEQUENCE_3_02");
-            foreach (var (field, name) in new[] { ("stoneMaterial", "Limestone"), ("darkMaterial", "Slate"), ("accentMaterial", "RouteB") })
+            foreach (var (field, name) in new[] { ("darkMaterial", "Slate"), ("accentMaterial", "RouteB") })
                 data.FindProperty(field).objectReferenceValue =
                     AssetDatabase.LoadAssetAtPath<Material>($"Assets/Game/Level/Data/FortressMaterials/{name}.mat");
+            data.FindProperty("stoneMaterial").objectReferenceValue = V3WorldMaterials.Wall;
+            data.FindProperty("undergroundWallMaterial").objectReferenceValue = V3WorldMaterials.UndergroundStone;
             data.FindProperty("labelShader").objectReferenceValue =
                 AssetDatabase.LoadAssetAtPath<Shader>("Assets/Game/Gameplay/Runtime/CastleWorldLabel.shader");
             data.ApplyModifiedPropertiesWithoutUndo();
@@ -83,7 +86,7 @@ namespace TwinEdge.Gameplay.Editor
             if (castle == null) throw new InvalidOperationException("CastleGameplay missing in the saved gameplay scene.");
             var data = new SerializedObject(castle);
             foreach (string field in new[] { "wallModel", "doorModel", "transferModel", "windowModel", "hintModel",
-                         "numberModel", "sequenceModel", "stoneMaterial", "darkMaterial", "accentMaterial", "labelShader" })
+                         "numberModel", "sequenceModel", "stoneMaterial", "undergroundWallMaterial", "darkMaterial", "accentMaterial", "labelShader" })
                 if (data.FindProperty(field).objectReferenceValue == null) throw new InvalidOperationException("Missing " + field);
             foreach (string field in new[] { "symbolModels", "trapModels" })
             {

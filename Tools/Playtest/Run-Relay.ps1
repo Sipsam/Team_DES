@@ -76,6 +76,7 @@ try {
     if (Test-Path -LiteralPath $output) { throw "Evidence already exists: $output" }
     New-Item -ItemType Directory -Path $output -Force | Out-Null
     $hash | Set-Content -LiteralPath "$output/assembly-sha256.txt"
+    (Get-FileHash -LiteralPath $exe).Hash | Set-Content -LiteralPath "$output/player-sha256.txt"
     $graphics = if ($Headless) { @('-batchmode','-nographics') } else {
         @('-force-d3d11','-screen-fullscreen','0','-screen-width','1024','-screen-height','720')
     }

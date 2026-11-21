@@ -33,7 +33,7 @@ public sealed class GameStateManager : NetworkBehaviour
 #endif
     public string FoundationPhaseLabel => foundationMode ? foundationPhase.Value.ToString() : CurrentState.ToString();
     public event Action<FoundationPhase, FoundationPhase> FoundationPhaseChanged;
-    public void StartFoundation()
+    void StartFoundation()
     {
         if (!IsServer || !foundationMode || !IsGameReady || Phase != FoundationPhase.Preparing) return;
         courseStartedAt.Value = NetworkManager.ServerTime.Time;
@@ -76,6 +76,17 @@ public sealed class GameStateManager : NetworkBehaviour
     [SerializeField] private DoorPuzzleController door;
     [SerializeField] private JumpPuzzleController jump;
 
+    readonly HashSet<ulong> readyFoundationPeers = new();
+    readonly NetworkVariable<int> readyFoundationCount = new(0);
+
+    internal void RegisterFoundationReady(TwinEdge.Gameplay.GameplayCharacter player, ulong sender)
+    {
+        if (!IsServer || !foundationMode || !player.IsSpawned || player.OwnerClientId != sender ||
+            !NetworkManager.ConnectedClients.TryGetValue(sender, out var peer) || peer.PlayerObject != player.NetworkObject)
+            return;
+        readyFoundationPeers.Add(sender);
+    }
+
     private readonly NetworkVariable<int> connectedPlayerCount = new NetworkVariable<int>(0);
     private readonly NetworkVariable<double> courseStartedAt = new NetworkVariable<double>(-1d);
     private readonly NetworkVariable<double> courseFinishedAt = new NetworkVariable<double>(-1d);
@@ -94,7 +105,7 @@ public sealed class GameStateManager : NetworkBehaviour
     public ulong WinnerClientId => winnerClientId.Value;
     public bool HasWinner => winnerClientId.Value != ulong.MaxValue;
     public int ConnectedPlayerCount => connectedPlayerCount.Value;
-    public bool IsGameReady => IsSpawned && connectedPlayerCount.Value == 2;
+    public bool IsGameReady => IsSpawned && connectedPlayerCount.Value == 2 && (!foundationMode || readyFoundationCount.Value == 2);
     public bool CanPlay => IsGameReady && CurrentState != GameState.Finished && (!foundationMode || foundationPhase.Value >= FoundationPhase.Outbound);
     public bool AllGimmicksCompleted => !requireAllGimmicks ||
         (bridge != null && bridge.IsCooperationCompleted &&
@@ -107,16 +118,20 @@ public sealed class GameStateManager : NetworkBehaviour
     private void Update()
     {
         if (!IsSpawned || !IsServer) return;
-        int count = 0;
+        int count = 0, initialized = 0;
         foreach (NetworkClient client in NetworkManager.ConnectedClientsList)
         {
-            if (client.PlayerObject != null && client.PlayerObject.IsSpawned) count++;
+            if (client.PlayerObject == null || !client.PlayerObject.IsSpawned) continue;
+            count++;
+            if (readyFoundationPeers.Contains(client.ClientId)) initialized++;
         }
         connectedPlayerCount.Value = count;
         if (foundationMode)
         {
             if (count < 2 && foundationPhase.Value < FoundationPhase.Outbound) foundationPhase.Value = FoundationPhase.WaitingForPlayers;
             else if (count == 2 && foundationPhase.Value == FoundationPhase.WaitingForPlayers) foundationPhase.Value = FoundationPhase.Preparing;
+            readyFoundationCount.Value = initialized;
+            if (TwinEdge.Gameplay.V3GameplayBootstrap.Current?.ReadyForNetworkPlay == true) StartFoundation();
         }
         if (!foundationMode && count == 2 && courseStartedAt.Value < 0d)
         {
@@ -141,6 +156,8 @@ public sealed class GameStateManager : NetworkBehaviour
             foundationPhase.Value = FoundationPhase.WaitingForPlayers;
             developmentReturnRequested.Value = false;
             connectedPlayerCount.Value = 0;
+            readyFoundationPeers.Clear();
+            readyFoundationCount.Value = 0;
             courseStartedAt.Value = -1d;
             courseFinishedAt.Value = -1d;
         }
@@ -229,6 +246,7 @@ public sealed class GameStateManager : NetworkBehaviour
 
     private void HandleClientDisconnected(ulong clientId)
     {
+        if (readyFoundationPeers.Remove(clientId)) readyFoundationCount.Value = readyFoundationPeers.Count;
         if (arrivedClientIds.Remove(clientId))
         {
             turnPointArrivalCount.Value = arrivedClientIds.Count;

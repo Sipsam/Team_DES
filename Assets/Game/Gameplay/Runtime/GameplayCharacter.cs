@@ -19,8 +19,23 @@ namespace TwinEdge.Gameplay
         float sampleTime;
         byte rendered = byte.MaxValue;
         public string AnimationState => new[] { "Idle", "Walk", "Run", "Jump", "Walk_Carry" }[Mathf.Min(motion.Value, 4)];
+        bool awaitingFoundationReady;
+
+        [Rpc(SendTo.Owner, InvokePermission = RpcInvokePermission.Server)]
+        internal void ConfirmFoundationSpawnRpc()
+        {
+            if (IsOwner) awaitingFoundationReady = true;
+        }
+
+        [Rpc(SendTo.Server, InvokePermission = RpcInvokePermission.Owner)]
+        void ReportFoundationReadyRpc(RpcParams rpcParams = default)
+        {
+            V3GameplayBootstrap.Current?.state.RegisterFoundationReady(this, rpcParams.Receive.SenderClientId);
+        }
+
         public override void OnNetworkSpawn()
         {
+            awaitingFoundationReady = false;
             InitializeContest();
             previous = transform.position; sampleTime = Time.time;
             animator.applyRootMotion = false;
@@ -43,6 +58,13 @@ namespace TwinEdge.Gameplay
         void LateUpdate()
         {
             if (!IsSpawned) return;
+            if (awaitingFoundationReady && IsOwner && NetworkManager.IsConnectedClient &&
+                V3GameplayBootstrap.Current is { ReadyForNetworkPlay: true } bootstrap &&
+                bootstrap.standbyCamera.GetComponent<ThirdPersonCamera>().IsInitializedFor(transform.Find("CameraTarget")))
+            {
+                awaitingFoundationReady = false;
+                ReportFoundationReadyRpc();
+            }
             if (IsOwner && Time.time - sampleTime >= .08f)
             {
                 float speed = Vector3.ProjectOnPlane(transform.position - previous, Vector3.up).magnitude / (Time.time - sampleTime);

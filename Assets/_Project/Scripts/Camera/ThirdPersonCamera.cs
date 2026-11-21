@@ -105,6 +105,15 @@ public sealed class ThirdPersonCamera : MonoBehaviour
         transform.rotation = orbitRotation;
     }
 
+    internal bool IsInitializedFor(Transform expected) =>
+        isActiveAndEnabled && hasInitializedPosition && target == expected;
+
+    internal void FaceSpawn(Quaternion rotation)
+    {
+        yaw = rotation.eulerAngles.y;
+        hasInitializedPosition = false;
+    }
+
     public void SetTarget(Transform newTarget)
     {
         target = newTarget;

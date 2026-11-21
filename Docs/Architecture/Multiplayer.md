@@ -2,7 +2,7 @@
 
 ## Relay와 NGO
 
-두 프로세스는 별도 익명 Unity Authentication 프로필을 사용한다. Host는 Relay 할당 및 참가 코드를 만들고 NGO Host로 동작하며, Client는 같은 코드를 통해 Relay에 접속한다. Unity Services 설정이 공유 프로젝트에 연결되어 있어야 한다. 참가 UI는 레벨을 로드한 뒤 열리며, 두 명이 접속하면 Host가 경기를 시작할 수 있다.
+두 프로세스는 별도 익명 Unity Authentication 프로필을 사용한다. Host는 Relay 할당 및 참가 코드를 만들고 NGO Host로 동작하며, Client는 같은 코드를 통해 Relay에 접속한다. Unity Services 설정이 공유 프로젝트에 연결되어 있어야 한다. 참가 UI는 레벨을 로드한 뒤 열리며, 두 피어는 씬 바인딩, 승인된 스폰 적용, 네트워크 캐릭터와 카메라 초기화가 완료되면 서버에 Ready를 보고한다. 서버는 현재 연결된 두 플레이어의 Ready를 확인하면 한 번만 경기를 시작한다.
 
 `MultiplayerSessionManager`는 방과 연결을 관리하고, `NetworkSpawnCoordinator`가 플레이어 오브젝트를 스폰한다. V3 플레이어 프리팹은 공용 NGO 베이스의 변형이다. 씬 동기화, NetworkPrefab 에셋과 직렬화된 NGO 프리팹 목록을 함께 유지한다.
 

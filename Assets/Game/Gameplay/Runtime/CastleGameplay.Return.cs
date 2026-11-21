@@ -58,11 +58,12 @@ namespace TwinEdge.Gameplay
             segment.localRotation = Quaternion.LookRotation(to - from, Vector3.up);
             float length = Vector3.Distance(from, to) + .40f;
             Block(segment, "Sewer deck", Vector3.down * .26f, new Vector3(SewerWidth, .52f, length), darkMaterial);
+            Material lining = undergroundWallMaterial != null ? undergroundWallMaterial : stoneMaterial;
             foreach (float side in new[] { -1f, 1f })
                 Block(segment, "Sewer side", new Vector3(side * (SewerWidth * .5f + .15f), 1.6f, 0),
-                    new Vector3(.3f, covered ? 3.2f : 3.8f, length), stoneMaterial);
+                    new Vector3(.3f, covered ? 3.2f : 3.8f, length), lining);
             if (covered)
-                Block(segment, "Sewer cover", Vector3.up * 3.25f, new Vector3(SewerWidth + .6f, .25f, length), stoneMaterial);
+                Block(segment, "Sewer cover", Vector3.up * 3.25f, new Vector3(SewerWidth + .6f, .25f, length), lining);
         }
 
         bool NearSewer(Vector3 position)

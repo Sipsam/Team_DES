@@ -12,19 +12,26 @@ namespace TwinEdge.Gameplay
     {
         readonly Vector3[] left, right;
         readonly float[] distances;
+        readonly int firstPlayableRow, lastPlayableRow;
+        readonly float distanceAtStart;
         public readonly Transform Section;
         public readonly Collider LowerDock, UpperDock;
         public readonly Renderer WaterRenderer;
         public readonly Vector3 LowerCheckpoint, UpperCheckpoint;
-        public float Start => left[0].z;
-        public float End => left[^1].z;
-        public float Length => distances[^1];
+        public float Start { get; }
+        public float End { get; }
+        public float WaterStart => left[0].z;
+        public float WaterEnd => left[^1].z;
+        public float WaterLength => distances[^1];
+        public float Length { get; }
 
         public RiverChannel(Scene scene)
         {
             var river = scene.GetRootGameObjects().SelectMany(root => root.GetComponentsInChildren<ValleySectionV3>())
                 .Single(section => section.part == ValleyPartV3.River);
             Section = river.transform;
+            Start = river.config.river[0].z;
+            End = river.config.river[^1].z;
             var water = river.GetComponentsInChildren<MeshFilter>().Single(filter => filter.name == "WaterSurface");
             WaterRenderer = water.GetComponent<Renderer>();
             var rows = new SortedDictionary<float, (Vector3 left, Vector3 right)>();
@@ -51,6 +58,12 @@ namespace TwinEdge.Gameplay
             var markers = river.GetComponentsInChildren<LevelMarker>();
             LowerCheckpoint = markers.Single(marker => marker.id == "Valley.V3.LowerCheckpoint").transform.position;
             UpperCheckpoint = markers.Single(marker => marker.id == "Valley.V3.UpperCheckpoint").transform.position;
+            firstPlayableRow = Array.BinarySearch(left, new Vector3(0, 0, Start), ZOrder.Instance);
+            lastPlayableRow = Array.BinarySearch(left, new Vector3(0, 0, End), ZOrder.Instance);
+            if (firstPlayableRow < 0 || lastPlayableRow <= firstPlayableRow)
+                throw new InvalidOperationException("The playable river endpoints must match rows in the saved water geometry.");
+            distanceAtStart = distances[firstPlayableRow];
+            Length = distances[lastPlayableRow] - distanceAtStart;
             if (LowerDock.bounds.center.z >= UpperDock.bounds.center.z ||
                 Sample(LowerDock.bounds.center.z).center.y >= Sample(UpperDock.bounds.center.z).center.y)
                 throw new InvalidOperationException("V3 river dock direction must be lower to upper along +Z.");
@@ -58,16 +71,28 @@ namespace TwinEdge.Gameplay
 
         Vector3 Center(int i) => (left[i] + right[i]) * .5f;
 
-        public (Vector3 center, float halfWidth, Vector3 upstream, float progress) Sample(float z)
+        (int index, float fraction) Locate(float z)
         {
             int index = Array.BinarySearch(left, new Vector3(0, 0, z), ZOrder.Instance);
             int i = Mathf.Clamp(index >= 0 ? index : ~index - 1, 0, left.Length - 2);
             float t = Mathf.InverseLerp(left[i].z, left[i + 1].z, z);
+            return (i, t);
+        }
+
+        public (Vector3 center, float halfWidth, Vector3 upstream, float progress) Sample(float z)
+        {
+            var (i, t) = Locate(z);
             Vector3 center = Vector3.Lerp(Center(i), Center(i + 1), t);
             float width = Mathf.Lerp(right[i].x - left[i].x, right[i + 1].x - left[i + 1].x, t);
-            Vector3 upstream = Center(Mathf.Min(left.Length - 1, i + 3)) - Center(Mathf.Max(0, i - 2));
+            // Keep the current and steering at the berths independent of visual bends beyond the course.
+            bool inCourse = z >= Start && z <= End;
+            int lastRow = inCourse ? lastPlayableRow : left.Length - 1;
+            int firstRow = inCourse ? firstPlayableRow : 0;
+            int tangentRow = Mathf.Min(i, lastRow - 1);
+            Vector3 upstream = Center(Mathf.Min(lastRow, tangentRow + 3)) - Center(Mathf.Max(firstRow, tangentRow - 2));
             upstream.y = 0;
-            return (center, width * .5f, upstream.normalized, Mathf.Lerp(distances[i], distances[i + 1], t) / Length);
+            float progress = Mathf.Clamp01((Mathf.Lerp(distances[i], distances[i + 1], t) - distanceAtStart) / Length);
+            return (center, width * .5f, upstream.normalized, progress);
         }
 
         public Vector3 Point(float z, float offset)

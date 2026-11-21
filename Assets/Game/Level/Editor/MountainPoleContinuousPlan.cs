@@ -15,7 +15,10 @@ namespace TwinEdge.Levels.Editor {
   static string reportPrefix="Continuous";
   public static void VerifyAlternative() {
    MountainPoleReachability.Load();var r=JsonUtility.FromJson<MountainPoleReachability.Report>(File.ReadAllText(MountainPoleReachability.Output+"/Tuned.json"));
-   r.route=new List<int>{0,4,3,10,16,15,20,26,27,28};
+   // The west branch passes through Peak_26; the east branch uses Peak_21.
+   var alternate = new[] {"Start","Peak_04","Peak_03","Peak_10","Peak_16","Peak_15","Peak_20","Peak_26","Peak_27","Final"};
+   r.route=alternate.Select(id=>r.nodes.FindIndex(node=>node.id==id)).ToList();
+   if(r.route.Contains(-1))throw new Exception("Missing west-branch summit in reachability report");
    for(int k=1;k<r.route.Count;k++)if(!r.edges.Any(e=>e.clear&&e.from==r.route[k-1]&&e.to==r.route[k]))throw new Exception("Alternative route lacks an isolated edge");
    reportPrefix="AlternativeContinuous";try{MountainPoleReachability.WithQueries(()=>Build(r));}finally{reportPrefix="Continuous";}
   }

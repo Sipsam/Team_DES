@@ -50,6 +50,8 @@ namespace TwinEdge.Levels
         [Tooltip("Unordered boundary summits in world X/Z. Connecting lower shoulders form the enclosing ranges.")]
         public List<MountainPeakV3> boundary = new List<MountainPeakV3>();
         public List<MountainPoleCanyonV3> poleCanyons = new List<MountainPoleCanyonV3>();
+        [Tooltip("Mountain approach centerline, in world metres and increasing Z.")]
+        public Vector3[] entryTrail = Array.Empty<Vector3>();
         public Vector3 bridgeAnchor = new Vector3(12,190,330);
         public float bridgeStubLength = 9, bridgeWidth = 7;
     }

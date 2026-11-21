@@ -19,6 +19,7 @@ namespace TwinEdge.Gameplay
         BridgeGameplay bridge;
         PlayerMovement player;
         Keyboard keyboard;
+        Gamepad contactGamepad;
         BridgePlankV3[] planks;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
@@ -65,13 +66,13 @@ namespace TwinEdge.Gameplay
                 Check(sessions.HasSession, "Relay client");
             }
             yield return Until(() => game.IsGameReady && manager.LocalClient?.PlayerObject != null, "Two players", 90);
-            if (host) game.StartFoundation();
             yield return Until(() => game.CanPlay, "Outbound");
             planks = FindObjectsByType<BridgePlankV3>(FindObjectsSortMode.None).OrderBy(p => p.plankId).ToArray();
             Check(planks.Length == bridge.PlankCount, "Exactly one synchronized deck, found " + planks.Length);
             CheckSupport(0);
             player = manager.LocalClient.PlayerObject.GetComponent<PlayerMovement>();
             keyboard = InputSystem.AddDevice<Keyboard>();
+            if (host && contactWithoutFall) contactGamepad = InputSystem.AddDevice<Gamepad>();
             player.GetComponent<GameplayInput>().SimulateCapturedCursor = true;
             var side = Vector3.right * (host ? -bridge.GripHalfWidth : bridge.GripHalfWidth);
             // Only initial summit station placement. All deliveries and crossing use production input and CC.
@@ -279,11 +280,11 @@ namespace TwinEdge.Gameplay
                 var bounds = planks[high].GetComponent<Collider>().bounds;
                 var takeoff = planks[high].socket + side;
                 bool contact = contactWithoutFall && high == hole + 1;
-                takeoff.z = bounds.min.z + (contact && fullMatch == null ? -.21f : .17f);
-                yield return WalkTo(takeoff, true, contact && fullMatch == null ? .05f : .13f);
+                takeoff.z = bounds.min.z + .17f;
+                yield return WalkTo(takeoff, true, .13f);
                 if (contact)
                 {
-                    if (fullMatch != null && host)
+                    if (host)
                     {
                         yield return TouchHazardEdge(hole, bounds.min.z);
                         yield return WalkTo(takeoff, false, .08f);
@@ -295,7 +296,8 @@ namespace TwinEdge.Gameplay
                 if (sprint) Keys(Key.S, Key.Space, Key.LeftShift);
                 else Keys(Key.S, Key.Space);
                 yield return Until(() => !player.IsGrounded, "Owner jump " + high);
-                yield return Until(() => player.IsGrounded, "Owner landed " + low, 2.5f);
+                // A suspended Player advances realtime without simulating any of the jump.
+                yield return Until(() => player.IsGrounded, "Owner landed " + low, 2.5f, simulationTime: true);
                 Keys();
                 var landing = planks[low].GetComponent<Collider>().bounds;
                 Check(player.transform.position.y > bridge.StartPoint.y - .2f &&
@@ -327,12 +329,18 @@ namespace TwinEdge.Gameplay
                 Vector2 input = new(-Vector3.ProjectOnPlane(camera.right, Vector3.up).normalized.z,
                     -Vector3.ProjectOnPlane(camera.forward, Vector3.up).normalized.z);
                 if (player.transform.position.z - target < .008f) break;
-                fullMatch.SteerPole(input * amount);
+                SteerContact(input * amount);
                 yield return null;
             }
-            fullMatch.SteerPole(Vector2.zero);
+            SteerContact(Vector2.zero);
             yield return new WaitForSeconds(.24f);
             Check(bridge.IsCollapsed(hazard), "Real safe-edge contact collapsed the adjacent plank");
+        }
+
+        void SteerContact(Vector2 direction)
+        {
+            if (fullMatch != null) fullMatch.SteerPole(direction);
+            else FullMatchRelayReplay.SteerStick(contactGamepad, direction);
         }
 
         IEnumerator MarkCancel()
@@ -432,12 +440,13 @@ namespace TwinEdge.Gameplay
             yield return Until(() => File.Exists(output + "/" + (host ? "client" : "host") + "-" + name + ".txt"), name, 35);
         }
 
-        IEnumerator Until(Func<bool> condition, string label, float seconds = 10)
+        IEnumerator Until(Func<bool> condition, string label, float seconds = 10, bool simulationTime = false)
         {
-            float deadline = Time.realtimeSinceStartup + seconds;
+            float deadline = Time.realtimeSinceStartup + (simulationTime ? 25 : seconds);
+            float simulationDeadline = Time.time + seconds;
             while (!condition())
             {
-                Check(Time.realtimeSinceStartup < deadline, label);
+                Check(Time.realtimeSinceStartup < deadline && (!simulationTime || Time.time < simulationDeadline), label);
                 yield return null;
             }
             Debug.Log("BRIDGE_RELAY " + label);

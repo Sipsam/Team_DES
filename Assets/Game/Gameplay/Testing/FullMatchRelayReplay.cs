@@ -37,7 +37,8 @@ namespace TwinEdge.Gameplay
         double frameSeconds;
         int frames;
         long totalGcBytes, peakGcBytes;
-        ProfilerRecorder gcBytes;
+        ProfilerRecorder gcBytes, drawCalls;
+        readonly FrameTiming[] frameTiming = new FrameTiming[1];
         ValleyConfigV3 valley;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
@@ -112,25 +113,19 @@ namespace TwinEdge.Gameplay
                 Require(bootstrap.sessions.HasSession, "Client joined Relay");
             }
 
-            yield return Until(() => Manager.LocalClient?.PlayerObject != null && Game.IsGameReady &&
-                Game.Phase == FoundationPhase.Preparing && CooperativePole.Current != null, "both peers preparing", 90);
+            yield return Until(() => Manager.LocalClient?.PlayerObject != null && Game.CanPlay &&
+                Game.Phase == FoundationPhase.Outbound && CooperativePole.Current != null, "both peers ready and automatically started", 90);
             Player = Manager.LocalClient.PlayerObject.GetComponent<PlayerMovement>();
             character = Player.GetComponent<GameplayCharacter>();
             Player.GetComponent<GameplayInput>().SimulateCapturedCursor = true;
-            Require(finish.bounds.Contains(Player.transform.position + Vector3.up * .3f), "player spawned on Start");
-            Require(!Game.CanPlay, "movement gate closed before Host start");
-            var spawn = Player.transform.position;
-            Keys(Key.W);
-            yield return new WaitForSeconds(.4f);
-            Keys();
-            Require(Vector3.ProjectOnPlane(Player.transform.position - spawn, Vector3.up).magnitude < .1f,
-                "W cannot move a preparing player");
+            var trail = FindFirstObjectByType<MountainSectionV3>().config.entryTrail;
+            Require(Vector3.Distance(Player.transform.position, trail[1]) < 3f, "player spawned at the trailhead");
+            Require(!finish.bounds.Contains(Player.transform.position + Vector3.up * .3f), "initial spawn is outside the finish");
             Require(character.RespawnCount.Value == 0, "ordinary spawn required no respawn");
             yield return Barrier("normal-spawns");
             Capture("normal-spawn");
-            if (Host) Game.StartFoundation();
-            yield return Until(() => Game.Phase == FoundationPhase.Outbound && Game.CanPlay, "normal gameplay started");
             gcBytes = ProfilerRecorder.StartNew(ProfilerCategory.Memory, "GC Allocated In Frame");
+            drawCalls = ProfilerRecorder.StartNew(ProfilerCategory.Render, "Draw Calls Count");
             started = true;
 
             if (isolatedLink != null)
@@ -143,6 +138,20 @@ namespace TwinEdge.Gameplay
                 yield break;
             }
 
+            stage = "mountain-entry-trail";
+            Record("begin");
+            var trailLane = Vector3.right * (Host ? -1.5f : 1.5f);
+            for (int i = 2; i < trail.Length; i++)
+            {
+                Vector3 from = trail[i - 1], to = trail[i];
+                // Keyboard diagonals move both axes at the same speed. Keep each leg short
+                // so players stay in their lane on the steep, curved approach.
+                int steps = Mathf.CeilToInt(Vector3.Distance(from, to) / 3f);
+                for (int step = 1; step <= steps; step++)
+                    yield return Walk(Vector3.Lerp(from, to, step / (float)steps) + trailLane, .55f, false);
+            }
+            Require(Game.Phase == FoundationPhase.Outbound && !Game.HasWinner, "passing the finish on the outbound trail cannot end the match");
+            Record("end");
             yield return Segment("mountain-outbound", CreateDriver<MountainPoleRelayReplay>().ReplayFromSpawn(this, polePlan));
             Require(character.CheckpointName.Value.ToString().EndsWith("Big summit", StringComparison.Ordinal),
                 "summit checkpoint captured");
@@ -388,12 +397,14 @@ namespace TwinEdge.Gameplay
             yield return new WaitForSeconds(.08f);
         }
 
-        internal void SteerPole(Vector2 direction)
+        internal void SteerPole(Vector2 direction) => SteerStick(gamepad, direction);
+
+        internal static void SteerStick(Gamepad input, Vector2 direction)
         {
             // Invert the stick's Input System dead zone so small landing corrections remain expressible.
             var settings = InputSystem.settings;
             var stick = direction.normalized * Mathf.Lerp(settings.defaultDeadzoneMin, settings.defaultDeadzoneMax, direction.magnitude);
-            InputSystem.QueueStateEvent(gamepad, new GamepadState { leftStick = stick });
+            InputSystem.QueueStateEvent(input, new GamepadState { leftStick = stick });
         }
 
         internal IEnumerator Tap(Key key)
@@ -458,8 +469,10 @@ namespace TwinEdge.Gameplay
             ulong remote = Manager.SpawnManager.SpawnedObjectsList.Where(p => p.IsPlayerObject && p.OwnerClientId != Manager.LocalClientId)
                 .Select(p => p.OwnerClientId).DefaultIfEmpty(NetworkManager.ServerClientId).First();
             ulong rtt = Manager.NetworkConfig.NetworkTransport.GetCurrentRtt(remote);
+            bool timingAvailable = FrameTimingManager.GetLatestTimings(1, frameTiming) != 0;
             File.AppendAllText(Evidence("timeline.txt"), FormattableString.Invariant(
-                $"{moment} {State()} frames={frames} meanFps={(frameSeconds > 0 ? frames / frameSeconds : 0):F1} minFps={(peakFrame > 0 ? 1 / peakFrame : 0):F1} allocatedBytes={Profiler.GetTotalAllocatedMemoryLong()} gcBytes={(gcBytes.Valid ? totalGcBytes : -1)} peakGcFrame={(gcBytes.Valid ? peakGcBytes : -1)} networkObjects={Manager.SpawnManager.SpawnedObjectsList.Count} rttMs={rtt}") + "\n");
+                $"{moment} {State()} frames={frames} meanFps={(frameSeconds > 0 ? frames / frameSeconds : 0):F1} minFps={(peakFrame > 0 ? 1 / peakFrame : 0):F1} allocatedBytes={Profiler.GetTotalAllocatedMemoryLong()} gcBytes={(gcBytes.Valid ? totalGcBytes : -1)} peakGcFrame={(gcBytes.Valid ? peakGcBytes : -1)} networkObjects={Manager.SpawnManager.SpawnedObjectsList.Count} rttMs={rtt} draws={(drawCalls.Valid ? drawCalls.LastValue : -1)} cpuMs={(timingAvailable ? frameTiming[0].cpuFrameTime : -1):F2} gpuMs={(timingAvailable && frameTiming[0].gpuFrameTime > 0 ? frameTiming[0].gpuFrameTime : -1):F2}") + "\n");
+            FrameTimingManager.CaptureFrameTimings();
             if (capture) Capture(stage);
         }
 
@@ -512,6 +525,7 @@ namespace TwinEdge.Gameplay
         {
             Application.logMessageReceived -= ObserveLog;
             gcBytes.Dispose();
+            drawCalls.Dispose();
         }
     }
 }

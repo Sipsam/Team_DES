@@ -67,3 +67,11 @@ list.txt
 
 # Local-only versioned development documents
 /Docs/Development/
+
+# Latest committed map captures
+/Screenshots/
+
+# Original material transfer archives. The imported dependencies are tracked separately.
+/Assets/Material.meta
+/Assets/Material/*.unitypackage
+/Assets/Material/*.unitypackage.meta

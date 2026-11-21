@@ -49,10 +49,10 @@ namespace TwinEdge.Gameplay
             foreach (var root in scene.GetRootGameObjects())
                 foreach (var preview in root.GetComponentsInChildren<Camera>(true))
                     if (preview.name == "MountainPreviewCamera") preview.enabled = false;
-            state.GetComponent<BridgeGameplay>()?.Bind(scene);
-            state.GetComponent<RiverGameplay>()?.Bind(scene);
-            state.GetComponent<CastleGameplay>()?.Bind(scene);
-            state.GetComponent<UndergroundGameplay>()?.Bind(scene);
+            state.GetComponent<BridgeGameplay>().Bind(scene);
+            state.GetComponent<RiverGameplay>().Bind(scene);
+            state.GetComponent<CastleGameplay>().Bind(scene);
+            state.GetComponent<UndergroundGameplay>().Bind(scene);
         }
 
         IEnumerator Start()
@@ -60,22 +60,32 @@ namespace TwinEdge.Gameplay
             if (!SceneManager.GetSceneByName(levelScene).isLoaded)
                 yield return SceneManager.LoadSceneAsync(levelScene, LoadSceneMode.Additive);
             DisableLevelPreview(SceneManager.GetSceneByName(levelScene), LoadSceneMode.Additive);
-            var start = FindObjectsByType<LevelMarker>(FindObjectsSortMode.None).SingleOrDefault(m => m.id == "Mountain.V3.Start");
-            if (start == null) { error = "V3 start marker missing. Session disabled."; yield break; }
+            var markers = SceneManager.GetSceneByName(levelScene).GetRootGameObjects()
+                .SelectMany(root => root.GetComponentsInChildren<LevelMarker>()).ToDictionary(marker => marker.id);
+            if (!markers.TryGetValue("Mountain.V3.Start", out var start) ||
+                !markers.TryGetValue("Mountain.V3.InitialSpawn", out var initial) ||
+                !markers.TryGetValue("Mountain.V3.ReturnFinish", out var returnFinish) ||
+                !markers.ContainsKey("Mountain.V3.TrailEntrance"))
+            {
+                error = "V3 mountain route markers missing. Session disabled.";
+                yield break;
+            }
             Physics.SyncTransforms();
-            if (cooperativePole != null) cooperativePole.ConfigureHome(start.transform.position);
+            cooperativePole.ConfigureHome(start.transform.position);
             for (int i = 0; i < spawnPoints.Length; i++)
             {
-                spawnPoints[i].SetPositionAndRotation(SafeGround(start.transform.position + start.transform.right * (i == 0 ? -1.5f : 1.5f)), start.transform.rotation);
+                Vector3 slot = initial.transform.position + initial.transform.right * (i == 0 ? -1.5f : 1.5f);
+                spawnPoints[i].SetPositionAndRotation(SafeGround(slot), initial.transform.rotation);
             }
-            CreateFinish(SafeGround(start.transform.position));
+            CreateFinish(SafeGround(returnFinish.transform.position));
             state.ContestInteractionSample = interactionSample.GetComponent<NetworkInteractionTarget>();
             interactionSample.position = SafeGround(start.transform.position + start.transform.forward * 3);
 #if !UNITY_EDITOR && !DEVELOPMENT_BUILD
             interactionSample.GetComponent<Collider>().enabled = false;
             interactionSample.GetComponent<Renderer>().enabled = false;
 #endif
-            standbyCamera.transform.SetPositionAndRotation(start.transform.position + new Vector3(0, 6, -9), Quaternion.Euler(22, 0, 0));
+            standbyCamera.transform.SetPositionAndRotation(initial.transform.position + Vector3.up * 6 - initial.transform.forward * 9,
+                Quaternion.Euler(22, initial.transform.eulerAngles.y, 0));
             // Existing marker IDs are the source of truth. Only planning-approved outbound destinations are enabled.
             AddCheckpoint("Mountain.V3.Final", "Big summit", CheckpointPhase.Cooperation);
             AddCheckpoint("Valley.V3.LowerCheckpoint", "Lower dock", CheckpointPhase.Cooperation);
@@ -86,6 +96,11 @@ namespace TwinEdge.Gameplay
             respawns.ConfigureFallRecovery(colliders.Min(c => c.bounds.min.y) - 15f);
             ready = true;
         }
+        internal bool ReadyForNetworkPlay => ready && state.IsSpawned && cooperativePole.IsSpawned &&
+            state.GetComponent<BridgeGameplay>().IsSpawned && state.GetComponent<RiverGameplay>().IsSpawned &&
+            state.GetComponent<CastleGameplay>().IsSpawned && state.GetComponent<UndergroundGameplay>().IsSpawned &&
+            state.GetComponent<GemOwnership>().IsSpawned;
+
         void CreateFinish(Vector3 ground)
         {
             var gate = new GameObject("V3 Summit Finish");
@@ -194,7 +209,6 @@ namespace TwinEdge.Gameplay
                 GUILayout.Label("Room code " + sessions.CurrentJoinCode);
                 if (GUILayout.Button("Copy", GUILayout.Width(64))) GUIUtility.systemCopyBuffer = sessions.CurrentJoinCode;
                 GUILayout.EndHorizontal();
-                GUILayout.Label($"Players {state.ConnectedPlayerCount}/2");
             }
             if (!sessions.HasSession && !manager.IsListening)
             {
@@ -208,18 +222,16 @@ namespace TwinEdge.Gameplay
             }
             else
             {
-                if (manager.IsServer && !InMatch)
-                {
-                    GUI.enabled = state.Phase == FoundationPhase.Preparing && state.IsGameReady;
-                    if (GUILayout.Button("Start game")) state.StartFoundation();
-                }
+                GUILayout.Label($"Players {state.ConnectedPlayerCount}/2");
+                if (!InMatch)
+                    GUILayout.Label(state.ConnectedPlayerCount < 2 ? "Waiting for your partner" : "Preparing both players...");
                 GUI.enabled = !sessions.IsBusy && sessions.HasSession;
                 if (GUILayout.Button("Leave room")) _ = sessions.LeaveRoomAsync();
             }
             GUI.enabled = true;
             GUILayout.Label(InMatch
                 ? "WASD move | Shift sprint | Space jump | E interact\nClick to capture / attack | F grab, throw or resist"
-                : "Share the room code with one partner.");
+                : "The match starts automatically when both players are ready.");
             GUILayout.EndVertical();
             GUILayout.EndArea();
         }
@@ -234,7 +246,7 @@ namespace TwinEdge.Gameplay
                 ? (player.OwnerClientId == state.WinnerClientId ? "VICTORY" : "DEFEAT") + $"  /  {state.ElapsedSeconds:F1}s"
                 : state.Phase switch
                 {
-                    FoundationPhase.Return => "RETURN  /  Race to the starting summit with the gem",
+                    FoundationPhase.Return => "RETURN  /  Race to the mountain trail with the gem",
                     FoundationPhase.SealPending => "OUTBOUND  /  Unseal the gem together",
                     _ => "OUTBOUND  /  Reach the underground altar together"
                 });

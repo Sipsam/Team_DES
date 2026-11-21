@@ -11,7 +11,7 @@ Use this command to reproduce the windowed Direct3D 11 setup used for the Window
 ```
 
 1. Host selects **Create room**, selects **Copy** beside the code, then sends it to Client.
-2. Client pastes the code and selects **Join room**. When Host sees **Players 2/2**, Host selects **Start game**.
+2. Client pastes the code and selects **Join room**. When both peers finish loading and their spawn and camera are ready, the server starts the match automatically. Follow the approach trail to the starting summit.
 3. Click the world to capture the mouse. Press Esc to open the room menu and release the pointer. The first world click after release captures the mouse. The following click can attack.
 4. Select **Leave room** to disconnect or leave after the result. Client can try the same code while Host keeps the session alive. Play waits for a second player. Check the restored position and puzzle state after rejoining. After Host leaves, both players return to the room menu and use a new code.
 5. Select **Quit game** from the disconnected menu. If a connection fails, record the on-screen message, whether Host is still connected, and which build each tester used.
@@ -43,7 +43,7 @@ Use this command to reproduce the windowed Direct3D 11 setup used for the Window
 | Return underground and castle | Use the permanent stones, then navigate the trap corridor or enter the twelve outbound glyphs in order at the sewer shortcut. Return to the upper dock. |
 | Return river and canyon | Board a solo raft each. W/S rows and A/D steers. After the lower dock, climb the canyon path. |
 | Return bridge and mountain | Jump gaps and unstable bridge planks. Charge and aim successive R launches from safe summits. An opponent can strike the gem carrier after pickup protection expires, then acquire the drop with E. |
-| Finish | Bring the gem inside the four markers on the starting summit and stay grounded. Compare the shared outcome and stopped time on both PCs. |
+| Finish | Bring the gem inside the four markers at the top of the mountain approach trail and stay grounded. Compare the shared outcome and stopped time on both PCs. |
 
 ## Test order
 
@@ -75,9 +75,15 @@ Record the build, date, testers, Host/Client roles, castle slots, PC specs and n
 
 Record the build and date, Host/Client role, section and phase, nearest landmark/checkpoint, whether either player had the gem, and first failing elapsed time. List exact inputs and reproduction steps. Record expected and observed outcomes from both PCs, occurrence count, whether there was a recovery path, and whether play had to stop. Attach both screenshots or video and relevant excerpts from `%USERPROFILE%\AppData\LocalLow\DefaultCompany\MyGame\Player.log`. Copy logs before restarting and redact active room codes.
 
+## Latest map screenshots
+
+After committing a saved V3 map from a clean project, select **Tools > Twin Edge > Capture Latest Map Screenshots** or run `Tools/Level/Update-MapScreenshots.ps1` with the project closed. The tool publishes the seven regions in Top and Perspective to the local `Screenshots/` folder after all 14 PNGs pass validation. The filenames use `v3` and the seven-character HEAD hash. Run the script with `-InstallHook` once to capture after local map commits. If Unity is open, the hook queues the capture until the Editor can read the saved scene.
+
 ## Development build and automated Relay checks
 
 Run from the repository root with Unity closed. The two build methods explicitly include V3Gameplay and LevelBlockoutV3 in that order. The Playtest build uses StandaloneWindows64 with BuildOptions.None. The Development build uses BuildOptions.Development and includes the opt-in replay drivers.
+
+For isolated verification, set `TWIN_EDGE_V3_BUILD` to a direct child of `Builds/` before invoking either build method. Clear it to restore the standard output paths. The Relay runner records both executable and managed assembly SHA-256 hashes for each run.
 
 ```powershell
 $unity = 'C:\Program Files\Unity\Hub\Editor\6000.3.27f1\Editor\Unity.exe'
@@ -89,19 +95,19 @@ function Invoke-UnityCheck($method, $name, [switch]$Graphics) {
     $flags = if ($Graphics) { @('-force-d3d11') } else { @('-nographics') }
     $args = @('-batchmode','-quit','-projectPath',('"' + $root + '"'),
               '-executeMethod',$method,'-logFile',('"' + "$evidence\$name.log" + '"')) + $flags
-    $process = Start-Process $unity -ArgumentList $args -PassThru -Wait -WindowStyle Hidden
+    $process = Start-Process $unity -ArgumentList $args -PassThru -WindowStyle Hidden
+    $process.WaitForExit()
     if ($process.ExitCode -ne 0) { throw "$method failed. See $evidence\$name.log" }
 }
 
 Invoke-UnityCheck TwinEdge.Gameplay.Editor.GameplayFoundationSetup.BuildPlaytestPlayer BuildPlaytest
-$env:TWIN_EDGE_FULL_MATCH_BUILD = 'Builds/FullMatch'
 Invoke-UnityCheck TwinEdge.Gameplay.Editor.GameplayFoundationSetup.BuildFullMatchPlayer BuildDevelopment
-$build = 'Builds/FullMatch/V3Gameplay.exe'
+$build = 'Builds/V3Development/V3Gameplay.exe'
 .\Tools\Playtest\Run-Relay.ps1 -Build $build -Run Foundation1 -Case foundation
 .\Tools\Playtest\Run-Relay.ps1 -Build $build -Run Contest1 -Case contest
 ```
 
-Foundation exercises spawn, owner camera, remote movement, interaction range and respawn. Use the same runner with contestLifecycle for stale requests and pickup/reconnect races, bridgeDisconnect for carry recovery, riverRecovery for dock and raft recovery, castleReconnect for slot restoration, and castleUnderground for normal castle passage, the seal and pickup. Use foundationImpaired for the Unity Transport delay/jitter/loss fixture. Tests may use an initial station placement and expect real Relay. Give every run a unique name. Diagnostic commands are available via Get-Help and the script parameter list.
+Foundation exercises spawn, owner camera, remote movement, interaction range and respawn. Use the same runner with contestLifecycle for stale requests and pickup/reconnect races, bridgeDisconnect for carry recovery, riverRecovery for dock and raft recovery, castleReconnect for slot restoration, and castleUnderground for normal castle passage, the seal and pickup. Use foundationImpaired for the Unity Transport delay/jitter/loss fixture. Tests may use an initial station placement and expect real Relay. Use a run name that identifies the active validation or issue. Keep failure evidence while investigating. After a passing run, preview eligible raw logs with `Tools/ProjectAudit/clean-development.ps1 -CompletedRun <name>` and add `-Apply` to remove them. The script retains pass files, exit status and result summaries. Diagnostic commands are available via Get-Help and the script parameter list.
 
 The mountain and finish fixtures need route data from the same saved scene. In the same PowerShell session, generate it and run the isolated finish, or select full to replay the complete match.
 
@@ -112,9 +118,9 @@ Invoke-UnityCheck TwinEdge.Gameplay.Editor.MountainReturnValidation.Run ReturnPl
 .\Tools\Playtest\Run-Relay.ps1 -Build $build -Run Full1 -Case full
 ```
 
-The finish fixture exercises normal bridge installation, then provides a test gem. It uses production pickup, return traversal and finish eligibility. The full replay starts from normal spawn and uses production inputs, character controllers and RPCs through the joint seal, first pickup, return and finish. It can take more than 42 minutes. Both peers must exit successfully and produce their pass files. For finish and full, both peers must also report the same winner and stopped timer. Add -Screenshots to render supporting evidence. Generated route plans and run data are local-only under Docs/Development/Gameplay/V1/.
+The finish fixture exercises normal bridge installation, then provides a test gem. It uses production pickup, return traversal and finish eligibility. The full replay starts from normal spawn and uses production inputs, character controllers and RPCs through the joint seal, first pickup, return and finish. It can take more than 42 minutes. Keep Windows awake for the entire run. System sleep interrupts the live Relay connection and can expire replay deadlines. Both peers must exit successfully and produce their pass files. For finish and full, both peers must also report the same winner and stopped timer. Add -Screenshots to render supporting evidence. Generated route plans and run data are local-only under Docs/Development/Gameplay/V1/.
 
-For scene checks use the saved Foundation, Cooperative Pole, River, Castle and Underground validators under **Tools > Twin Edge > Gameplay**. Review the mountain load-bearing collider route with **Tools > Twin Edge > V3 Mountain > Analyze Pole Reachability** and the Level Visualization window. The reachability graph proposes a route. Run the continuous plan and the two-peer input replay to verify it.
+For scene checks use the saved Foundation, Cooperative Pole, River, Castle, Underground and World Materials validators under **Tools > Twin Edge > Gameplay**. Review the mountain load-bearing collider route with **Tools > Twin Edge > V3 Mountain > Analyze Pole Reachability** and the Level Visualization window. The reachability graph proposes the primary branch. Generate the western branch with `TwinEdge.Levels.Editor.MountainPoleContinuousPlan.VerifyAlternative` and run `-Case mountain -PolePlan Docs/Development/Gameplay/V1/MountainPole/AlternativeContinuousPlan.json` to exercise that branch over Relay.
 
 ## 산악 단독 편집기 실험
 

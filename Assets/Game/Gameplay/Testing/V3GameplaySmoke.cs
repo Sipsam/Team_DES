@@ -60,7 +60,6 @@ public sealed partial class V3GameplaySmoke : MonoBehaviour
         Check(Camera.main != null && Camera.main.enabled && Camera.main.GetComponent<ThirdPersonCamera>().enabled, "Owner camera bound and rendering enabled");
         Check(!FindObjectsByType<Camera>(FindObjectsSortMode.None).Any(c => c.enabled && c.name == "MountainPreviewCamera"), "Level preview cannot overwrite owner view: "+string.Join(", ",FindObjectsByType<Camera>(FindObjectsSortMode.None).Select(c=>c.name+" enabled="+c.enabled+" scene="+c.gameObject.scene.name)));
         Check(FindObjectsByType<AudioListener>(FindObjectsSortMode.None).Count(x => x.enabled) == 1, "One audio listener");
-        if (host) game.StartFoundation();
         yield return Until(() => game.CanPlay, "Host starts outbound");
         keyboard = InputSystem.AddDevice<Keyboard>();
         Cursor.lockState = CursorLockMode.Locked;

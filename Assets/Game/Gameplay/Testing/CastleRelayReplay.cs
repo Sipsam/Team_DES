@@ -75,7 +75,6 @@ namespace TwinEdge.Gameplay
                 yield return Join();
             }
             yield return Wait(() => game.IsGameReady, "two Relay players", 90);
-            if (host) game.StartFoundation();
             yield return Wait(() => game.Phase == FoundationPhase.Outbound, "foundation outbound");
             yield return BindPlayer();
             if (Array.IndexOf(Environment.GetCommandLineArgs(), "-castleCavernProbe") >= 0)

@@ -14,12 +14,12 @@ OcclusionCullingSettings:
 RenderSettings:
   m_ObjectHideFlags: 0
   serializedVersion: 10
-  m_Fog: 0
-  m_FogColor: {r: 0.5, g: 0.5, b: 0.5, a: 1}
-  m_FogMode: 3
+  m_Fog: 1
+  m_FogColor: {r: 0.54, g: 0.64, b: 0.72, a: 1}
+  m_FogMode: 1
   m_FogDensity: 0.01
-  m_LinearFogStart: 0
-  m_LinearFogEnd: 300
+  m_LinearFogStart: 235
+  m_LinearFogEnd: 1750
   m_AmbientSkyColor: {r: 0.212, g: 0.227, b: 0.259, a: 1}
   m_AmbientEquatorColor: {r: 0.114, g: 0.125, b: 0.133, a: 1}
   m_AmbientGroundColor: {r: 0.047, g: 0.043, b: 0.035, a: 1}
@@ -180,7 +180,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 8acb530225dd49b58e349e2268e5bd6a, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Assembly-CSharp::MultiplayerSessionManager
   networkManager: {fileID: 0}
 --- !u!114 &319947987
@@ -193,7 +193,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 2c52791584412a346bf3d2417e34660a, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Assembly-CSharp::NetworkSpawnCoordinator
   networkManager: {fileID: 319947989}
   spawnPoints:
@@ -209,7 +209,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 6960e84d07fb87f47956e7a81d71c4e6, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Unity.Netcode.Runtime::Unity.Netcode.Transports.UTP.UnityTransport
   m_ProtocolType: 0
   m_UseWebSockets: 0
@@ -240,7 +240,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 593a2fe42fa9d37498c96f9a383b6521, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Unity.Netcode.Runtime::Unity.Netcode.NetworkManager
   NetworkManagerExpanded: 0
   NetworkConfig:
@@ -316,7 +316,7 @@ MonoBehaviour:
   m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 3b4244179eb52e442b57b75c0b5e7cbd, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Assembly-CSharp::ThirdPersonCamera
   target: {fileID: 0}
   distance: 5
@@ -365,7 +365,7 @@ Camera:
     width: 1
     height: 1
   near clip plane: 0.3
-  far clip plane: 4000
+  far clip plane: 2600
   field of view: 60
   orthographic: 0
   orthographic size: 5
@@ -515,7 +515,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: bea55afa311dd694d9ca2ff07625a824, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Assembly-CSharp::TwinEdge.Gameplay.NetworkInteractionTarget
   ShowTopMostFoldoutHeaderGroup: 1
   range: 2.5
@@ -531,7 +531,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: d5a57f767e5e46a458fc5d3c628d0cbb, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Unity.Netcode.Runtime::Unity.Netcode.NetworkObject
   GlobalObjectIdHash: 1503725854
   InScenePlacedSourceGlobalObjectIdHash: 0
@@ -675,7 +675,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: b784186f7cdd1d3449ce4abd56923d56, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Assembly-CSharp::RespawnManager
   ShowTopMostFoldoutHeaderGroup: 1
   competitionStart: {fileID: 0}
@@ -690,7 +690,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 444d84ba6f5e2ad4da310ed42320dab1, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Assembly-CSharp::GameStateManager
   ShowTopMostFoldoutHeaderGroup: 1
   foundationMode: 1
@@ -709,7 +709,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: d5a57f767e5e46a458fc5d3c628d0cbb, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Unity.Netcode.Runtime::Unity.Netcode.NetworkObject
   GlobalObjectIdHash: 1307544815
   InScenePlacedSourceGlobalObjectIdHash: 0
@@ -795,7 +795,7 @@ MonoBehaviour:
   fishModel: {fileID: 2331363070510047194, guid: 33354460c579a8d45979ee1190dc9534, type: 3}
   crocodileModel: {fileID: 2715110019118731239, guid: cd5fd4476f2846d4194b7b793c677007, type: 3}
   whirlpoolModel: {fileID: 568129917782008683, guid: 484d49ceb69cc5941a3767640c46afa9, type: 3}
-  waterMaterial: {fileID: 2100000, guid: 23522c39b225d5f48acd1c6554492fe1, type: 2}
+  waterMaterial: {fileID: 2100000, guid: e279bd0ed74f76b429aebb0bbb9e8099, type: 2}
   warningMaterial: {fileID: 2100000, guid: 4b03e5a93d1a1194bbbd82d597b6d535, type: 2}
 --- !u!114 &1013249415
 MonoBehaviour:
@@ -827,7 +827,8 @@ MonoBehaviour:
   hintModel: {fileID: 1890265731772884112, guid: e6b3353f23667ae4ca9aeeaf7071283b, type: 3}
   numberModel: {fileID: 9014088147980079938, guid: 50a76cf587a96a64cb60d6277d8fb652, type: 3}
   sequenceModel: {fileID: 3455263899554984052, guid: 65071302f78d8a34fb0422412989206c, type: 3}
-  stoneMaterial: {fileID: 2100000, guid: 30b2370595a74384aa903ef91460a59c, type: 2}
+  stoneMaterial: {fileID: 2100000, guid: d49ef10df78c4fa1b3e00346dd2222bd, type: 2}
+  undergroundWallMaterial: {fileID: 2100000, guid: 6956842579a343a094dd96944f246228, type: 2}
   darkMaterial: {fileID: 2100000, guid: c7ab7d1ad0ef2eb478560d79dba640b2, type: 2}
   accentMaterial: {fileID: 2100000, guid: 9bc4fae7a3b8ab44ea9e18a90cdf336f, type: 2}
   labelShader: {fileID: 4800000, guid: 7d5926cd87662824fa764c8d341ab635, type: 3}
@@ -942,7 +943,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 650d925fab321ce4abdc2b5cd1bcac74, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: Assembly-CSharp::TwinEdge.Gameplay.V3GameplayBootstrap
   levelScene: LevelBlockoutV3
   manager: {fileID: 319947989}

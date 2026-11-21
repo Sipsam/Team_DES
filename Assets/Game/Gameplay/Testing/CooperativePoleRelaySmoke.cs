@@ -48,7 +48,6 @@ namespace TwinEdge.Gameplay
             }
             var game = FindFirstObjectByType<GameStateManager>();
             yield return Until(()=>game.IsGameReady && manager.LocalClient?.PlayerObject != null && CooperativePole.Current != null,"Two players and pole spawned",90);
-            if (host) game.StartFoundation();
             yield return Until(()=>game.CanPlay,"Outbound started");
             pole = CooperativePole.Current;
             player = manager.LocalClient.PlayerObject.GetComponent<PlayerMovement>();

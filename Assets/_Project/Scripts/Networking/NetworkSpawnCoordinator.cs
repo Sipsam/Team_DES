@@ -112,7 +112,11 @@ public sealed class NetworkSpawnCoordinator : MonoBehaviour
         bool hasApprovedPose = approvedV3Spawns.Remove(clientId, out var approved);
         // River recovery can assign a dock and start the owner's respawn while NGO
         // is still synchronizing the connecting player. Preserve that placement.
-        if (networkManager.IsServer && character != null && character.RespawnCount.Value > 0) return;
+        if (networkManager.IsServer && character != null && character.RespawnCount.Value > 0)
+        {
+            character.ConfirmFoundationSpawnRpc();
+            return;
+        }
 
         // Region presence may change during sync as the new player appears at the
         // reconnect point. Keep the server's decision from connection approval.
@@ -129,7 +133,10 @@ public sealed class NetworkSpawnCoordinator : MonoBehaviour
             // Commit the approved pose through the owner after NGO scene synchronization.
             // Moving just the server replica leaves the owner transform's spawn state in control.
             if (movement != null && character != null)
+            {
                 movement.ApplyApprovedSpawnRpc(pose.position, pose.rotation);
+                character.ConfirmFoundationSpawnRpc();
+            }
         }
         Debug.Log($"Placed client {clientId} at {label ?? spawnPoint.name}: {pose.position}.", playerObject);
     }

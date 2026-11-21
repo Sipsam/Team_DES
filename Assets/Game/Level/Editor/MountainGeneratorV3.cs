@@ -149,6 +149,14 @@ namespace TwinEdge.Levels.Editor
                 throw new InvalidOperationException("Field count must match Small Peak Count (at least 12). Use Reseed Field after count changes.");
             if (c.meshSpacing < 2 || c.meshSpacing > 8 || c.clusterSize.x < 200 || c.clusterSize.y < 200 || c.minimumGap < 4 || c.bridgeStubLength <= 0 || c.bridgeStubLength > 12 || c.boundary.Count < 8)
                 throw new InvalidOperationException("Invalid terrain dimensions, gap, boundary count or exit stub (max 12m).");
+            if (c.entryTrail.Length > 0)
+            {
+                if (c.entryTrail.Length < 4)
+                    throw new InvalidOperationException("The approach requires a trailhead, spawn, finish and summit entrance.");
+                for (int i = 1; i < c.entryTrail.Length; i++)
+                    if (c.entryTrail[i].z <= c.entryTrail[i - 1].z)
+                        throw new InvalidOperationException("Approach control points must increase Z.");
+            }
             var peaks = new[] {c.start,c.destination}.Concat(c.smallPeaks.Select(p=>WorldPeak(c,p))).ToArray();
             foreach (var p in peaks.Concat(c.boundary))
                 if (p == null || p.summitSize.x < 12 || p.summitSize.y < 12 || p.shoulderWidth < 0 || p.height < 80 || p.height > 400 || !float.IsFinite(p.position.x) || !float.IsFinite(p.position.y))
@@ -226,6 +234,7 @@ namespace TwinEdge.Levels.Editor
                 BuildTerrain(c,peaks,generated.transform,folder);
                 foreach(var p in peaks) Marker(generated.transform,p.id,new Vector3(p.position.x,p.height,p.position.y),
                     p==c.start?MarkerKind.SectionEntrance:p==c.destination?MarkerKind.SectionExit:MarkerKind.PlatformPlacement);
+                AddTrailMarkers(c, generated.transform);
                 Marker(generated.transform,"BridgeAnchor",c.bridgeAnchor,MarkerKind.BridgeAnchor);
                 var mat=Material(folder,"ExitAnchor",new Color(.72f,.47f,.19f));
                 var stub=GameObject.CreatePrimitive(PrimitiveType.Cube); stub.name="Bridge_StartStub_Only";
@@ -242,6 +251,28 @@ namespace TwinEdge.Levels.Editor
             Regenerated?.Invoke(owner);
         }
 
+        internal static void AddTrailMarkers(MountainConfigV3 config, Transform parent)
+        {
+            var trail = config.entryTrail;
+            if (trail.Length == 0) return;
+            Marker(parent, "InitialSpawn", trail[1], MarkerKind.SectionEntrance);
+            Marker(parent, "TrailEntrance", trail[^1], MarkerKind.SectionEntrance);
+            Marker(parent, "ReturnFinish", trail[^2], MarkerKind.SectionExit);
+        }
+
+        internal static float TrailHeight(MountainConfigV3 config, float x, float z, float rock)
+        {
+            var trail = config.entryTrail;
+            if (trail.Length == 0 || z < trail[0].z - 12 || z > trail[^1].z + 7) return rock;
+            var path = ValleyGeneratorV3.Sample(trail, z);
+            float offset = Mathf.Abs(x - path.x);
+            float width = Mathf.Lerp(6.6f, 8.4f, .5f + .5f * Mathf.Sin(z * .17f));
+            float edge = Mathf.SmoothStep(0, 1, Mathf.InverseLerp(width, width + 12, offset));
+            float ends = Mathf.SmoothStep(0, 1, Mathf.InverseLerp(trail[0].z - 12, trail[0].z, z)) *
+                (1 - Mathf.SmoothStep(0, 1, Mathf.InverseLerp(trail[^1].z, trail[^1].z + 7, z)));
+            return Mathf.Lerp(rock, path.y, (1 - edge) * ends);
+        }
+
         static void Marker(Transform parent,string id,Vector3 point,MarkerKind kind)
         {
             var g=new GameObject(id);g.transform.SetParent(parent,false);g.transform.position=point;
@@ -256,6 +287,23 @@ namespace TwinEdge.Levels.Editor
         }
 
         static void BuildTerrain(MountainConfigV3 c,MountainPeakV3[] peaks,Transform parent,string folder)
+        {
+            var mesh = BuildTerrainMesh(c, peaks);
+            AssetDatabase.CreateAsset(mesh, folder + "/ConnectedGeology.asset");
+            var g = new GameObject("Mountain_ConnectedGeology");
+            g.transform.SetParent(parent, false);
+            g.AddComponent<MeshFilter>().sharedMesh = mesh;
+            g.AddComponent<MeshRenderer>().sharedMaterials = new[]
+            {
+                V3WorldMaterials.Top,
+                V3WorldMaterials.Middle,
+                V3WorldMaterials.Bottom
+            };
+            g.AddComponent<MeshCollider>().sharedMesh = mesh;
+            EditorUtility.SetDirty(mesh);
+        }
+
+        internal static Mesh BuildTerrainMesh(MountainConfigV3 c, MountainPeakV3[] peaks)
         {
             // A jittered triangulation clipped to an irregular geological perimeter. One shared surface.
             var vertices=new List<Vector3>();var triangles=new List<int>();
@@ -304,7 +352,7 @@ namespace TwinEdge.Levels.Editor
                 inside[j*nx+i]=radius<=1;
                 float y=height(x,z);
                 if(radius>1-c.boundaryTaper)y=Mathf.Lerp(y,c.basinHeight-25,Mathf.SmoothStep(0,1,Mathf.InverseLerp(1-c.boundaryTaper,1,radius)));
-                vertices.Add(new Vector3(x,y,z));
+                vertices.Add(new Vector3(x,TrailHeight(c,x,z,y),z));
             }
             for(int j=0;j<nz-1;j++) for(int i=0;i<nx-1;i++) {
                 int a=j*nx+i,b=a+1,d=a+nx,e=d+1;
@@ -314,9 +362,6 @@ namespace TwinEdge.Levels.Editor
             var flat=triangles.Select(i=>vertices[i]).ToArray();
             var mesh=new Mesh {name="Mountain_ConnectedGeology",indexFormat=IndexFormat.UInt32};
             mesh.vertices=flat;mesh.triangles=Enumerable.Range(0,flat.Length).ToArray();mesh.RecalculateNormals();mesh.RecalculateBounds();
-            AssetDatabase.CreateAsset(mesh,folder+"/ConnectedGeology.asset");
-            var g=new GameObject("Mountain_ConnectedGeology");g.transform.SetParent(parent,false);
-            g.AddComponent<MeshFilter>().sharedMesh=mesh;
             // URP Lit does not consume vertex colors: slope-based submeshes preserve readable terrain colors.
             var tops=new List<int>();var walls=new List<int>();var low=new List<int>();
             for(int i=0;i<flat.Length;i+=3) {
@@ -326,9 +371,7 @@ namespace TwinEdge.Levels.Editor
                 list.AddRange(new[]{i,i+1,i+2});
             }
             mesh.subMeshCount=3;mesh.SetTriangles(tops,0);mesh.SetTriangles(walls,1);mesh.SetTriangles(low,2);
-            g.AddComponent<MeshRenderer>().sharedMaterials=new[]{Material(folder,"Summit",new Color(.64f,.68f,.59f)),Material(folder,"Cliff",new Color(.4f,.46f,.48f)),Material(folder,"DeepRock",new Color(.23f,.29f,.32f))};
-            g.AddComponent<MeshCollider>().sharedMesh=mesh;
-            EditorUtility.SetDirty(mesh);
+            return mesh;
         }
     }
 }

@@ -284,10 +284,10 @@ MonoBehaviour:
     id: Peak_26
     position: {x: -0.189743590, y: 0.420588235}
     height: 172
-    summitSize: {x: 38, y: 38}
+    summitSize: {x: 36, y: 38}
     rotation: 138
     silhouette: 0.02
-    shoulderWidth: 1
+    shoulderWidth: 1.5
     landingTerrace: 1
   - shape: 0
     asymmetry: 0.45
@@ -475,6 +475,15 @@ MonoBehaviour:
     width: 6
     span: 70
     depth: 25
+  entryTrail:
+  - {x: -13, y: 105, z: -334}
+  - {x: -17, y: 105, z: -325}
+  - {x: -18, y: 110, z: -310}
+  - {x: -11, y: 117, z: -294}
+  - {x: 2, y: 124, z: -280}
+  - {x: 5, y: 129, z: -268}
+  - {x: 2, y: 132, z: -258}
+  - {x: 0, y: 132, z: -247}
   bridgeAnchor: {x: 12, y: 190, z: 330}
   bridgeStubLength: 9
   bridgeWidth: 7

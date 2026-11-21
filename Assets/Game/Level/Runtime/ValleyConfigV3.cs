@@ -12,6 +12,10 @@ namespace TwinEdge.Levels
         public float walkWidth=12, cliffSlope=.8f, valleyWidth=320, silhouette=16;
         public Vector3[] descent = {new Vector3(12,190,650),new Vector3(12,184,710),new Vector3(90,160,790),new Vector3(-30,130,870),new Vector3(-100,100,950),new Vector3(10,70,1030),new Vector3(32,42,1150)};
         public Vector3[] river = {new Vector3(0,40,1150),new Vector3(65,41.5f,1270),new Vector3(80,43,1390),new Vector3(-80,45,1550),new Vector3(-65,47,1690),new Vector3(55,49,1830),new Vector3(50,50,1900)};
+        public Vector3 downstreamEnd = new(-190, 37.6f, 970);
+        [Tooltip("Upstream bend between the dock and the outlet, in world X/Z.")]
+        public Vector2 upstreamBend = new(-45, 1955);
+        public Vector3 upstreamEnd = new(-166, 52.8f, 2110);
         public float[] widths = {44,48,58,48,64,54,46};
         public float bedDepth=7, innerBankSlope=.22f, outerBankSlope=.9f;
         public float raftLaneReservation=12, turningReservation=22;

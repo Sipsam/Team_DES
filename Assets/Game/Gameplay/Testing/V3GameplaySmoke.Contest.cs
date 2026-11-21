@@ -1,4 +1,4 @@
-﻿#if UNITY_EDITOR || DEVELOPMENT_BUILD
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
 using System;
 using System.Collections;
 using System.IO;
@@ -57,7 +57,7 @@ public sealed partial class V3GameplaySmoke
         var victim = host ? remote : own;
         var gem = GemOwnership.Current;
         contestMouse = InputSystem.AddDevice<Mouse>();
-        Vector3 summit = MarkerPoint("Mountain.V3.Start");
+        Vector3 summit = MarkerPoint("Mountain.V3.ReturnFinish");
         Vector3 arena = summit + Vector3.forward * 11;
         if (Environment.GetCommandLineArgs().Contains("-v3ContestLifecycle"))
         {

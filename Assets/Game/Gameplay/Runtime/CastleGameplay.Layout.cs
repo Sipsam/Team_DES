@@ -15,6 +15,7 @@ namespace TwinEdge.Gameplay
         [SerializeField] GameObject[] symbolModels, trapModels;
         [SerializeField] GameObject doorModel, wallModel, transferModel, windowModel, hintModel, numberModel, sequenceModel;
         [SerializeField] Material stoneMaterial, darkMaterial, accentMaterial;
+        [SerializeField] Material undergroundWallMaterial;
         [SerializeField] Shader labelShader;
 
         Material labelMaterial;

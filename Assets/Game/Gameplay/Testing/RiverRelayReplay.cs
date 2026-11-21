@@ -66,11 +66,7 @@ namespace TwinEdge.Gameplay
                 Require(sessions.HasSession, "Relay Client session");
             }
             yield return Wait(() => game.IsGameReady && manager.LocalClient?.PlayerObject != null, "two Relay peers", 90);
-            if (host)
-            {
-                if (recovery) river.EnableRecoveryFixture();
-                game.StartFoundation();
-            }
+            if (host && recovery) river.EnableRecoveryFixture();
             yield return Wait(() => river.Read(0).Status == RiverRaftStatus.Docked, "linked raft docked");
             player = manager.LocalClient.PlayerObject.GetComponent<PlayerMovement>();
             player.GetComponent<GameplayInput>().SimulateCapturedCursor = true;

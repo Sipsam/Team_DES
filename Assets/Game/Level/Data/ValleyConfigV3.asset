@@ -39,6 +39,9 @@ MonoBehaviour:
   - {x: -65, y: 47, z: 1690}
   - {x: 55, y: 49, z: 1830}
   - {x: 50, y: 50, z: 1900}
+  downstreamEnd: {x: -190, y: 37.6, z: 970}
+  upstreamBend: {x: -45, y: 1955}
+  upstreamEnd: {x: -166, y: 52.8, z: 2110}
   widths:
   - 44
   - 48

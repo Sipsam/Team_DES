@@ -54,7 +54,7 @@ namespace TwinEdge.Gameplay
             yield return Until(() => game.IsGameReady && manager.LocalClient?.PlayerObject != null, "Two players", 90);
             launch = manager.LocalClient.PlayerObject.GetComponent<MountainReturnLaunch>();
             launch.DevelopmentInputDriver = true;
-            if (host) game.StartFoundation(); yield return Until(() => game.CanPlay, "Outbound ready");
+            yield return Until(() => game.CanPlay, "Outbound ready");
             launch.PrepareRpc(launch.Revision.Value); yield return new WaitForSeconds(.5f);
             Check(launch.State.Value != LaunchState.Charging && launch.State.Value != LaunchState.Flying, "Outbound request rejected");
             File.WriteAllText(output + "/" + prefix + "-outbound.txt", "ready");

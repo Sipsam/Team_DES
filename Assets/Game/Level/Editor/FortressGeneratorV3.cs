@@ -46,9 +46,9 @@ namespace TwinEdge.Levels.Editor
         }
         static void Materials() {
             Directory.CreateDirectory(Data+"FortressMaterials");AssetDatabase.Refresh();
-            stone=Mat("Limestone",new Color(.52f,.53f,.49f));rock=Mat("Bedrock",new Color(.24f,.28f,.29f));
-            roof=Mat("Slate",new Color(.16f,.25f,.30f));floor=Mat("Floor",new Color(.40f,.38f,.31f));
-            cyan=Mat("RouteA",new Color(.12f,.63f,.69f));amber=Mat("RouteB",new Color(.83f,.55f,.20f));lava=Mat("Lava",new Color(1,.16f,.015f));
+            stone=V3WorldMaterials.Wall;rock=V3WorldMaterials.UndergroundStone;
+            roof=V3WorldMaterials.Roof;floor=V3WorldMaterials.Floor;
+            cyan=Mat("RouteA",new Color(.12f,.63f,.69f));amber=Mat("RouteB",new Color(.83f,.55f,.20f));lava=V3WorldMaterials.Lava;
         }
         public static void Generate(FortressSectionV3 owner) {
             if(EditorApplication.isPlayingOrWillChangePlaymode)throw new InvalidOperationException("Edit mode only");

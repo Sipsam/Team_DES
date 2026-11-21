@@ -100,7 +100,7 @@ namespace TwinEdge.Gameplay.Editor
             EditorSceneManager.OpenScene(LevelPath, OpenSceneMode.Additive);
             Physics.SyncTransforms();
             var markers = Object.FindObjectsByType<TwinEdge.Levels.LevelMarker>(FindObjectsSortMode.None);
-            foreach (var id in new[] { "Mountain.V3.Start", "Mountain.V3.Final", "Valley.V3.LowerCheckpoint", "Valley.V3.UpperCheckpoint" })
+            foreach (var id in new[] { "Mountain.V3.Start", "Mountain.V3.InitialSpawn", "Mountain.V3.TrailEntrance", "Mountain.V3.ReturnFinish", "Mountain.V3.Final", "Valley.V3.LowerCheckpoint", "Valley.V3.UpperCheckpoint" })
                 V3GameplayBootstrap.SafeGround(markers.Single(m => m.id == id).transform.position);
             File.WriteAllText(Evidence + "/StructuralValidation.txt", "PASS: saved/reloaded gameplay scene; existing network prefab variant; height 2/radius .45; 5 animator states; V3 marker ground raycasts. Runtime and Relay require separate validation.\n");
             EditorSceneManager.OpenScene(ScenePath);
@@ -108,33 +108,74 @@ namespace TwinEdge.Gameplay.Editor
         }
         public static void BuildPlayer()
         {
-            BuildWindowsDevelopment("Builds/V3Gameplay/V3Gameplay.exe");
+            BuildWindowsDevelopment(Environment.GetEnvironmentVariable("TWIN_EDGE_V3_BUILD") ?? "Builds/V3Development");
         }
 
         [MenuItem("Tools/Twin Edge/Gameplay/Build Full Match Development Player")]
         public static void BuildFullMatchPlayer()
         {
-            string directory = Environment.GetEnvironmentVariable("TWIN_EDGE_FULL_MATCH_BUILD") ?? "Builds/FullMatch";
-            BuildWindowsDevelopment(Path.Combine(directory, "V3Gameplay.exe"));
+            BuildPlayer();
         }
 
         [MenuItem("Tools/Twin Edge/Gameplay/Build V3 Windows Playtest Player")]
         public static void BuildPlaytestPlayer()
         {
-            BuildWindows("Builds/V3Playtest/V3Gameplay.exe", BuildOptions.None);
+            BuildWindows(Environment.GetEnvironmentVariable("TWIN_EDGE_V3_BUILD") ?? "Builds/V3Playtest", BuildOptions.None);
         }
 
-        static void BuildWindowsDevelopment(string path)
+        static void BuildWindowsDevelopment(string directory) => BuildWindows(directory, BuildOptions.Development);
+
+        static void BuildWindows(string directory, BuildOptions options)
         {
-            var options = BuildOptions.Development;
-            if (Environment.GetCommandLineArgs().Contains("-v3BuildScriptsOnly")) options |= BuildOptions.BuildScriptsOnly;
-            BuildWindows(path, options);
+            string destination = Path.GetFullPath(directory);
+            string parent = Path.GetDirectoryName(destination);
+            EnsureLocalBuildPath(parent);
+            Directory.CreateDirectory(parent);
+            EnsureLocalBuildPath(destination);
+            string stage = destination + ".stage";
+            string previous = destination + ".previous";
+            EnsureLocalBuildPath(stage);
+            EnsureLocalBuildPath(previous);
+            if (Directory.Exists(previous) && !Directory.Exists(destination)) Directory.Move(previous, destination);
+            if (Directory.Exists(previous)) Directory.Delete(previous, true);
+            if (Directory.Exists(stage)) Directory.Delete(stage, true);
+            Directory.CreateDirectory(stage);
+            string executable = Path.Combine(stage, "V3Gameplay.exe");
+            try
+            {
+                var report = BuildPipeline.BuildPlayer(new BuildPlayerOptions
+                {
+                    scenes = new[] { ScenePath, LevelPath }, locationPathName = executable,
+                    target = BuildTarget.StandaloneWindows64, options = options
+                });
+                if (report.summary.result != UnityEditor.Build.Reporting.BuildResult.Succeeded ||
+                    !File.Exists(executable) || new FileInfo(executable).Length == 0 ||
+                    !File.Exists(Path.Combine(stage, "UnityPlayer.dll")) ||
+                    !File.Exists(Path.Combine(stage, "V3Gameplay_Data", "globalgamemanagers")))
+                    throw new IOException("V3 build did not produce a complete Windows player.");
+
+                if (Directory.Exists(destination)) Directory.Move(destination, previous);
+                try { Directory.Move(stage, destination); }
+                catch
+                {
+                    if (Directory.Exists(previous)) Directory.Move(previous, destination);
+                    throw;
+                }
+                if (Directory.Exists(previous)) Directory.Delete(previous, true);
+            }
+            finally
+            {
+                if (Directory.Exists(stage)) Directory.Delete(stage, true);
+            }
         }
 
-        static void BuildWindows(string path, BuildOptions options)
+        static void EnsureLocalBuildPath(string path)
         {
-            var report = BuildPipeline.BuildPlayer(new BuildPlayerOptions { scenes = new[] { ScenePath, LevelPath }, locationPathName = path, target = BuildTarget.StandaloneWindows64, options = options });
-            if (report.summary.result != UnityEditor.Build.Reporting.BuildResult.Succeeded) throw new Exception("V3 build failed");
+            string root = Path.GetFullPath("Builds");
+            if (path != root && Path.GetDirectoryName(path) != root)
+                throw new IOException("V3 builds must use a direct child of Builds.");
+            if (Directory.Exists(path) && (File.GetAttributes(path) & FileAttributes.ReparsePoint) != 0)
+                throw new IOException("V3 build directory cannot be a link: " + path);
         }
     }
 }

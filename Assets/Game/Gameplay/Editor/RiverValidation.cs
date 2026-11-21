@@ -1,7 +1,8 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Linq;
 using TwinEdge.Levels;
+using TwinEdge.Levels.Editor;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -25,6 +26,7 @@ namespace TwinEdge.Gameplay.Editor
             var config = scene.GetRootGameObjects().SelectMany(root => root.GetComponentsInChildren<ValleySectionV3>())
                 .Single(section => section.part == ValleyPartV3.River).config;
             river.ValidateSavedChannel(scene, config, out string report);
+            TwinEdge.Levels.Editor.V3WorldRevision.ValidateCastleApproach(config);
             File.WriteAllText(Path.Combine(Output, "StaticGeometry.txt"), report);
             Debug.Log(report);
             EditorSceneManager.OpenScene(GameplayFoundationSetup.ScenePath);
@@ -46,9 +48,9 @@ namespace TwinEdge.Gameplay.Editor
                 if (serialized.FindProperty(field).objectReferenceValue != prefab)
                     throw new InvalidOperationException($"The V3 river scene reference {field} does not point to {id}.");
             }
-            var water = FindPrefab("ENV_WATER_FACET_02").GetComponentInChildren<Renderer>().sharedMaterial;
+            var water = V3WorldMaterials.Water;
             if (serialized.FindProperty("waterMaterial").objectReferenceValue != water)
-                throw new InvalidOperationException("The river water material differs from the revised source.");
+                throw new InvalidOperationException("The runtime river must reference the V3 textured water.");
         }
 
         static GameObject FindPrefab(string id)
