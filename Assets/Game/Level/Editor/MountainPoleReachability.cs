@@ -131,6 +131,8 @@ namespace TwinEdge.Levels.Editor
                     }
                     r.nodes.Add(n);
                 }
+                var departures = new Dictionary<Vector3, List<Vector3>>[r.nodes.Count];
+                for (int i = 0; i < departures.Length; i++) departures[i] = new Dictionary<Vector3, List<Vector3>>();
                 for(int i=0;i<r.nodes.Count;i++) for(int j=0;j<r.nodes.Count;j++) {
                     if(i==j) continue;
                     if(!Application.isBatchMode&&EditorUtility.DisplayCancelableProgressBar("Mountain pole collider candidates",r.nodes[i].id+" -> "+r.nodes[j].id,(float)(i*r.nodes.Count+j)/(r.nodes.Count*r.nodes.Count)))throw new OperationCanceledException("Reachability analysis cancelled; no scene edits.");
@@ -140,14 +142,28 @@ namespace TwinEdge.Levels.Editor
                     foreach(var a in r.nodes[i].safe)foreach(var b in r.nodes[j].safe)minGap=Mathf.Min(minGap,new Vector2(a.x-b.x,a.z-b.z).sqrMagnitude);
                     e.sampledLandingGap=float.IsPositiveInfinity(minGap)?-1:Mathf.Sqrt(minGap);
                     foreach(var pivot in r.nodes[i].safe.OrderBy(p=>(p-r.nodes[j].center).sqrMagnitude).Take(80)) {
-                        var starts=new List<Vector3>();
-                        foreach(var candidate in r.nodes[i].safe.Where(p=>Mathf.Abs((p-pivot).magnitude-pole.length)<1.2f)) {
-                            var angle=Angles(candidate-pivot);var point=PoleGeometry.Endpoint(pivot,pole.length,angle.x,angle.y);
-                            if(pole.SafeLanding(point,out var sid)&&sid==r.nodes[i].id&&Rod(pivot,point)&&Clear(point,point)&&Arc(pivot,point,PoleGeometry.Endpoint(pivot,pole.length,angle.x,pole.maxPitch),out _))starts.Add(point);
+                        if (!departures[i].TryGetValue(pivot, out var starts))
+                        {
+                            starts = new List<Vector3>();
+                            foreach (var candidate in r.nodes[i].safe.Where(p=>Mathf.Abs((p-pivot).magnitude-pole.length)<1.2f))
+                            {
+                                var angle = Angles(candidate-pivot);
+                                if (r.nodes[i].terrace) angle.y = 0;
+                                var point = PoleGeometry.Endpoint(pivot,pole.length,angle.x,angle.y);
+                                if (!pole.SafeLanding(point,out var sid) || sid!=r.nodes[i].id || !Rod(pivot,point) ||
+                                    !Clear(point,point) || !Arc(pivot,point,PoleGeometry.Endpoint(pivot,pole.length,angle.x,pole.maxPitch),out _))
+                                    continue;
+                                starts.Add(point);
+                                if (starts.Count == 8) break;
+                            }
+                            departures[i].Add(pivot, starts);
                         }
                         if(starts.Count==0){e.reason="No supported departure endpoint and clear ascent";continue;}
                         foreach(var target in r.nodes[j].safe.Where(p=>Mathf.Abs((p-pivot).magnitude-pole.length)<1.2f&&(!r.nodes[j].terrace||Vector2.Distance(new Vector2(p.x,p.z),new Vector2(r.nodes[j].center.x,r.nodes[j].center.z))>15)).OrderBy(p=>Mathf.Abs((p-pivot).magnitude-pole.length)).Take(80)) {
                             var angles=Angles(target-pivot);
+                            // Fix the intended elevation before projecting onto the rigid sphere.
+                            // Scaling a diagonal sample to length can accumulate a vertical offset after exchanges.
+                            angles.y=Mathf.Asin(Mathf.Clamp((target.y-pivot.y)/pole.length,-1,1))*Mathf.Rad2Deg;
                             var end=PoleGeometry.Endpoint(pivot,pole.length,angles.x,angles.y);
                             if(Mathf.Abs(angles.y)>pole.maxPitch){e.reason="Pitch limit";continue;}
                             if(!pole.SafeLanding(end,out var id)||id!=r.nodes[j].id){e.reason="Target five-point support / summit gate";continue;}
@@ -157,12 +173,14 @@ namespace TwinEdge.Levels.Editor
                                 float arrivalRadius=Vector2.Distance(new Vector2(end.x,end.z),new Vector2(r.nodes[j].center.x,r.nodes[j].center.z));
                                 // A central arrival strands the pivot: a full second endpoint cannot fit on this summit.
                                 if(arrivalRadius<16.2f||arrivalRadius>16.9f)continue;
+                                float clearance=end.y-Ground(end).y;
+                                if(clearance<.10f||clearance>.16f)continue;
                             }
                             e.pivot=pivot;e.end=end;e.pitch=angles.y;e.heightDelta=end.y-pivot.y;
                             if(!Arc(pivot,PoleGeometry.Endpoint(pivot,pole.length,angles.x,pole.maxPitch),end,out e.collision)){e.reason="Arrival capsule / rod collision";continue;}
                             e.reason="No supported source endpoint / clear departure arc";
                             // Source endpoint must itself have real support. Edge candidates do not assume an airborne start.
-                            foreach(var from in starts.Take(8)) {
+                            foreach(var from in starts) {
                                 var s=Angles(from-pivot);
                                 e.start=from;e.yaw=Mathf.DeltaAngle(s.x,angles.x);
                                 if(Arc(pivot,from,end,out e.collision)) {e.clear=true;e.reason="Collider-tested isolated arc; chained arrival not proven";break;}

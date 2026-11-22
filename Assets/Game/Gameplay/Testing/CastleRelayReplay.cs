@@ -20,6 +20,7 @@ namespace TwinEdge.Gameplay
         int slot;
         FullMatchRelayReplay fullMatch;
         Keyboard keyboard;
+        Gamepad movementPad;
         CastleGameplay castle;
         GameStateManager game;
         MultiplayerSessionManager sessions;
@@ -53,6 +54,7 @@ namespace TwinEdge.Gameplay
             InputSystem.settings = Instantiate(InputSystem.settings);
             InputSystem.settings.backgroundBehavior = InputSettings.BackgroundBehavior.IgnoreFocus;
             keyboard = InputSystem.AddDevice<Keyboard>();
+            movementPad = InputSystem.AddDevice<Gamepad>();
             manager = FindFirstObjectByType<NetworkManager>();
             game = FindFirstObjectByType<GameStateManager>();
             castle = game.GetComponent<CastleGameplay>();
@@ -95,7 +97,7 @@ namespace TwinEdge.Gameplay
             Application.Quit();
         }
 
-        internal IEnumerator ReplayFromGate(FullMatchRelayReplay match)
+        internal IEnumerator ReplayFromGate(FullMatchRelayReplay match, bool walkOnly = false)
         {
             fullMatch = match;
             host = match.Host;
@@ -107,16 +109,18 @@ namespace TwinEdge.Gameplay
             castle = CastleGameplay.Current;
             slot = host ? 0 : 1;
             yield return BindPlayer();
-            yield return ReplayCourse();
+            yield return ReplayCourse(walkOnly);
         }
 
-        IEnumerator ReplayCourse()
+        IEnumerator ReplayCourse(bool walkOnly = false)
         {
-            yield return Walk(1.2f, 45);
+            yield return TraverseGate(false);
             Capture("gate-entry");
             var initial = castle.RoomPlan(0, slot);
-            yield return Walk(initial.center.x, 56);
+            yield return Walk(initial.center.x, host ? 48 : 52);
+            yield return Walk(initial.center.x, initial.yMin - 3);
             yield return Walk(initial.center.x, initial.yMin + 3);
+            Require(player.IsGrounded, "grounded beyond the first puzzle arch");
 
             for (int stage = 0; stage < 4; stage++)
             {
@@ -131,9 +135,9 @@ namespace TwinEdge.Gameplay
                     yield return new WaitForSeconds(.3f);
                     Require(castle.Progress(slot).Equals(before), "foreign and invalid station requests rejected");
                     yield return Walk(exit, plan.yMax - 2);
-                    SetKeys(Key.W);
+                    SteerWorld(Vector3.forward);
                     yield return new WaitForSeconds(1);
-                    SetKeys();
+                    SteerWorld(Vector3.zero);
                     Require(player.transform.position.z < castle.World(0, 0, plan.yMax).z - .35f, "locked stage door blocks CharacterController");
                 }
 
@@ -195,6 +199,7 @@ namespace TwinEdge.Gameplay
                 yield return Wait(() => castle.Stage > stage, $"both solved stage {stage + 1}", 35);
                 yield return Walk(exit, plan.yMax - 2);
                 yield return Walk(exit, plan.yMax + 3);
+                Require(player.IsGrounded, $"grounded beyond puzzle door {stage + 1}");
                 Require(castle.AllEarlierDoorsOpen(), "previous stage gate Colliders stay open");
                 if (outboundReconnect && stage == 0)
                 {
@@ -228,7 +233,9 @@ namespace TwinEdge.Gameplay
             yield return Wait(() => castle.PartitionsOpen && castle.Crossed == 3, "both physically crossed the basement door");
             Require(game.Phase == FoundationPhase.Outbound && !castle.Returning && castle.PartitionsDisabled,
                 "basement passage opens partitions and keeps outbound rules");
+            Require(player.IsGrounded, "grounded beyond the basement door");
             if (fullMatch != null) yield return fullMatch.Barrier("basement-door");
+            if (walkOnly) yield break;
             var underground = UndergroundGameplay.Current;
             yield return TraverseUnderground(underground);
             yield return Wait(() => castle.Returning && game.Phase == FoundationPhase.Return, "gem pickup starts the castle return traps");
@@ -258,9 +265,22 @@ namespace TwinEdge.Gameplay
             }
             else if (host) yield return RunTraps();
             else yield return RunSewer();
-            yield return Walk(1.2f, 39);
-            yield return Walk(host ? -1.7f : 2.6f, -19);
+            yield return TraverseGate(true);
             Capture("gate-exit");
+        }
+
+        IEnumerator TraverseGate(bool returning)
+        {
+            // The curtain gate is at local Z=-8.8 and the keep portal at Z=35.
+            // Keep the same lane across both openings and turn only in the clear halls.
+            float x = host ? -1.2f : 2.1f;
+            float[] points = { -19, -14, -4, 30, 41 };
+            if (returning) Array.Reverse(points);
+            foreach (float z in points)
+            {
+                yield return Walk(x, z);
+                Require(player.IsGrounded, $"grounded at gate waypoint ({x:F1}, {z:F1}), feet={player.transform.position:F2}");
+            }
         }
 
         IEnumerator CheckOutboundRecovery()
@@ -319,10 +339,12 @@ namespace TwinEdge.Gameplay
             yield return Walk(x, z);
             yield return Wait(() => castle.Progress(slot).Injured, "first physical trap contact");
             int deaths = character.RespawnCount.Value;
-            SetKeys(Key.W, Key.LeftShift);
+            SetKeys(Key.LeftShift);
+            SteerWorld(Vector3.forward);
             yield return new WaitForSeconds(.28f);
             float speed = Vector3.ProjectOnPlane(player.Velocity, Vector3.up).magnitude;
             SetKeys();
+            SteerWorld(Vector3.zero);
             Require(castle.SprintBlocked(player) && castle.SpeedScale(player) < 1 &&
                 speed > 1.2f && speed <= 3.5f * castle.SpeedScale(player) + .08f, $"slowed movement while Shift held ({speed:F2} m/s)");
             File.WriteAllText(Path.Combine(output, "host-trap-speed.txt"), "PASS");
@@ -457,27 +479,56 @@ namespace TwinEdge.Gameplay
         IEnumerator Walk(float x, float z, bool sprint = false)
         {
             Vector3 destination = castle.World(x, 0, z);
-            float end = Time.realtimeSinceStartup + 22 + Vector2.Distance(new Vector2(destination.x, destination.z),
-                new Vector2(player.transform.position.x, player.transform.position.z)) / 2;
+            float best = Vector3.ProjectOnPlane(destination - player.transform.position, Vector3.up).magnitude;
+            float end = Time.realtimeSinceStartup + 22 + best / 2;
+            float progressDeadline = Time.realtimeSinceStartup + 3;
             while (true)
             {
-                Vector3 delta = destination - player.transform.position;
-                delta.y = 0;
-                if (delta.magnitude <= .32f) break;
-                Require(Time.realtimeSinceStartup < end, $"walk timeout at {player.transform.position - castle.World(0, 0, 0):F2}, target ({x:F2}, {z:F2})", log: false);
-                var camera = Camera.main.transform;
-                float forward = Vector3.Dot(delta, Vector3.ProjectOnPlane(camera.forward, Vector3.up).normalized);
-                float right = Vector3.Dot(delta, Vector3.ProjectOnPlane(camera.right, Vector3.up).normalized);
-                float threshold = Mathf.Min(.21f, Mathf.Max(Mathf.Abs(forward), Mathf.Abs(right)) * .45f);
-                var keys = new System.Collections.Generic.List<Key>();
-                if (Mathf.Abs(forward) > threshold) keys.Add(forward > 0 ? Key.W : Key.S);
-                if (Mathf.Abs(right) > threshold) keys.Add(right > 0 ? Key.D : Key.A);
-                if (sprint && delta.magnitude > 2) keys.Add(Key.LeftShift);
-                SetKeys(keys.ToArray());
+                Vector3 delta = Vector3.ProjectOnPlane(destination - player.transform.position, Vector3.up);
+                float distance = delta.magnitude;
+                if (distance <= .32f) break;
+                if (distance < best - .15f)
+                {
+                    best = distance;
+                    progressDeadline = Time.realtimeSinceStartup + 3;
+                }
+                if (Time.realtimeSinceStartup >= Mathf.Min(end, progressDeadline))
+                    Require(false, WalkFailure(destination, delta), log: false);
+                SteerWorld(Vector3.ClampMagnitude(delta / .45f, 1));
+                if (sprint && distance > 2) SetKeys(Key.LeftShift);
+                else SetKeys();
                 yield return null;
             }
+            SteerWorld(Vector3.zero);
             SetKeys();
             yield return new WaitForSeconds(.08f);
+        }
+
+        string WalkFailure(Vector3 target, Vector3 delta)
+        {
+            var controller = player.GetComponent<CharacterController>();
+            Vector3 center = player.transform.TransformPoint(controller.center);
+            float halfSegment = controller.height * .5f - controller.radius;
+            var direction = delta.normalized;
+            bool blocked = Physics.CapsuleCast(center + Vector3.up * halfSegment, center - Vector3.up * halfSegment,
+                controller.radius - controller.skinWidth, direction, out var hit, 1, ~0, QueryTriggerInteraction.Ignore);
+            var stick = FullMatchRelayReplay.CameraRelativeStick(player, direction);
+            player.GetMovementAxes(out var forward, out var right);
+            var actual = Vector3.ProjectOnPlane(controller.velocity, Vector3.up);
+            var peers = manager.SpawnManager.SpawnedObjectsList.Where(peer => peer.IsPlayerObject)
+                .Select(peer => $"{peer.OwnerClientId}={peer.transform.position:F2}");
+            return $"walk stalled at {player.transform.position:F2}, target={target:F2}, remaining={delta.magnitude:F2}m, " +
+                $"direction={direction:F2}, yaw={Mathf.Atan2(forward.x, forward.z) * Mathf.Rad2Deg:F1}, " +
+                $"forward={forward:F2}, right={right:F2}, stick={stick:F2}, velocity={actual:F2}, " +
+                $"grounded={player.IsGrounded}, contacts={controller.collisionFlags}, " +
+                $"obstruction={(blocked ? $"{hit.collider.name} at {hit.distance:F2}m" : "none within 1m")}, " +
+                $"{(manager.IsServer ? "server" : "client")} positions={string.Join(" | ", peers)}";
+        }
+
+        void SteerWorld(Vector3 direction)
+        {
+            if (fullMatch != null) fullMatch.SteerWorld(direction);
+            else FullMatchRelayReplay.SteerStick(movementPad, FullMatchRelayReplay.CameraRelativeStick(player, direction));
         }
 
         void Capture(string label)

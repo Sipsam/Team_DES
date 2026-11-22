@@ -1,7 +1,7 @@
 param(
     [Parameter(Mandatory)][string]$Build,
     [Parameter(Mandatory)][string]$Run,
-    [ValidateSet('foundation','foundationImpaired','poleRecovery','bridge','bridgeContact','bridgeDisconnect','river','riverRecovery','castleUnderground','castleReconnect','cavernHazards','cavernReconnect','contest','contestRegions','contestLifecycle','return','returnInput','returnReconnect','mountain','full','canyon','approach','summit','castle','riverLink','middle','finish')]
+    [ValidateSet('foundation','foundationImpaired','poleRecovery','bridge','bridgeContact','bridgeDisconnect','river','riverRecovery','castleUnderground','castleReconnect','cavernHazards','cavernReconnect','contest','contestRegions','contestLifecycle','return','returnInput','returnReconnect','mountain','mountainFromSpawn','full','canyon','approach','summit','castle','castleWalk','riverLink','middle','finish')]
     [string]$Case = 'foundation',
     [string]$PolePlan = 'Docs/Development/Gameplay/V1/MountainPole/ContinuousPlan.json',
     [string]$ReturnPlan = 'Docs/Development/Gameplay/V1/MountainReturn/Route.json',
@@ -58,13 +58,17 @@ try {
             $mode = 'mountainPoleRun'; $evidence = 'mountainPoleEvidence'; $timeout = 1700
             $extra = @('-mountainPolePlan',(Resolve-Path -LiteralPath $PolePlan).Path)
         }
-        '^(full|canyon|approach|summit|castle|riverLink|middle|finish)$' {
+        '^(full|mountainFromSpawn|canyon|approach|summit|castle|castleWalk|riverLink|middle|finish)$' {
             $marker = 'full-match-pass'
             $mode = 'fullMatchRelay'; $evidence = 'fullMatchEvidence'; $timeout = 3900; $captureFlag = '-fullMatchScreenshots'
             $extra = @('-mountainPolePlan',(Resolve-Path -LiteralPath $PolePlan).Path,
                        '-returnPlan',(Resolve-Path -LiteralPath $ReturnPlan).Path)
             if ($Case -ne 'full') {
-                $link = if ($Case -eq 'riverLink') { 'river' } else { $Case }
+                $link = switch ($Case) {
+                    'riverLink' { 'river' }
+                    'mountainFromSpawn' { 'mountain' }
+                    default { $Case }
+                }
                 $extra += @('-fullMatchLink',$link)
                 $timeout = 1800
                 $marker = 'isolated-link-pass'

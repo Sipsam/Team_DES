@@ -28,7 +28,7 @@ namespace TwinEdge.Levels.Editor
                 vertices[i].y = MountainGeneratorV3.TrailHeight(mountain.config, v.x, v.z, v.y);
             }
             mesh.vertices = vertices;
-            Refresh(terrain);
+            Refresh(terrain.sharedMesh, terrain.GetComponent<MeshCollider>());
             MountainGeneratorV3.AddTrailMarkers(mountain.config, mountain.generated.transform);
 
             RefreshValleyMeshes(scene);
@@ -44,6 +44,7 @@ namespace TwinEdge.Levels.Editor
             ValleyGeneratorV3.Check(config);
             RefreshValleyMeshes(scene);
             ValidateCastleApproach(config);
+            if (!EditorSceneManager.SaveScene(scene)) throw new InvalidOperationException("Could not save the V3 river geometry.");
             AssetDatabase.SaveAssets();
         }
 
@@ -74,8 +75,10 @@ namespace TwinEdge.Levels.Editor
             {
                 if (section.part == ValleyPartV3.Bridge) continue;
                 var filters = section.generated.GetComponentsInChildren<MeshFilter>();
-                Replace(filters.Single(f => f.name == "Terrain"),
+                var terrain = filters.Single(f => f.name == "Terrain");
+                Replace(terrain,
                     (v, t) => ValleyGeneratorV3.TerrainGeometry(section.config, section.part, v, t));
+                V3EnvironmentPolish.RefreshValleySurface(section.config, section.part, terrain);
                 if (section.part == ValleyPartV3.River)
                 {
                     var water = filters.Single(f => f.name == "WaterSurface");
@@ -98,9 +101,29 @@ namespace TwinEdge.Levels.Editor
             var mesh = MountainGeneratorV3.BuildTerrainMesh(config, peaks);
             EditorUtility.CopySerialized(mesh, filter.sharedMesh);
             UnityEngine.Object.DestroyImmediate(mesh);
-            Refresh(filter);
-            ValidateTrail(config.entryTrail);
+            Refresh(filter.sharedMesh, filter.GetComponent<MeshCollider>());
+            filter.GetComponent<MeshRenderer>().sharedMaterial = V3WorldMaterials.MountainBlend();
+            foreach (var peak in peaks)
+                owner.generated.transform.Find(peak.id).position = new Vector3(peak.position.x, peak.height, peak.position.y);
+            if (config.entryTrail.Length > 0)
+            {
+                var spawn = owner.generated.transform.Find("InitialSpawn");
+                spawn.position = config.entryTrail[1];
+                MountainGeneratorV3.AlignTrailSpawn(config.entryTrail, spawn);
+                owner.generated.transform.Find("TrailEntrance").position = config.entryTrail[^1];
+                owner.generated.transform.Find("ReturnFinish").position = config.entryTrail[^2];
+            }
+            if (config.entryTrail.Length > 0) ValidateTrail(config.entryTrail);
+            if (!EditorSceneManager.SaveScene(scene)) throw new InvalidOperationException("Could not save the V3 mountain.");
             AssetDatabase.SaveAssets();
+        }
+
+        public static void RefreshAndAnalyzeMountain()
+        {
+            RefreshMountainMesh();
+            MountainPoleReachability.Load();
+            MountainPoleReachability.Analyze("Tuned");
+            MountainPoleTuning.InspectCurrent();
         }
 
         // Far range silhouettes remain outside navigation space and cast no shadows.
@@ -193,7 +216,7 @@ namespace TwinEdge.Levels.Editor
             Vector3 previous = default;
             for (float z = trail[1].z; z <= trail[^1].z; z++)
             {
-                Vector3 point = ValleyGeneratorV3.Sample(trail, z);
+                Vector3 point = MountainGeneratorV3.SampleTrail(trail, z);
                 var ground = V3GameplayBootstrap.SafeGround(point);
                 if (Mathf.Abs(ground.y - .12f - point.y) > .5f)
                     throw new InvalidOperationException("Approach ground diverges from its authored grade at " + point);
@@ -212,21 +235,20 @@ namespace TwinEdge.Levels.Editor
             var vertices = new List<Vector3>();
             var indices = new List<int>();
             generate(vertices, indices);
-            var mesh = filter.sharedMesh;
+            var mesh = filter.TryGetComponent<MeshCollider>(out var collider) ? collider.sharedMesh : filter.sharedMesh;
             mesh.Clear();
             mesh.indexFormat = IndexFormat.UInt32;
             mesh.SetVertices(vertices);
             mesh.SetTriangles(indices, 0);
-            Refresh(filter);
+            Refresh(mesh, collider);
         }
 
-        static void Refresh(MeshFilter filter)
+        static void Refresh(Mesh mesh, MeshCollider collider)
         {
-            var mesh = filter.sharedMesh;
             mesh.RecalculateNormals();
             mesh.RecalculateBounds();
             EditorUtility.SetDirty(mesh);
-            if (filter.TryGetComponent<MeshCollider>(out var collider))
+            if (collider)
             {
                 collider.sharedMesh = null;
                 collider.sharedMesh = mesh;

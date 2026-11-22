@@ -35,7 +35,7 @@ Use this command to reproduce the windowed Direct3D 11 setup used for the Window
 
 | Section | Player objective |
 | --- | --- |
-| Outbound mountain | Approach opposite pole ends and press E. Move together on the summit, swing the orbit player onto the next summit and exchange roles once stable. At Big summit, release the pole and follow the ramp. |
+| Outbound mountain | Approach opposite pole ends and press E. Use the slope and width of nearby shelves to choose a landing, then move together, swing the orbit player onto that shelf and exchange roles once stable. Reassess the next landing after each exchange. At Big summit, release the pole and follow the ramp. |
 | Outbound bridge and canyon | Use E at the crate, take one timber grip each, carry to the socket and both approve with E. Install all 13 deliveries, cross, then follow the canyon down to the lower dock. |
 | Outbound river | Board the linked raft with E. Both players row with W/S and coordinate their strokes. Use the stamina display to pace stronger strokes. Disembark at the upper dock and walk to the castle. |
 | Outbound castle | Follow your assigned A or B lane. Read the glyph clue and send it via the shared wall. Enter the three glyphs in order in each stage. Use your four-digit number at your keypad and both cross the basement door. |
@@ -109,6 +109,8 @@ $build = 'Builds/V3Development/V3Gameplay.exe'
 
 Foundation exercises spawn, owner camera, remote movement, interaction range and respawn. Use the same runner with contestLifecycle for stale requests and pickup/reconnect races, bridgeDisconnect for carry recovery, riverRecovery for dock and raft recovery, castleReconnect for slot restoration, and castleUnderground for normal castle passage, the seal and pickup. Use foundationImpaired for the Unity Transport delay/jitter/loss fixture. Tests may use an initial station placement and expect real Relay. Use a run name that identifies the active validation or issue. Keep failure evidence while investigating. After a passing run, preview eligible raw logs with `Tools/ProjectAudit/clean-development.ps1 -CompletedRun <name>` and add `-Apply` to remove them. The script retains pass files, exit status and result summaries. Diagnostic commands are available via Get-Help and the script parameter list.
 
+Use `-Case bridge` to verify all 13 timber deliveries, the outbound crossing, collapse and Lower dock recovery, and both players' Return crossings. Use `-Case bridgeContact` to verify collapse from the edge of an adjacent plank and complete Return from the Canyon landing in the same run. The fixture steers along the deck through the owner's camera-relative input. Repeat with distinct run names to cover different server-selected hazards and check both peers' Return pass files and exit codes.
+
 The mountain and finish fixtures need route data from the same saved scene. In the same PowerShell session, generate it and run the isolated finish, or select full to replay the complete match.
 
 ```powershell
@@ -120,7 +122,13 @@ Invoke-UnityCheck TwinEdge.Gameplay.Editor.MountainReturnValidation.Run ReturnPl
 
 The finish fixture exercises normal bridge installation, then provides a test gem. It uses production pickup, return traversal and finish eligibility. The full replay starts from normal spawn and uses production inputs, character controllers and RPCs through the joint seal, first pickup, return and finish. It can take more than 42 minutes. Keep Windows awake for the entire run. System sleep interrupts the live Relay connection and can expire replay deadlines. Both peers must exit successfully and produce their pass files. For finish and full, both peers must also report the same winner and stopped timer. Add -Screenshots to render supporting evidence. Generated route plans and run data are local-only under Docs/Development/Gameplay/V1/.
 
-For scene checks use the saved Foundation, Cooperative Pole, River, Castle, Underground and World Materials validators under **Tools > Twin Edge > Gameplay**. Review the mountain load-bearing collider route with **Tools > Twin Edge > V3 Mountain > Analyze Pole Reachability** and the Level Visualization window. The reachability graph proposes the primary branch. Generate the western branch with `TwinEdge.Levels.Editor.MountainPoleContinuousPlan.VerifyAlternative` and run `-Case mountain -PolePlan Docs/Development/Gameplay/V1/MountainPole/AlternativeContinuousPlan.json` to exercise that branch over Relay.
+After generating the route data, use `-Case castleWalk` for the castle gate, puzzle rooms, keypads and basement threshold. This fixture starts outside the gate and sets the host and client cameras to different headings. Use `-Case castle` to continue through the actual seal, gem pickup and castle exit. Use `-Case canyon` for the approach to the lower dock and the return to the bridge. A stalled castle waypoint records its target, camera axes, stick, controller velocity and collision evidence.
+
+Use `-Case mountainFromSpawn -PolePlan <plan> -Screenshots` for an isolated Windows Relay run from the ordinary spawns through the mountain checkpoint. To prepare a named plan from the saved graph, set `TWIN_EDGE_POLE_ROUTE_FILE` to a local text file with a plan name followed by its ordered summit IDs on each line. Use `Start` and `Final` as the first and last IDs. Run `TwinEdge.Levels.Editor.MountainPoleContinuousPlan.VerifyNamedRoutes` and pass the resulting `<name>Plan.json` from the mountain evidence directory to the runner.
+
+For scene checks use the saved Foundation, Cooperative Pole, River, Castle, Underground and World Materials validators under **Tools > Twin Edge > Gameplay**. Inspect candidate mountain connections with **Tools > Twin Edge > V3 Mountain > Analyze Pole Reachability** and the Level Visualization window. After `MountainPoleTuning.VerifyCurrent` rebuilds the saved graph, run `TwinEdge.Levels.Editor.MountainPoleContinuousPlan.VerifyRepresentativeRoutes` to generate `ContinuousPlan.json`, `AlternativeContinuousPlan.json` and `EasternContinuousPlan.json`. These plans cover different starts, intermediate shelves and entries to Big summit. Replay them against a Development Player built from the same saved level.
+
+Use **Tools > Twin Edge > V3 World > Refresh Environmental Geology** to rebuild the saved visual geology and apply the V3 fortress materials. Use `TwinEdge.Levels.Editor.LatestMapScreenshots.CaptureWorkingMap` to review an uncommitted scene under `Docs/Development/Level/V3/WorldWorking/`.
 
 ## 산악 단독 편집기 실험
 

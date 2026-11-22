@@ -17,6 +17,15 @@ Shader "Twin Edge/V3 World Surface"
         [Toggle(_OCCLUSIONMAP)] _UseOcclusion("Use occlusion map", Float) = 0
         [Toggle(_EMISSION)] _UseEmission("Use emission map", Float) = 0
         [Toggle(_RIVER_FLOW)] _RiverFlow("Use river ribbon UVs", Float) = 0
+        [Toggle(_MOUNTAIN_LAYERS)] _MountainLayers("Blend mountain rock layers", Float) = 0
+        _TopMap("Mountain top", 2D) = "white" {}
+        [NoScaleOffset] _TopNormal("Mountain top normal", 2D) = "bump" {}
+        _TopTint("Mountain top tint", Color) = (1,1,1,1)
+        _TopNormalScale("Mountain top normal strength", Float) = 1
+        _BottomMap("Mountain bottom", 2D) = "white" {}
+        [NoScaleOffset] _BottomNormal("Mountain bottom normal", 2D) = "bump" {}
+        _BottomTint("Mountain bottom tint", Color) = (1,1,1,1)
+        _BottomNormalScale("Mountain bottom normal strength", Float) = 1
     }
 
     SubShader
@@ -39,6 +48,13 @@ Shader "Twin Edge/V3 World Surface"
             float _UseOcclusion;
             float _UseEmission;
             float _RiverFlow;
+            float _MountainLayers;
+            float4 _TopMap_ST;
+            float4 _BottomMap_ST;
+            half4 _TopTint;
+            half4 _BottomTint;
+            half _TopNormalScale;
+            half _BottomNormalScale;
         CBUFFER_END
         ENDHLSL
 
@@ -61,12 +77,18 @@ Shader "Twin Edge/V3 World Surface"
             #pragma shader_feature_local_fragment _OCCLUSIONMAP
             #pragma shader_feature_local_fragment _EMISSION
             #pragma shader_feature_local _RIVER_FLOW
+            #pragma shader_feature_local_fragment _MOUNTAIN_LAYERS
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
 
             TEXTURE2D(_BaseMap); SAMPLER(sampler_BaseMap);
             TEXTURE2D(_BumpMap); SAMPLER(sampler_BumpMap);
             TEXTURE2D(_OcclusionMap); SAMPLER(sampler_OcclusionMap);
             TEXTURE2D(_EmissionMap); SAMPLER(sampler_EmissionMap);
+            #if defined(_MOUNTAIN_LAYERS)
+            TEXTURE2D(_TopMap); SAMPLER(sampler_TopMap);
+            TEXTURE2D(_BottomMap); SAMPLER(sampler_BottomMap);
+            TEXTURE2D(_TopNormal); TEXTURE2D(_BottomNormal);
+            #endif
 
             struct Attributes
             {
@@ -144,6 +166,36 @@ Shader "Twin Edge/V3 World Surface"
                 return SampleSurface(TRANSFORM_TEX(uv, _BaseMap), tangent, bitangent);
             }
 
+            #if defined(_MOUNTAIN_LAYERS)
+            SurfaceSample ProjectMountain(float3 p, float3 tangent, float3 bitangent, half2 coverage)
+            {
+                float2 uv = float2(dot(p, tangent), dot(p, bitangent));
+                float2 dx = ddx(uv), dy = ddy(uv);
+                SurfaceSample result = SampleSurface(TRANSFORM_TEX(uv, _BaseMap), tangent, bitangent);
+                result.color *= _BaseColor.rgb;
+                if (coverage.x > .002)
+                {
+                    float2 topUV = TRANSFORM_TEX(uv, _TopMap);
+                    half3 color = SAMPLE_TEXTURE2D_GRAD(_TopMap, sampler_TopMap, topUV, dx*_TopMap_ST.xy, dy*_TopMap_ST.xy).rgb * _TopTint.rgb;
+                    half2 normal = UnpackNormalScale(SAMPLE_TEXTURE2D_GRAD(_TopNormal, sampler_TopMap, topUV,
+                        dx*_TopMap_ST.xy, dy*_TopMap_ST.xy), _TopNormalScale).xy;
+                    result.color = lerp(result.color, color, coverage.x);
+                    result.normalOffset = lerp(result.normalOffset, normal.x * tangent + normal.y * bitangent, coverage.x);
+                }
+                if (coverage.y > .002)
+                {
+                    float2 bottomUV = TRANSFORM_TEX(uv, _BottomMap);
+                    half3 color = SAMPLE_TEXTURE2D_GRAD(_BottomMap, sampler_BottomMap, bottomUV,
+                        dx*_BottomMap_ST.xy, dy*_BottomMap_ST.xy).rgb * _BottomTint.rgb;
+                    half2 normal = UnpackNormalScale(SAMPLE_TEXTURE2D_GRAD(_BottomNormal, sampler_BottomMap, bottomUV,
+                        dx*_BottomMap_ST.xy, dy*_BottomMap_ST.xy), _BottomNormalScale).xy;
+                    result.color = lerp(result.color, color, coverage.y);
+                    result.normalOffset = lerp(result.normalOffset, normal.x * tangent + normal.y * bitangent, coverage.y);
+                }
+                return result;
+            }
+            #endif
+
             half4 Frag(Varyings input) : SV_Target
             {
                 float3 p = input.positionWS;
@@ -161,10 +213,28 @@ Shader "Twin Edge/V3 World Surface"
             #elif defined(_TRIPLANAR)
                 half3 weights = pow(abs(normal), 4);
                 weights /= weights.x + weights.y + weights.z;
+            #if defined(_MOUNTAIN_LAYERS)
+                // Wind exposure and irregular deposits break up the snow line across both cliffs and shelves.
+                float drift = .47 * sin(dot(p, float3(.041, .019, .063))) +
+                    .31 * cos(dot(p, float3(.107, .071, -.03))) +
+                    .22 * sin(dot(p, float3(.149, -.11, -.13)));
+                float exposure = normal.y + dot(normal.xz, float2(.16, -.22));
+                half snow = smoothstep(.28, 1.3, exposure + drift*.65 + (p.y-135)*.004) * .83;
+                half scree = 1 - smoothstep(28, 108, p.y + drift*19 - (1-normal.y)*9);
+                half2 layers = half2(snow, scree);
+                SurfaceSample x = ProjectMountain(p, float3(0, 0, normal.x < 0 ? 1 : -1), float3(0, 1, 0), layers);
+                SurfaceSample y = ProjectMountain(p, float3(1, 0, 0), float3(0, 0, normal.y < 0 ? 1 : -1), layers);
+                SurfaceSample z = ProjectMountain(p, float3(normal.z < 0 ? -1 : 1, 0, 0), float3(0, 1, 0), layers);
+            #else
                 SurfaceSample x = Project(p, float3(0, 0, normal.x < 0 ? 1 : -1), float3(0, 1, 0));
                 SurfaceSample y = Project(p, float3(1, 0, 0), float3(0, 0, normal.y < 0 ? 1 : -1));
                 SurfaceSample z = Project(p, float3(normal.z < 0 ? -1 : 1, 0, 0), float3(0, 1, 0));
+            #endif
                 surface.color = x.color * weights.x + y.color * weights.y + z.color * weights.z;
+            #if defined(_MOUNTAIN_LAYERS)
+                half sediment = (1-smoothstep(55,134,p.y+drift*16))*smoothstep(.5,.9,normal.y);
+                surface.color *= lerp(half3(1,1,1),half3(1.14,1.07,.94),sediment);
+            #endif
                 surface.normalOffset = x.normalOffset * weights.x + y.normalOffset * weights.y + z.normalOffset * weights.z;
                 surface.occlusion = dot(half3(x.occlusion, y.occlusion, z.occlusion), weights);
                 surface.emission = 0;
@@ -192,7 +262,10 @@ Shader "Twin Edge/V3 World Surface"
                 lighting.bakedGI = SampleSH(lighting.normalWS);
                 lighting.vertexLighting = input.fogAndVertexLight.yzw;
                 lighting.normalizedScreenSpaceUV = GetNormalizedScreenSpaceUV(input.positionCS);
-                half4 color = UniversalFragmentPBR(lighting, surface.color * _BaseColor.rgb,
+            #if !defined(_MOUNTAIN_LAYERS)
+                surface.color *= _BaseColor.rgb;
+            #endif
+                half4 color = UniversalFragmentPBR(lighting, surface.color,
                     0, 0, _Smoothness, lerp(1, surface.occlusion, _OcclusionStrength),
                     surface.emission * _EmissionColor.rgb, 1);
                 color.rgb = MixFog(color.rgb, input.fogAndVertexLight.x);

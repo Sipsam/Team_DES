@@ -71,7 +71,8 @@ namespace TwinEdge.Levels.Editor
 
         public static MountainPeakV3 WorldPeak(MountainConfigV3 c, MountainPeakV3 p) => new MountainPeakV3 {
             landingTerrace=p.landingTerrace, landingApproachWidth=p.landingApproachWidth, landingApproachDirection=p.landingApproachDirection, shape=p.shape, asymmetry=p.asymmetry, id=p.id, position=c.clusterCenter+Vector2.Scale(p.position,c.clusterSize), height=p.height,
-            summitSize=p.summitSize, rotation=p.rotation, silhouette=p.silhouette, shoulderWidth=p.shoulderWidth };
+            summitSize=p.summitSize, rotation=p.rotation, silhouette=p.silhouette, shoulderWidth=p.shoulderWidth,
+            crestOffset=p.crestOffset, crestRise=p.crestRise };
 
         static float RockHeight(MountainPeakV3 p, float x, float z, float floor)
         {
@@ -84,12 +85,41 @@ namespace TwinEdge.Levels.Editor
             int family=p.shape==MountainShapeV3.Automatic?(hash & 0x7fffffff)%6:(int)p.shape-1;
             float U=u/rx,V=v/rz;
             if (p.landingTerrace) {
-                // Authored real-rock landing core with continuous sloping sides, not an overlay platform.
-                // Two metres of real rock beyond the permitted ellipse prevent coarse-grid edge triangles
-                // from intruding into the usable capsule support area.
-                float ellipse = Mathf.Sqrt(u*u/((rx+2)*(rx+2))+v*v/((rz+2)*(rz+2)));
-                float outside = Mathf.Max(0,ellipse-1)*Mathf.Min(rx,rz);
-                return Mathf.Max(floor,p.height-outside*.65f-Mathf.Max(0,outside-p.shoulderWidth)*1.35f);
+                // The guaranteed rock core covers the landing ellipse and the surrounding mesh cells.
+                // Directional lobes grow outward from it, independently of the permitted landing area.
+                const float rimMargin = 2.15f;
+                float ellipse = Mathf.Sqrt(u*u/((rx+rimMargin)*(rx+rimMargin))+v*v/((rz+rimMargin)*(rz+rimMargin)));
+                float distanceFromCore = (ellipse-1)*Mathf.Min(rx,rz);
+                float phase = family * 1.19f + p.rotation * Mathf.Deg2Rad;
+                float ribs = .56f * Mathf.Sin(2*angle + phase) + .30f * Mathf.Cos(3*angle - phase)
+                    + .14f * Mathf.Sin(5*angle + phase);
+                float outside = Mathf.Max(0, distanceFromCore);
+                float lip = ribs * p.silhouette * Mathf.Min(outside, 14);
+                float terracePitch = Mathf.Lerp(2.3f, 3.8f, .5f+.5f*ribs*p.asymmetry);
+                float terraceCliff = p.height - outside*1.94f -
+                    Mathf.Max(0,outside-lip-p.shoulderWidth)*(terracePitch-1.94f);
+
+                float spurAngle = angle-phase-.27f*Mathf.Sin(angle*3+phase);
+                float spur = Mathf.Pow(Mathf.Clamp01(.5f+.5f*Mathf.Cos(spurAngle)), 3+family*.43f);
+                float spurShoulder = p.height-Mathf.Lerp(48,12,spur) -
+                    Mathf.Max(0,distanceFromCore-6-p.shoulderWidth)*Mathf.Lerp(2.5f,1.12f,spur*p.asymmetry);
+                float footRoughness = 7*Mathf.PerlinNoise(x*.046f+phase,z*.033f) +
+                    4*Mathf.PerlinNoise(x*.137f,z*.101f+phase)-5;
+                float talus = p.height - 57 - Mathf.Max(0, distanceFromCore-ribs*15) * 1.5f + footRoughness;
+                float shelf = Mathf.Max(floor, Mathf.Max(terraceCliff,Mathf.Max(spurShoulder,talus)));
+                if (p.crestRise <= 0 || distanceFromCore < 0) return shelf;
+
+                var axis = p.crestOffset.normalized;
+                var crestDelta = d-p.crestOffset;
+                float longitudinal = Vector2.Dot(crestDelta,axis)*.82f;
+                float transverse = (crestDelta.x*axis.y-crestDelta.y*axis.x)*1.44f;
+                float crestDistance = Mathf.Sqrt(longitudinal*longitudinal+transverse*transverse);
+                float rockCrest = p.height+p.crestRise-crestDistance*2.05f;
+                float fractures = 4*Mathf.PerlinNoise(x*.067f+phase,z*.108f);
+                rockCrest -= fractures*Mathf.SmoothStep(0,1,Mathf.InverseLerp(2,9,crestDistance));
+                float join = Mathf.SmoothStep(0,1,Mathf.InverseLerp(0,5,distanceFromCore)) *
+                    Mathf.SmoothStep(0,1,Mathf.InverseLerp(p.height-48,p.height-28,rockCrest));
+                return Mathf.Lerp(shelf,Mathf.Max(shelf,rockCrest),join);
             }
             // Large-scale directional footprints; no angular cliff/crest height discontinuity.
             float q;
@@ -102,6 +132,11 @@ namespace TwinEdge.Levels.Editor
                 default:q=Mathf.Max(Mathf.Abs(U)*.85f+Mathf.Abs(V)*.45f,Mathf.Abs(V)*.9f);break;
             }
             q/=1+p.silhouette*(.65f*Mathf.Sin(angle*3+1.2f)+.35f*Mathf.Cos(angle*5+.8f));
+            if (p.id == "Start")
+            {
+                float north = Mathf.SmoothStep(0, 1, Mathf.InverseLerp(0, 27, d.y));
+                q = Mathf.Lerp(q, Mathf.Sqrt(U*U+V*V), north);
+            }
             if(p.landingApproachWidth>0) {
                 var direction=p.landingApproachDirection.normalized;
                 float lateral=Mathf.Abs(d.x*direction.y-d.y*direction.x);
@@ -128,7 +163,8 @@ namespace TwinEdge.Levels.Editor
             if(q<=1)return top;
             float shoulder=Mathf.Max(1,p.shoulderWidth);
             float pitch=family==2?Mathf.Lerp(1.6f,4.2f,(Mathf.Sin(angle)+1)*.5f):family==1?2.3f:family==4?2.8f:2.0f;
-            float drop=distance*.65f+Mathf.Max(0,distance-shoulder)*(pitch-.65f);
+            float lipPitch = p.id is "Start" or "Final" ? 2.25f : .65f;
+            float drop=distance*lipPitch+Mathf.Max(0,distance-shoulder)*Mathf.Max(0,pitch-lipPitch);
             // Fade perimeter crest continuously into the shoulder; flared geological foot below.
             float cliff=p.height+crest*Mathf.Exp(-distance/shoulder)-drop;
             float scree=floor+Mathf.Max(0,(p.height-floor)*.52f-distance*.7f);
@@ -161,6 +197,8 @@ namespace TwinEdge.Levels.Editor
             foreach (var p in peaks.Concat(c.boundary))
                 if (p == null || p.summitSize.x < 12 || p.summitSize.y < 12 || p.shoulderWidth < 0 || p.height < 80 || p.height > 400 || !float.IsFinite(p.position.x) || !float.IsFinite(p.position.y))
                     throw new InvalidOperationException("Invalid peak data.");
+                else if (p.crestRise > 0 && (!p.landingTerrace || p.crestOffset.magnitude < Mathf.Max(p.summitSize.x,p.summitSize.y)*.5f+4))
+                    throw new InvalidOperationException("A shelf crest must begin outside its landing area: "+p.id);
             for (int i=0;i<peaks.Length;i++) for (int j=i+1;j<peaks.Length;j++)
             {
                 bool terracePair=peaks[i].landingTerrace || peaks[j].landingTerrace;
@@ -256,21 +294,46 @@ namespace TwinEdge.Levels.Editor
             var trail = config.entryTrail;
             if (trail.Length == 0) return;
             Marker(parent, "InitialSpawn", trail[1], MarkerKind.SectionEntrance);
+            AlignTrailSpawn(trail, parent.Find("InitialSpawn"));
             Marker(parent, "TrailEntrance", trail[^1], MarkerKind.SectionEntrance);
             Marker(parent, "ReturnFinish", trail[^2], MarkerKind.SectionExit);
+        }
+
+        internal static void AlignTrailSpawn(Vector3[] trail, Transform spawn)
+        {
+            Vector3 ahead = trail[2] - trail[1];
+            ahead.y = 0;
+            spawn.rotation = Quaternion.LookRotation(ahead, Vector3.up);
         }
 
         internal static float TrailHeight(MountainConfigV3 config, float x, float z, float rock)
         {
             var trail = config.entryTrail;
-            if (trail.Length == 0 || z < trail[0].z - 12 || z > trail[^1].z + 7) return rock;
-            var path = ValleyGeneratorV3.Sample(trail, z);
-            float offset = Mathf.Abs(x - path.x);
-            float width = Mathf.Lerp(6.6f, 8.4f, .5f + .5f * Mathf.Sin(z * .17f));
-            float edge = Mathf.SmoothStep(0, 1, Mathf.InverseLerp(width, width + 12, offset));
-            float ends = Mathf.SmoothStep(0, 1, Mathf.InverseLerp(trail[0].z - 12, trail[0].z, z)) *
-                (1 - Mathf.SmoothStep(0, 1, Mathf.InverseLerp(trail[^1].z, trail[^1].z + 7, z)));
-            return Mathf.Lerp(rock, path.y, (1 - edge) * ends);
+            if (trail.Length == 0 || z < trail[0].z - 67 || z > trail[^1].z + 8) return rock;
+            var path = SampleTrail(trail, z);
+            float lateral = x - path.x;
+            float offset = Mathf.Abs(lateral);
+            float toe = Mathf.SmoothStep(0, 1, Mathf.InverseLerp(trail[0].z - 67, trail[0].z, z));
+            float crest = Mathf.SmoothStep(0, 1, Mathf.InverseLerp(trail[^1].z, trail[^1].z + 8, z));
+            float ridgeSide = Mathf.Clamp01(.5f + lateral*.015f);
+            float spread = Mathf.Lerp(94, 57, ridgeSide) + 9 * Mathf.Sin(z*.026f);
+            float foothill = 1-Mathf.SmoothStep(0, 1, Mathf.InverseLerp(trail[1].z+14, trail[1].z+65, z));
+            float edge = 1 - Mathf.SmoothStep(0, 1, Mathf.InverseLerp(15+foothill*15, spread, offset));
+            float trailWidth = Mathf.Lerp(7.5f, 10, .5f+.5f*Mathf.Sin(z*.071f)) + foothill*14;
+            float shoulder = Mathf.SmoothStep(0, 1, Mathf.InverseLerp(trailWidth, 32+foothill*12, offset));
+            float relief = Mathf.Lerp(22, -19, ridgeSide) + 8*Mathf.Sin(x*.071f + z*.046f);
+            float grade = path.y + shoulder * relief;
+            return Mathf.Lerp(rock, grade, toe * (1-crest) * edge);
+        }
+
+        internal static Vector3 SampleTrail(Vector3[] trail, float z)
+        {
+            int segment = 0;
+            while (segment < trail.Length - 2 && z > trail[segment + 1].z) segment++;
+            var from = trail[segment];
+            var to = trail[segment + 1];
+            float t = Mathf.InverseLerp(from.z, to.z, z);
+            return new Vector3(Mathf.SmoothStep(from.x, to.x, t), Mathf.Lerp(from.y, to.y, t), z);
         }
 
         static void Marker(Transform parent,string id,Vector3 point,MarkerKind kind)
@@ -293,12 +356,7 @@ namespace TwinEdge.Levels.Editor
             var g = new GameObject("Mountain_ConnectedGeology");
             g.transform.SetParent(parent, false);
             g.AddComponent<MeshFilter>().sharedMesh = mesh;
-            g.AddComponent<MeshRenderer>().sharedMaterials = new[]
-            {
-                V3WorldMaterials.Top,
-                V3WorldMaterials.Middle,
-                V3WorldMaterials.Bottom
-            };
+            g.AddComponent<MeshRenderer>().sharedMaterial = V3WorldMaterials.MountainBlend();
             g.AddComponent<MeshCollider>().sharedMesh = mesh;
             EditorUtility.SetDirty(mesh);
         }
@@ -311,6 +369,19 @@ namespace TwinEdge.Levels.Editor
             var inside=new bool[nx*nz];
             var ranges=c.boundary.Select((p,i)=>RangePeak(c,p,i)).ToArray();
             var terraces=peaks.Where(p=>p.landingTerrace).ToArray();
+            var cuts = c.poleCanyons.Select(cut =>
+            {
+                var from = peaks.First(p => p.id == cut.from);
+                var to = peaks.First(p => p.id == cut.to);
+                var axis = (to.position-from.position).normalized;
+                float ra = SupportRadius(from,axis,true)+(from.landingTerrace?2:0);
+                float rb = SupportRadius(to,-axis,true)+(to.landingTerrace?2:0);
+                var middle = (from.position+axis*ra+to.position-axis*rb)*.5f;
+                var island = peaks.FirstOrDefault(p => p.id == cut.island);
+                var neighbours = terraces.Where(p => p != from && p != to &&
+                    Vector2.Distance(p.position, middle) < cut.span*.5f + p.summitSize.magnitude*.5f).ToArray();
+                return (cut, from, to, axis, middle, island, neighbours);
+            }).ToArray();
             Func<float,float,float> height=(x,z)=> {
                 float floor=c.basinHeight+c.terrainHeightVariation*(Mathf.Sin(x*.028f+z*.012f)+Mathf.Cos(z*.039f-x*.009f))*.5f;
                 float y=floor;
@@ -323,19 +394,29 @@ namespace TwinEdge.Levels.Editor
                     if(distance<6) y=Mathf.Lerp(Mathf.Min(y,p.height),y,Mathf.SmoothStep(0,1,Mathf.InverseLerp(0,6,distance)));
                 }
                 // Real canyon cuts separate walkable endpoint shoulders while leaving summit ellipses intact.
-                foreach(var cut in c.poleCanyons) {
-                    var a=peaks.First(p=>p.id==cut.from);var b=peaks.First(p=>p.id==cut.to);
-                    Vector2 axis=(b.position-a.position).normalized;
-                    float ra=SupportRadius(a,axis,true)+(a.landingTerrace?2:0),rb=SupportRadius(b,-axis,true)+(b.landingTerrace?2:0);
-                    Vector2 middle=(a.position+axis*ra+b.position-axis*rb)*.5f;
-                    Vector2 delta=new Vector2(x,z)-middle;
-                    bool inside;
-                    if(!string.IsNullOrEmpty(cut.island)) {
-                        var island=peaks.First(p=>p.id==cut.island);
+                var position = new Vector2(x,z);
+                foreach(var (cut, from, to, axis, middle, island, neighbours) in cuts) {
+                    Vector2 delta=position-middle;
+                    if(island!=null) {
                         float ring=Mathf.Max(island.summitSize.x,island.summitSize.y)*.5f+7;
-                        inside=Mathf.Abs(Vector2.Distance(new Vector2(x,z),island.position)-ring)<cut.width*.5f;
-                    } else inside=Mathf.Abs(Vector2.Dot(delta,axis))<cut.width*.5f && Mathf.Abs(delta.x*axis.y-delta.y*axis.x)<cut.span*.5f;
-                    if(inside)y=Mathf.Min(y,Mathf.Min(a.height,b.height)-cut.depth);
+                        if(Mathf.Abs(Vector2.Distance(position,island.position)-ring)<cut.width*.5f)
+                            y=Mathf.Min(y,Mathf.Min(from.height,to.height)-cut.depth);
+                    } else {
+                        float across = Mathf.Abs(Vector2.Dot(delta,axis));
+                        float along = Mathf.Abs(delta.x*axis.y-delta.y*axis.x);
+                        if (across >= cut.width*.5f || along >= cut.span*.5f) continue;
+                        float wall = 1-Mathf.SmoothStep(0,1,Mathf.InverseLerp(cut.width*.24f,cut.width*.5f,across));
+                        float ends = 1-Mathf.SmoothStep(0,1,Mathf.InverseLerp(cut.span*.34f,cut.span*.5f,along));
+                        float bed = Mathf.Min(from.height,to.height)-cut.depth + 3*Mathf.Sin(x*.13f+z*.087f);
+                        float clearance = 1;
+                        foreach (var neighbour in neighbours)
+                        {
+                            var offset = position-neighbour.position;
+                            float radius = SupportRadius(neighbour,offset,true)+2.5f;
+                            clearance = Mathf.Min(clearance, Mathf.SmoothStep(0,1,Mathf.InverseLerp(radius,radius+4,offset.magnitude)));
+                        }
+                        y = Mathf.Lerp(y, Mathf.Min(y,bed), wall*ends*clearance);
+                    }
                 }
                 // Carve a short socket through the destination crest, so the exit stub is exposed.
                 // This stops at the stub: it never connects across the next section.
@@ -350,7 +431,7 @@ namespace TwinEdge.Levels.Editor
                 float edge=1+.09f*Mathf.Sin(5*a)+.045f*Mathf.Cos(9*a);
                 float radius=Mathf.Sqrt(x*x/(460*460)+(z-30)*(z-30)/(540*540))/edge;
                 inside[j*nx+i]=radius<=1;
-                float y=height(x,z);
+                float y=inside[j*nx+i]?height(x,z):c.basinHeight;
                 if(radius>1-c.boundaryTaper)y=Mathf.Lerp(y,c.basinHeight-25,Mathf.SmoothStep(0,1,Mathf.InverseLerp(1-c.boundaryTaper,1,radius)));
                 vertices.Add(new Vector3(x,TrailHeight(c,x,z,y),z));
             }
@@ -359,18 +440,24 @@ namespace TwinEdge.Levels.Editor
                 if(inside[a]&&inside[d]&&inside[b])triangles.AddRange(new[]{a,d,b});
                 if(inside[b]&&inside[d]&&inside[e])triangles.AddRange(new[]{b,d,e});
             }
-            var flat=triangles.Select(i=>vertices[i]).ToArray();
-            var mesh=new Mesh {name="Mountain_ConnectedGeology",indexFormat=IndexFormat.UInt32};
-            mesh.vertices=flat;mesh.triangles=Enumerable.Range(0,flat.Length).ToArray();mesh.RecalculateNormals();mesh.RecalculateBounds();
-            // URP Lit does not consume vertex colors: slope-based submeshes preserve readable terrain colors.
-            var tops=new List<int>();var walls=new List<int>();var low=new List<int>();
-            for(int i=0;i<flat.Length;i+=3) {
-                var n=Vector3.Cross(flat[i+1]-flat[i],flat[i+2]-flat[i]).normalized;
-                float y=(flat[i].y+flat[i+1].y+flat[i+2].y)/3;
-                var list=y<80?low:n.y>.94f && y>110?tops:walls;
-                list.AddRange(new[]{i,i+1,i+2});
+            var remap = new int[vertices.Count];
+            Array.Fill(remap, -1);
+            var surface = new List<Vector3>();
+            for (int i = 0; i < triangles.Count; i++)
+            {
+                int index = triangles[i];
+                if (remap[index] == -1)
+                {
+                    remap[index] = surface.Count;
+                    surface.Add(vertices[index]);
+                }
+                triangles[i] = remap[index];
             }
-            mesh.subMeshCount=3;mesh.SetTriangles(tops,0);mesh.SetTriangles(walls,1);mesh.SetTriangles(low,2);
+            var mesh=new Mesh {name="Mountain_ConnectedGeology",indexFormat=IndexFormat.UInt32};
+            mesh.SetVertices(surface);
+            mesh.SetTriangles(triangles, 0);
+            mesh.RecalculateNormals();
+            mesh.RecalculateBounds();
             return mesh;
         }
     }

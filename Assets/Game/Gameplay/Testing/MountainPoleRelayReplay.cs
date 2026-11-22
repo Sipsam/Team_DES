@@ -76,6 +76,7 @@ namespace TwinEdge.Gameplay {
    var grip=host?pole.Snapshot.a:pole.Snapshot.b;
    yield return match.Walk(grip,.09f,false);
    yield return match.Barrier("pole-grips-in-reach");
+   match.Capture("mountain-first-grip");
    if(!host)yield return Until(()=>pole.Snapshot.phase==PolePhase.OneAttached,"Host grip",30);
    yield return match.Tap(UnityEngine.InputSystem.Key.E);
    yield return Until(()=>pole.Snapshot.Paired,"Both grips from normal spawn",15);
@@ -132,8 +133,22 @@ namespace TwinEdge.Gameplay {
      yield return null;
     }
     steering=Vector2.zero;if(fullMatch!=null)fullMatch.SteerPole(Vector2.zero);File.AppendAllText(output+"/"+prefix+"-states.jsonl",i+" "+JsonUtility.ToJson(pole.Snapshot)+"\n");Check(done,"Action "+i+" "+action.kind+" expected yaw="+action.yaw+" pitch="+action.pitch+" actual="+JsonUtility.ToJson(pole.Snapshot));
-    if(action.kind=="Complete"){ScreenCapture.CaptureScreenshot(output+"/"+prefix+"-both-final.png");PoleRuntimeCapture.Save(pole,output+"/"+prefix+"-pole-both-final.png");}
-    if(action.kind=="Swap"){swaps++;ScreenCapture.CaptureScreenshot(output+"/"+prefix+"-landing-"+swaps+".png");PoleRuntimeCapture.Save(pole,output+"/"+prefix+"-pole-"+swaps+".png");}
+    if(action.kind=="Complete"){
+     if(fullMatch!=null)fullMatch.Capture("mountain-both-final");
+     else {
+      ScreenCapture.CaptureScreenshot(output+"/"+prefix+"-both-final.png");
+      PoleRuntimeCapture.Save(pole,output+"/"+prefix+"-pole-both-final.png");
+     }
+    }
+    if(action.kind=="Swap"){
+     swaps++;
+     if(fullMatch!=null){
+      if(swaps is 1 or 4 or 7)fullMatch.Capture("mountain-landing-"+swaps);
+     }else{
+      ScreenCapture.CaptureScreenshot(output+"/"+prefix+"-landing-"+swaps+".png");
+      PoleRuntimeCapture.Save(pole,output+"/"+prefix+"-pole-"+swaps+".png");
+     }
+    }
     File.WriteAllText(output+"/"+prefix+"-step-"+i+".txt",i.ToString());
     string other=host?"client":"host";yield return Until(()=>File.Exists(output+"/"+other+"-step-"+i+".txt"),"Peer step "+i,30);
    }

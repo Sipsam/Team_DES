@@ -157,6 +157,7 @@ namespace TwinEdge.Levels.Editor
             var all = scene.GetRootGameObjects().SelectMany(root => root.GetComponentsInChildren<Renderer>())
                 .Where(r => r.enabled && r.gameObject.activeInHierarchy).ToArray();
             bool IsRange(Renderer renderer) => renderer.transform.root.name == "V3 Distant Terrain";
+            var gorge = all.SingleOrDefault(renderer => renderer.name == "BridgeGorge");
             bool InsideCave(Renderer renderer)
             {
                 var section = renderer.GetComponentInParent<FortressSectionV3>();
@@ -215,7 +216,14 @@ namespace TwinEdge.Levels.Editor
                     {
                         camera.orthographic = top;
                         camera.transform.rotation = LevelViewCamera.Rotation(top ? LevelViewMode.Top : LevelViewMode.Perspective, false);
-                        float distance = Frame(camera, box);
+                        Vector3 center = box.center;
+                        float distance;
+                        if (region == "Mountain" && !top)
+                        {
+                            camera.transform.rotation = Quaternion.Euler(38, -26, 0);
+                            distance = FrameMountain(camera, contents, out center);
+                        }
+                        else distance = Frame(camera, box);
                         if (top)
                         {
                             // A narrow target such as water can sit below adjacent canyon walls.
@@ -223,8 +231,16 @@ namespace TwinEdge.Levels.Editor
                                 .Max(renderer => renderer.bounds.max.y);
                             distance = Mathf.Max(distance, ceiling - box.center.y + 5);
                         }
-                        camera.transform.position = box.center - camera.transform.forward * distance;
+                        camera.transform.position = center - camera.transform.forward * distance;
                         camera.farClipPlane = distance + box.extents.magnitude * 1.25f + 10;
+                        if (region == "Bridge" && gorge)
+                        {
+                            var depth = gorge.bounds;
+                            float back = Vector3.Dot(depth.center - camera.transform.position, camera.transform.forward);
+                            var forward = camera.transform.forward;
+                            var axis = new Vector3(Mathf.Abs(forward.x), Mathf.Abs(forward.y), Mathf.Abs(forward.z));
+                            camera.farClipPlane = Mathf.Max(camera.farClipPlane, back + Vector3.Dot(axis, depth.extents) + 10);
+                        }
                         camera.Render();
                         RenderTexture.active = target;
                         image.ReadPixels(new Rect(0, 0, Width, Height), 0, 0);
@@ -385,6 +401,33 @@ namespace TwinEdge.Levels.Editor
                         distance = Mathf.Max(distance, (camera.orthographic ? 0 : extent / tan) - point.z);
                     }
             camera.orthographicSize = size;
+            return distance + 2;
+        }
+
+        static float FrameMountain(Camera camera, Renderer[] renderers, out Vector3 center)
+        {
+            Quaternion rotation = camera.transform.rotation;
+            Quaternion inverse = Quaternion.Inverse(rotation);
+            var projected = new List<Vector3>();
+            foreach (var renderer in renderers)
+            {
+                if (!renderer.TryGetComponent<MeshFilter>(out var filter) || !filter.sharedMesh) continue;
+                var world = filter.transform.localToWorldMatrix;
+                foreach (var vertex in filter.sharedMesh.vertices)
+                    projected.Add(inverse * world.MultiplyPoint3x4(vertex));
+            }
+            if (projected.Count == 0) throw new InvalidOperationException("Mountain capture requires readable terrain.");
+            var box = new Bounds(projected[0], Vector3.zero);
+            foreach (var point in projected) box.Encapsulate(point);
+            center = rotation * box.center;
+            float tan = Mathf.Tan(camera.fieldOfView * .5f * Mathf.Deg2Rad);
+            float distance = 0;
+            foreach (var point in projected)
+            {
+                var offset = point - box.center;
+                float extent = Mathf.Max(Mathf.Abs(offset.y), Mathf.Abs(offset.x) / camera.aspect);
+                distance = Mathf.Max(distance, extent * 1.09f / tan - offset.z);
+            }
             return distance + 2;
         }
     }

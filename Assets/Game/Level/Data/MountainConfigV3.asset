@@ -14,13 +14,13 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::TwinEdge.Levels.MountainConfigV3
   clusterSize: {x: 390, y: 340}
   clusterCenter: {x: 0, y: 30}
-  seed: 31116
+  seed: 31179
   outerRangeSetback: 65
   outerRangeHeightScale: 0.62
   boundaryTaper: 0.3
   samplingJitter: 0.06
   smallPeakCount: 27
-  minimumGap: 12
+  minimumGap: 8
   terrainHeightVariation: 9
   basinHeight: -65
   meshSpacing: 3
@@ -37,8 +37,8 @@ MonoBehaviour:
   destination:
     shape: 0
     asymmetry: 0.45
-    landingApproachWidth: 14
-    landingApproachDirection: {x: -0.534, y: -0.845}
+    landingApproachWidth: 58
+    landingApproachDirection: {x: 0, y: -1}
     id: Final
     position: {x: 12, y: 285}
     height: 190
@@ -47,258 +47,300 @@ MonoBehaviour:
     silhouette: 0.16
     shoulderWidth: 15
   smallPeaks:
-  - shape: 0
-    asymmetry: 0.45
+  - shape: 2
+    asymmetry: 0.480
+    landingTerrace: 1
+    crestOffset: {x: -30.9, y: -8.2}
+    crestRise: 12
     id: Peak_01
-    position: {x: -0.43556145, y: -0.32220787}
-    height: 137
-    summitSize: {x: 18, y: 24}
-    rotation: 137
-    silhouette: 0.1893521
-    shoulderWidth: 6
-  - shape: 0
-    asymmetry: 0.45
+    position: {x: -0.110256410, y: -0.541176471}
+    height: 134.5
+    summitSize: {x: 38, y: 37}
+    rotation: 96
+    silhouette: 0.195
+    shoulderWidth: 3
+  - shape: 4
+    asymmetry: 0.724
+    landingTerrace: 1
     id: Peak_02
-    position: {x: -0.27415916, y: -0.4933274}
-    height: 135
-    summitSize: {x: 19, y: 21}
-    rotation: 131
-    silhouette: 0.14294152
-    shoulderWidth: 5
-  - shape: 0
-    asymmetry: 0.45
+    position: {x: 0.017948718, y: -0.497058824}
+    height: 139.0
+    summitSize: {x: 35, y: 41}
+    rotation: 129
+    silhouette: 0.171
+    shoulderWidth: 3
+  - shape: 5
+    asymmetry: 0.682
+    landingTerrace: 1
+    crestOffset: {x: 21.6, y: -26.3}
+    crestRise: 10
     id: Peak_03
-    position: {x: -0.023813187, y: -0.384862102}
-    height: 140
-    summitSize: {x: 38, y: 38}
-    rotation: 134
-    silhouette: 0.02
-    shoulderWidth: 1
-    landingTerrace: 1
-  - shape: 0
-    asymmetry: 0.45
-    id: Peak_04
-    position: {x: 0.061538462, y: -0.529411765}
-    height: 134
-    summitSize: {x: 38, y: 38}
-    rotation: 117
-    silhouette: 0.02
-    shoulderWidth: 1
-    landingTerrace: 1
-  - shape: 0
-    asymmetry: 0.45
-    id: Peak_05
-    position: {x: 0.21917386, y: -0.4798088}
-    height: 119.6611
-    summitSize: {x: 19, y: 27}
-    rotation: 161
-    silhouette: 0.10245573
-    shoulderWidth: 6
-  - shape: 0
-    asymmetry: 0.45
-    id: Peak_06
-    position: {x: 0.35548925, y: -0.35661802}
-    height: 127
-    summitSize: {x: 21, y: 21}
-    rotation: 141
-    silhouette: 0.19298825
-    shoulderWidth: 6
-  - shape: 0
-    asymmetry: 0.45
-    id: Peak_07
-    position: {x: -0.3739208, y: -0.1635433}
-    height: 145.25
-    summitSize: {x: 22, y: 22}
-    rotation: 117
-    silhouette: 0.17575516
-    shoulderWidth: 6
-  - shape: 0
-    asymmetry: 0.45
-    id: Peak_08
-    position: {x: -0.18862322, y: -0.29217792}
-    height: 128.59233
-    summitSize: {x: 23, y: 21}
-    rotation: 41
-    silhouette: 0.19291197
-    shoulderWidth: 6
-  - shape: 0
-    asymmetry: 0.45
-    id: Peak_09
-    position: {x: -0.1424445, y: -0.1460153}
-    height: 135.54967
-    summitSize: {x: 19, y: 18}
-    rotation: 6
-    silhouette: 0.19452395
-    shoulderWidth: 6
-  - shape: 0
-    asymmetry: 0.45
-    id: Peak_10
-    position: {x: 0.050769560, y: -0.223822800}
-    height: 146
-    summitSize: {x: 38, y: 38}
-    rotation: 48
-    silhouette: 0.02
-    shoulderWidth: 1
-    landingTerrace: 1
-  - shape: 0
-    asymmetry: 0.45
-    id: Peak_11
-    position: {x: 0.172103360, y: -0.204414324}
-    height: 132.76149
-    summitSize: {x: 20, y: 20}
-    rotation: 145
-    silhouette: 0.12980795
-    shoulderWidth: 4
-  - shape: 0
-    asymmetry: 0.45
-    id: Peak_12
-    position: {x: 0.5319203, y: -0.123569414}
-    height: 139.25
-    summitSize: {x: 23, y: 18}
-    rotation: 34
-    silhouette: 0.14699003
-    shoulderWidth: 6
-  - shape: 0
-    asymmetry: 0.45
-    id: Peak_13
-    position: {x: -0.43719697, y: 0.02444261}
-    height: 159.5
-    summitSize: {x: 22, y: 21}
-    rotation: 70
-    silhouette: 0.22172597
-    shoulderWidth: 6
-  - shape: 0
-    asymmetry: 0.45
-    id: Peak_14
-    position: {x: -0.30232927, y: 0.033429116}
-    height: 162.5
-    summitSize: {x: 18, y: 20}
-    rotation: 145
-    silhouette: 0.1081881
-    shoulderWidth: 6
-  - shape: 0
-    asymmetry: 0.45
-    id: Peak_15
-    position: {x: -0.099484006, y: 0.084591004}
-    height: 158
-    summitSize: {x: 38, y: 38}
-    rotation: 49
-    silhouette: 0.02
-    shoulderWidth: 1
-    landingTerrace: 1
-  - shape: 0
-    asymmetry: 0.45
-    id: Peak_16
-    position: {x: -0.023809224, y: -0.062781075}
-    height: 152
-    summitSize: {x: 38, y: 38}
-    rotation: 166
-    silhouette: 0.02
-    shoulderWidth: 1
-    landingTerrace: 1
-  - shape: 0
-    asymmetry: 0.45
-    id: Peak_17
-    position: {x: 0.22158748, y: -0.04932467}
-    height: 140.15215
-    summitSize: {x: 21, y: 23}
-    rotation: 53
-    silhouette: 0.10884207
-    shoulderWidth: 6
-  - shape: 0
-    asymmetry: 0.45
-    id: Peak_18
-    position: {x: 0.37766993, y: -0.043962587}
-    height: 150.5
-    summitSize: {x: 22, y: 27}
-    rotation: 15
-    silhouette: 0.22976992
-    shoulderWidth: 6
-  - shape: 0
-    asymmetry: 0.45
-    id: Peak_19
-    position: {x: -0.3491639, y: 0.2623143}
-    height: 163.75
-    summitSize: {x: 23, y: 23}
-    rotation: 75
-    silhouette: 0.11373602
-    shoulderWidth: 5
-  - shape: 0
-    asymmetry: 0.45
-    id: Peak_20
-    position: {x: -0.128205128, y: 0.255882353}
-    height: 164
-    summitSize: {x: 38, y: 38}
-    rotation: 133
-    silhouette: 0.02
-    shoulderWidth: 1
-    landingTerrace: 1
-  - shape: 0
-    asymmetry: 0.45
-    id: Peak_21
-    position: {x: -0.020512821, y: 0.388235294}
-    height: 172
-    summitSize: {x: 38, y: 38}
-    rotation: 87
-    silhouette: 0.02
-    shoulderWidth: 1
-    landingTerrace: 1
-  - shape: 0
-    asymmetry: 0.45
-    id: Peak_22
-    position: {x: 0.15790914, y: 0.15076953}
-    height: 160.75
-    summitSize: {x: 20, y: 18}
-    rotation: 14
-    silhouette: 0.104615405
-    shoulderWidth: 5
-  - shape: 0
-    asymmetry: 0.45
-    id: Peak_23
-    position: {x: 0.29874858, y: 0.2416147}
-    height: 159.75
-    summitSize: {x: 21, y: 22}
-    rotation: 1
-    silhouette: 0.12513992
-    shoulderWidth: 5
-  - shape: 0
-    asymmetry: 0.45
-    id: Peak_24
-    position: {x: 0.4166871, y: 0.17347702}
-    height: 156.75
-    summitSize: {x: 24, y: 20}
-    rotation: 166
-    silhouette: 0.11295008
-    shoulderWidth: 6
-  - shape: 0
-    asymmetry: 0.45
-    id: Peak_25
-    position: {x: -0.51313317, y: 0.39723673}
-    height: 180
-    summitSize: {x: 23, y: 27}
-    rotation: 48
-    silhouette: 0.21845527
-    shoulderWidth: 5
-  - shape: 0
-    asymmetry: 0.45
-    id: Peak_26
-    position: {x: -0.189743590, y: 0.420588235}
-    height: 172
-    summitSize: {x: 36, y: 38}
+    position: {x: 0.128205128, y: -0.573529412}
+    height: 136.1
+    summitSize: {x: 40, y: 37}
     rotation: 138
-    silhouette: 0.02
-    shoulderWidth: 1.5
+    silhouette: 0.251
+    shoulderWidth: 4
+  - shape: 3
+    asymmetry: 0.772
     landingTerrace: 1
-  - shape: 0
-    asymmetry: 0.45
-    id: Peak_27
-    position: {x: -0.079487179, y: 0.550000000}
-    height: 182
+    id: Peak_04
+    position: {x: -0.200000000, y: -0.408823529}
+    height: 141.3
     summitSize: {x: 38, y: 38}
-    rotation: 112
-    silhouette: 0.02
-    shoulderWidth: 1
+    rotation: 46
+    silhouette: 0.141
+    shoulderWidth: 2
+  - shape: 3
+    asymmetry: 0.583
     landingTerrace: 1
+    crestOffset: {x: 24.5, y: 20.6}
+    crestRise: 8
+    id: Peak_05
+    position: {x: -0.071794872, y: -0.370588235}
+    height: 143
+    summitSize: {x: 39, y: 36}
+    rotation: 14
+    silhouette: 0.281
+    shoulderWidth: 5
+  - shape: 3
+    asymmetry: 0.430
+    landingTerrace: 1
+    id: Peak_06
+    position: {x: 0.110256410, y: -0.405882353}
+    height: 145.6
+    summitSize: {x: 37, y: 37}
+    rotation: 147
+    silhouette: 0.178
+    shoulderWidth: 5
+  - shape: 2
+    asymmetry: 0.460
+    landingTerrace: 1
+    crestOffset: {x: -33.9, y: -2.0}
+    crestRise: 14
+    id: Peak_07
+    position: {x: -0.156410256, y: -0.247058824}
+    height: 148.1
+    summitSize: {x: 36, y: 40}
+    rotation: 115
+    silhouette: 0.267
+    shoulderWidth: 2
+  - shape: 3
+    asymmetry: 0.644
+    landingTerrace: 1
+    id: Peak_08
+    position: {x: -0.038461538, y: -0.205882353}
+    height: 149.0
+    summitSize: {x: 38, y: 37}
+    rotation: 136
+    silhouette: 0.272
+    shoulderWidth: 3
+  - shape: 6
+    asymmetry: 0.799
+    landingTerrace: 1
+    id: Peak_09
+    position: {x: 0.120512821, y: -0.255882353}
+    height: 151.1
+    summitSize: {x: 38, y: 39}
+    rotation: 156
+    silhouette: 0.213
+    shoulderWidth: 2
+  - shape: 6
+    asymmetry: 0.734
+    landingTerrace: 1
+    crestOffset: {x: 9.1, y: 32.8}
+    crestRise: 11
+    id: Peak_10
+    position: {x: -0.117948718, y: -0.079411765}
+    height: 155
+    summitSize: {x: 38, y: 37}
+    rotation: 157
+    silhouette: 0.287
+    shoulderWidth: 3
+  - shape: 6
+    asymmetry: 0.483
+    landingTerrace: 1
+    id: Peak_11
+    position: {x: 0.058974359, y: -0.105882353}
+    height: 154.4
+    summitSize: {x: 36, y: 38}
+    rotation: 47
+    silhouette: 0.223
+    shoulderWidth: 4
+  - shape: 2
+    asymmetry: 0.789
+    landingTerrace: 1
+    crestOffset: {x: 29.5, y: 12.5}
+    crestRise: 14
+    id: Peak_12
+    position: {x: 0.179487179, y: -0.126470588}
+    height: 154.3
+    summitSize: {x: 39, y: 36}
+    rotation: 164
+    silhouette: 0.153
+    shoulderWidth: 3
+  - shape: 1
+    asymmetry: 0.594
+    landingTerrace: 1
+    id: Peak_13
+    position: {x: -0.128205128, y: 0.091176471}
+    height: 163
+    summitSize: {x: 38, y: 37}
+    rotation: 163
+    silhouette: 0.268
+    shoulderWidth: 3
+  - shape: 3
+    asymmetry: 0.506
+    landingTerrace: 1
+    crestOffset: {x: -21.8, y: 29.9}
+    crestRise: 9
+    id: Peak_14
+    position: {x: -0.002564103, y: 0.041176471}
+    height: 161.0
+    summitSize: {x: 37, y: 41}
+    rotation: 58
+    silhouette: 0.158
+    shoulderWidth: 5
+  - shape: 4
+    asymmetry: 0.552
+    landingTerrace: 1
+    id: Peak_15
+    position: {x: 0.151282051, y: 0.035294118}
+    height: 161.9
+    summitSize: {x: 37, y: 38}
+    rotation: 53
+    silhouette: 0.249
+    shoulderWidth: 2
+  - shape: 6
+    asymmetry: 0.532
+    landingTerrace: 1
+    crestOffset: {x: -20.9, y: -24.2}
+    crestRise: 8
+    id: Peak_16
+    position: {x: -0.158974359, y: 0.229411765}
+    height: 167.4
+    summitSize: {x: 38, y: 39}
+    rotation: 149
+    silhouette: 0.160
+    shoulderWidth: 2
+  - shape: 1
+    asymmetry: 0.674
+    landingTerrace: 1
+    id: Peak_17
+    position: {x: -0.035897436, y: 0.211764706}
+    height: 168.8
+    summitSize: {x: 37, y: 37}
+    rotation: 48
+    silhouette: 0.169
+    shoulderWidth: 3
+  - shape: 5
+    asymmetry: 0.465
+    landingTerrace: 1
+    crestOffset: {x: 31.4, y: 6.4}
+    crestRise: 13
+    id: Peak_18
+    position: {x: 0.087179487, y: 0.182352941}
+    height: 166.8
+    summitSize: {x: 39, y: 36}
+    rotation: 141
+    silhouette: 0.196
+    shoulderWidth: 2
+  - shape: 6
+    asymmetry: 0.783
+    landingTerrace: 1
+    id: Peak_19
+    position: {x: -0.189743590, y: 0.391176471}
+    height: 173.9
+    summitSize: {x: 38, y: 38}
+    rotation: 65
+    silhouette: 0.177
+    shoulderWidth: 4
+  - shape: 3
+    asymmetry: 0.544
+    landingTerrace: 1
+    crestOffset: {x: 26.4, y: -21.5}
+    crestRise: 11
+    id: Peak_20
+    position: {x: -0.066666667, y: 0.355882353}
+    height: 173.5
+    summitSize: {x: 36, y: 39}
+    rotation: 120
+    silhouette: 0.179
+    shoulderWidth: 5
+  - shape: 2
+    asymmetry: 0.503
+    landingTerrace: 1
+    id: Peak_21
+    position: {x: 0.102564103, y: 0.355882353}
+    height: 174.7
+    summitSize: {x: 37, y: 38}
+    rotation: 117
+    silhouette: 0.253
+    shoulderWidth: 5
+  - shape: 4
+    asymmetry: 0.491
+    landingTerrace: 1
+    crestOffset: {x: 24.5, y: 20.6}
+    crestRise: 10
+    id: Peak_22
+    position: {x: -0.107692308, y: 0.529411765}
+    height: 179.7
+    summitSize: {x: 38, y: 38}
+    rotation: 126
+    silhouette: 0.247
+    shoulderWidth: 2
+  - shape: 6
+    asymmetry: 0.503
+    landingTerrace: 1
+    id: Peak_23
+    position: {x: 0.020512821, y: 0.502941176}
+    height: 181
+    summitSize: {x: 39, y: 37}
+    rotation: 169
+    silhouette: 0.263
+    shoulderWidth: 5
+  - shape: 6
+    asymmetry: 0.663
+    landingTerrace: 1
+    crestOffset: {x: 31.9, y: -2.7}
+    crestRise: 13
+    id: Peak_24
+    position: {x: 0.153846154, y: 0.529411765}
+    height: 182
+    summitSize: {x: 38, y: 36}
+    rotation: 127
+    silhouette: 0.218
+    shoulderWidth: 3
+  - shape: 1
+    asymmetry: 0.667
+    landingTerrace: 0
+    id: Peak_25
+    position: {x: -0.369230769, y: -0.179411765}
+    height: 172
+    summitSize: {x: 37, y: 51}
+    rotation: 137
+    silhouette: 0.268
+    shoulderWidth: 11
+  - shape: 5
+    asymmetry: 0.529
+    landingTerrace: 0
+    id: Peak_26
+    position: {x: 0.351282051, y: 0.050000000}
+    height: 160
+    summitSize: {x: 51, y: 34}
+    rotation: 11
+    silhouette: 0.233
+    shoulderWidth: 6
+  - shape: 3
+    asymmetry: 0.678
+    landingTerrace: 0
+    id: Peak_27
+    position: {x: -0.330769231, y: 0.335294118}
+    height: 194
+    summitSize: {x: 47, y: 42}
+    rotation: 77
+    silhouette: 0.278
+    shoulderWidth: 11
   boundary:
   - shape: 0
     asymmetry: 0.45
@@ -464,24 +506,40 @@ MonoBehaviour:
     shoulderWidth: 25
   poleCanyons:
   - from: Start
-    to: Peak_04
-    island: Peak_04
+    to: Peak_01
+    width: 7
+    span: 61
+    depth: 22
+  - from: Start
+    to: Peak_03
     width: 6
-    span: 70
-    depth: 25
-  - from: Peak_27
+    span: 67
+    depth: 24
+  - from: Peak_22
     to: Final
-    island: Peak_27
-    width: 6
-    span: 70
-    depth: 25
+    width: 7
+    span: 60
+    depth: 22
+  - from: Peak_23
+    to: Final
+    width: 8
+    span: 62
+    depth: 22
+  - from: Peak_24
+    to: Final
+    width: 7
+    span: 57
+    depth: 24
   entryTrail:
-  - {x: -13, y: 105, z: -334}
-  - {x: -17, y: 105, z: -325}
-  - {x: -18, y: 110, z: -310}
-  - {x: -11, y: 117, z: -294}
-  - {x: 2, y: 124, z: -280}
-  - {x: 5, y: 129, z: -268}
+  - {x: -68, y: 63, z: -403}
+  - {x: -66, y: 64, z: -394}
+  - {x: -51, y: 68, z: -375}
+  - {x: -29, y: 76, z: -356}
+  - {x: -11, y: 87, z: -335}
+  - {x: -16, y: 97, z: -316}
+  - {x: -9, y: 109, z: -297}
+  - {x: 7, y: 122.5, z: -277}
+  - {x: 4, y: 132, z: -262}
   - {x: 2, y: 132, z: -258}
   - {x: 0, y: 132, z: -247}
   bridgeAnchor: {x: 12, y: 190, z: 330}

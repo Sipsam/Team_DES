@@ -16,6 +16,9 @@ namespace TwinEdge.Levels
         [Tooltip("Half-width of a rock-cut approach through a crest; zero preserves the original crest.")]
         public float landingApproachWidth;
         public Vector2 landingApproachDirection;
+        [Tooltip("World-space X/Z offset of a rock crest beside a landing shelf.")]
+        public Vector2 crestOffset;
+        [Min(0)] public float crestRise;
         public string id;
         public Vector2 position;
         public float height = 150;

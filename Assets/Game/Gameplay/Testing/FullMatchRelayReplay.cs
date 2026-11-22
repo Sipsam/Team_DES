@@ -128,7 +128,7 @@ namespace TwinEdge.Gameplay
             drawCalls = ProfilerRecorder.StartNew(ProfilerCategory.Render, "Draw Calls Count");
             started = true;
 
-            if (isolatedLink != null)
+            if (isolatedLink != null && isolatedLink != "mountain")
             {
                 yield return ReplayLink(finish);
                 started = false;
@@ -141,20 +141,44 @@ namespace TwinEdge.Gameplay
             stage = "mountain-entry-trail";
             Record("begin");
             var trailLane = Vector3.right * (Host ? -1.5f : 1.5f);
+            if (isolatedLink == "mountain")
+            {
+                yield return Until(() => Player.IsGrounded && Camera.main != null, "grounded at the trailhead with an owner camera");
+                Keys(Key.W, Key.LeftShift);
+                yield return Until(() => character.SprintAllowed && Vector3.ProjectOnPlane(Player.Velocity, Vector3.up).magnitude > 4.7f,
+                    "sprint input accelerated on the foothill", 3);
+                Keys();
+                yield return Walk(trail[1] + trailLane * 8, .6f, false);
+                float jumpStart = Player.transform.position.y;
+                yield return Tap(Key.Space);
+                yield return Until(() => Player.transform.position.y > jumpStart + .25f, "jump lifted off the foothill", 2);
+                yield return Until(() => Player.IsGrounded, "jump landed at the side of the approach", 4);
+                yield return Walk(trail[1] + trailLane, .55f, false);
+                Require(character.RespawnCount.Value == 0, "walking off and rejoining the approach kept the player on terrain");
+                yield return Barrier("foothill-sprint-jump-rejoin");
+            }
             for (int i = 2; i < trail.Length; i++)
             {
                 Vector3 from = trail[i - 1], to = trail[i];
-                // Keyboard diagonals move both axes at the same speed. Keep each leg short
-                // so players stay in their lane on the steep, curved approach.
+                // Keep each leg short so players stay in their lane on the steep, curved approach.
                 int steps = Mathf.CeilToInt(Vector3.Distance(from, to) / 3f);
                 for (int step = 1; step <= steps; step++)
                     yield return Walk(Vector3.Lerp(from, to, step / (float)steps) + trailLane, .55f, false);
+                if (i == trail.Length / 2) Capture("mountain-uphill");
             }
             Require(Game.Phase == FoundationPhase.Outbound && !Game.HasWinner, "passing the finish on the outbound trail cannot end the match");
             Record("end");
             yield return Segment("mountain-outbound", CreateDriver<MountainPoleRelayReplay>().ReplayFromSpawn(this, polePlan));
             Require(character.CheckpointName.Value.ToString().EndsWith("Big summit", StringComparison.Ordinal),
                 "summit checkpoint captured");
+            if (isolatedLink == "mountain")
+            {
+                started = false;
+                File.WriteAllText(Evidence("isolated-link-pass.txt"), State());
+                yield return Barrier("isolated-pass");
+                Application.Quit(0);
+                yield break;
+            }
             var bridge = CreateDriver<BridgeRelaySmoke>();
             yield return Segment("bridge-outbound", bridge.ReplayOutbound(this));
             yield return ReplayMiddleCourse();
@@ -177,8 +201,14 @@ namespace TwinEdge.Gameplay
             Record("end", true);
 
             stage = "summit-finish";
-            // The demo interaction cube sits on the direct approach from Peak_04.
-            Vector3 finishApproach = finish.transform.position + Vector3.right * (carrier ? -3 : 3);
+            // Clear the development interaction cube before turning toward the finish.
+            var sample = V3GameplayBootstrap.Current.interactionSample.GetComponent<Collider>().bounds;
+            float side = carrier ? -1 : 1;
+            float laneX = sample.center.x + side * (sample.extents.x + 2.5f);
+            yield return Walk(new Vector3(laneX, finish.transform.position.y, sample.max.z + 3), .35f, false);
+            yield return Walk(new Vector3(laneX, finish.transform.position.y, sample.min.z - 3), .35f, false);
+            Require(Player.IsGrounded, "grounded past the interaction sample");
+            Vector3 finishApproach = finish.transform.position + Vector3.right * (side * 3);
             yield return Walk(finishApproach, .35f, false);
             yield return Walk(finish.transform.position, .45f, false,
                 () => finish.bounds.Contains(Player.transform.position + Vector3.up * .3f));
@@ -275,11 +305,12 @@ namespace TwinEdge.Gameplay
                     setup = new Pose(V3GameplayBootstrap.SafeGround(landing), Quaternion.identity);
                     break;
                 case "castle":
+                case "castleWalk":
                     setup = new Pose(V3GameplayBootstrap.SafeGround(castle.World(Host ? -1 : 2, 0, -19)),
                         Quaternion.identity);
                     break;
                 default:
-                    throw new ArgumentException("Isolated link must be canyon, approach, summit, castle, river, middle or finish.");
+                    throw new ArgumentException($"Unknown isolated link: {isolatedLink}");
             }
             // Explicit isolated setup. The normal match never enters this code path.
             Player.PlaceAtOwner(setup.position, setup.rotation);
@@ -313,6 +344,15 @@ namespace TwinEdge.Gameplay
                     Require(Game.Phase == FoundationPhase.Return && GemOwnership.Current.State == GemState.Carried,
                         "real seal, pickup and castle exit");
                     break;
+                case "castleWalk":
+                    // Exercise different camera headings without rotating or moving the player.
+                    var orbit = V3GameplayBootstrap.Current.standbyCamera.GetComponent<ThirdPersonCamera>();
+                    orbit.FaceSpawn(Quaternion.Euler(0, Host ? 33 : 137, 0));
+                    yield return null;
+                    yield return Segment("isolated-castle-walk", CreateDriver<CastleRelayReplay>().ReplayFromGate(this, walkOnly: true));
+                    Require(Game.Phase == FoundationPhase.Outbound && castle.Crossed == 3,
+                        "both peers walked through the basement door");
+                    break;
                 case "middle":
                 case "river":
                     yield return ReplayMiddleCourse(isolatedLink == "river");
@@ -343,7 +383,13 @@ namespace TwinEdge.Gameplay
         {
             Vector3 lane = Vector3.right * (Host ? -1.2f : 1.2f);
             var start = BridgeGameplay.Current.EndPoint + Vector3.forward * 3 + lane;
-            if (returning) yield return Walk(dock);
+            // Approach the boarding spot across the deck from the east bank.
+            var bank = dock + Vector3.right * 9;
+            if (returning)
+            {
+                yield return Walk(dock);
+                yield return Walk(bank, sprint: false);
+            }
             // The saved path curves between its control points; follow its centre instead of cutting the banks.
             var path = new List<Vector3>();
             for (int i = 1; i < valley.descent.Length; i++)
@@ -360,7 +406,14 @@ namespace TwinEdge.Gameplay
             }
             if (returning) path.Reverse();
             foreach (var point in path) yield return Walk(point + lane, .55f);
-            yield return Walk(returning ? start : dock);
+            if (returning)
+            {
+                yield return Walk(start);
+                yield break;
+            }
+            yield return Walk(bank, sprint: false);
+            yield return Walk(dock, sprint: false);
+            Require(Player.IsGrounded && Mathf.Abs(Player.transform.position.y - dock.y) < .4f, "stood on lower dock");
         }
 
         IEnumerator CastleApproach(Vector3 dock, CastleGameplay castle, bool returning)
@@ -382,22 +435,25 @@ namespace TwinEdge.Gameplay
                 var delta = Vector3.ProjectOnPlane(target - Player.transform.position, Vector3.up);
                 if (arrived?.Invoke() ?? delta.magnitude <= tolerance) break;
                 Require(Time.realtimeSinceStartup < deadline, $"walk to {target:F2}");
-                var camera = Camera.main.transform;
-                float forward = Vector3.Dot(delta, Vector3.ProjectOnPlane(camera.forward, Vector3.up).normalized);
-                float right = Vector3.Dot(delta, Vector3.ProjectOnPlane(camera.right, Vector3.up).normalized);
-                float threshold = Mathf.Min(tolerance * .7f, Mathf.Max(Mathf.Abs(forward), Mathf.Abs(right)) * .45f);
-                var keys = new List<Key>(3);
-                if (Mathf.Abs(forward) > threshold) keys.Add(forward > 0 ? Key.W : Key.S);
-                if (Mathf.Abs(right) > threshold) keys.Add(right > 0 ? Key.D : Key.A);
-                if (sprint && delta.sqrMagnitude > 4) keys.Add(Key.LeftShift);
-                Keys(keys.ToArray());
+                SteerWorld(Vector3.ClampMagnitude(delta / .45f, 1));
+                if (sprint && delta.sqrMagnitude > 4) Keys(Key.LeftShift);
+                else Keys();
                 yield return null;
             } while (true);
+            SteerWorld(Vector3.zero);
             Keys();
             yield return new WaitForSeconds(.08f);
         }
 
         internal void SteerPole(Vector2 direction) => SteerStick(gamepad, direction);
+
+        internal void SteerWorld(Vector3 direction) => SteerStick(gamepad, CameraRelativeStick(Player, direction));
+
+        internal static Vector2 CameraRelativeStick(PlayerMovement player, Vector3 direction)
+        {
+            player.GetMovementAxes(out var forward, out var right);
+            return new Vector2(Vector3.Dot(direction, right), Vector3.Dot(direction, forward));
+        }
 
         internal static void SteerStick(Gamepad input, Vector2 direction)
         {

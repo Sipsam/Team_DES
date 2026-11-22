@@ -18,6 +18,8 @@
 
 `V3GameplayBootstrap`은 이미 로드된 레벨을 검사한 뒤 필요 시 `LevelBlockoutV3`를 Additive로 로드한다. 저장 씬의 마커와 지형을 바탕으로 다리·뗏목·성채 기계·지하 장치·결승을 런타임에 구성한다. 레벨 미리보기 카메라는 비활성화하고 각 피어에서 자기 캐릭터의 카메라를 사용한다. 지형 검토에는 레벨 씬을 단독으로 연다.
 
+`PlayerMovement`는 소유자 카메라의 수평 Forward와 Right를 기준으로 이동한다. Development 재생기는 목표 월드 방향을 같은 축에 투영한 스틱 값을 Input System으로 보낸다. 성채 재생은 정문·현관·퍼즐 문턱 양쪽의 웨이포인트를 사용하고, 기존 CharacterController와 서버 판정을 거친다.
+
 ## 경기 흐름
 
 1. `WaitingForPlayers`에서 두 피어가 연결되면 `Preparing`으로 이동한다. 서버는 승인된 스폰을 적용한 두 피어가 씬 바인딩, 네트워크 오브젝트 생성과 로컬 카메라 초기화를 완료한 것을 확인한 뒤 `Outbound`를 한 번 시작한다.
@@ -29,6 +31,8 @@
 
 LevelSection, 안정된 마커 ID와 설정 자산을 통해 씬과 런타임이 연결된다. 생성기는 선택한 범위의 `Generated`를 교체하고 `Manual`에 있는 제작자 편집을 유지한다. 게임플레이 오브젝트는 생성기 소유 계층 밖에 둔다.
 
+V3 산악의 `MountainConfigV3`는 시작점, Big Summit, 중간 봉우리와 외곽 능선의 설계 좌표를 담는다. 산기슭과 진입로의 표고, 봉우리 어깨와 골짜기는 하나의 지질 메시에서 생성된다. `Mountain.V3.InitialSpawn`은 진입로 초입, `Mountain.V3.Start`는 막대의 홈, `Mountain.V3.ReturnFinish`는 정상에서 산길이 내려가기 시작하는 지점에 있다. 막대는 설정에 지정된 정상 타원과 저장 Collider의 지지면을 함께 검사한다. 봉우리 간 연결 검사는 이 Collider에서 캡슐과 막대의 회전 및 연속 이동을 검증한다.
+
 생성 디렉터리는 새 GUID로 추가된다. 저장된 씬·프리팹·설정에서 사용 중인 생성 파일과 폴더 메타를 커밋한다. 저장하지 않은 상태와 Undo가 이전 생성물을 참조할 수 있다. 생성, 플레이 또는 Undo 세션을 끝내고 씬을 저장한 뒤 Unity를 정상 종료한다. `Tools/ProjectAudit/clean-generated.ps1`은 새 배치 세션에서 전체 비생성 에셋의 전이 의존성과 직렬화된 소유 경로를 검사한다. 형식과 출처를 확인할 수 있는 생성 폴더만 정리 대상으로 취급한다. 변경된 씬 및 새 메시와 함께 Git 삭제 목록을 검토한다.
 
 ## V3 월드 재질
@@ -36,5 +40,9 @@ LevelSection, 안정된 마커 ID와 설정 자산을 통해 씬과 런타임이
 팀 텍스처, 임포트 설정 및 GUID는 `Assets/Terrain1_Test/`부터 `Assets/Terrain4_Test/`까지 추적한다. 전달용 UnityPackage는 로컬에 보존하며 새 클론에서 패키지를 다시 가져올 필요는 없다. V3 렌더링 셰이더와 협곡·성채 벽·지하 돌벽 파생 재질은 `Assets/Game/Level/Data/V3WorldMaterials/`에 있다.
 
 산악과 자연 암벽은 세 축의 월드 공간 투영을 혼합한다. 석조 바닥·벽과 지붕은 월드 공간의 면 방향으로 타일링한다. 강은 저장 메시의 폭과 중심선 누적 거리로 수면 UV를 만들고 하류 방향으로 두 레이어를 움직인다. `RiverGameplay`도 같은 Water 재질을 참조한다. 동굴 외피와 런타임 하수로는 Canyon Rock의 색상·노멀·AO를 공유하는 어두운 파생 재질을 사용한다. 생성기는 동일한 재질을 사용하며 충돌과 마커는 별도로 유지한다.
+
+산악의 `MountainBlend`는 팀의 Top, Middle, Bottom 색상 맵과 노멀 맵을 사용한다. 높이, 경사와 월드 공간의 변화에 따라 픽셀 단위로 혼합한다. 정상 타원과 메시 Collider는 재질의 혼합 가중치를 사용하지 않는다.
+
+`V3 Geological Context`는 다리 아래 협곡, 외곽 능선, 강 끝 암벽과 성채 기단을 렌더링한다. 협곡과 강의 `TerrainSurface`는 기존 Collider 메시에서 생성한 별도 렌더 메시다. 보행로, 수로, 접합부의 정점은 충돌 메시와 일치한다. 성채 지붕·바닥과 동굴 용암은 원본 텍스처와 노멀을 공유하는 V3 파생 재질을 사용한다.
 
 **Tools > Twin Edge > Audit project dependencies (read only)**는 Unity 의존성, GUID 및 미리보기 씬 로드를 검사한다. 내부 결과는 무시된 `Docs/Development/Architecture/V1/Audit/`에 생성된다. V1/V2 씬과 프로토타입은 Git에서 열 수 있다. [과거 프로젝트 복원 절차](../Archive/Prototype_v1.md)

@@ -405,18 +405,22 @@ public sealed class PlayerMovement : NetworkBehaviour
 
     private Vector3 GetCameraRelativeDirection(Vector2 input)
     {
+        GetMovementAxes(out var forward, out var right);
+        Vector3 direction = forward * input.y + right * input.x;
+        return Vector3.ClampMagnitude(direction, 1f);
+    }
+
+    internal void GetMovementAxes(out Vector3 forward, out Vector3 right)
+    {
         Transform reference = cameraTransform;
         if (reference == null && Camera.main != null)
         {
             reference = Camera.main.transform;
         }
 
-        Vector3 forward = reference != null ? reference.forward : transform.forward;
-        Vector3 right = reference != null ? reference.right : transform.right;
+        forward = reference != null ? reference.forward : transform.forward;
+        right = reference != null ? reference.right : transform.right;
         forward = Vector3.ProjectOnPlane(forward, Vector3.up).normalized;
         right = Vector3.ProjectOnPlane(right, Vector3.up).normalized;
-
-        Vector3 direction = forward * input.y + right * input.x;
-        return Vector3.ClampMagnitude(direction, 1f);
     }
 }

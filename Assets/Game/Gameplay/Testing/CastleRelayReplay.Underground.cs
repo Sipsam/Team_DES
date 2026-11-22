@@ -1,7 +1,6 @@
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
 using System;
 using System.Collections;
-using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -375,25 +374,16 @@ namespace TwinEdge.Gameplay
             }
             Require(player.transform.position.y >= start.y + .055f, $"Space did not take off from {start:F2} toward {top:F2}; feet={player.transform.position:F2}, grounded={player.IsGrounded}, stamina={character.StaminaFraction:P0}, {character.StaminaTuningForTest}", log: false);
             float started = Time.realtimeSinceStartup;
+            SetKeys(Key.LeftShift);
             do
             {
                 Vector3 delta = Vector3.ProjectOnPlane(top - player.transform.position, Vector3.up);
-                var keys = new List<Key>();
-                if (delta.magnitude > .12f)
-                {
-                    keys.Add(Key.LeftShift);
-                    Vector3 direction = delta.normalized;
-                    var camera = Camera.main.transform;
-                    float forward = Vector3.Dot(direction, Vector3.ProjectOnPlane(camera.forward, Vector3.up).normalized);
-                    float right = Vector3.Dot(direction, Vector3.ProjectOnPlane(camera.right, Vector3.up).normalized);
-                    if (Mathf.Abs(forward) > .36f) keys.Add(forward > 0 ? Key.W : Key.S);
-                    if (Mathf.Abs(right) > .36f) keys.Add(right > 0 ? Key.D : Key.A);
-                }
-                SetKeys(keys.ToArray());
+                SteerWorld(delta.sqrMagnitude > .12f * .12f ? delta.normalized : Vector3.zero);
                 yield return null;
                 Require(Time.realtimeSinceStartup - started < 2 && player.transform.position.y > top.y - 1,
                     $"jump from {start:F2} missed {top:F2}, feet at {player.transform.position:F2}", log: false);
             } while (!player.IsGrounded);
+            SteerWorld(Vector3.zero);
             SetKeys();
             Vector3 offset = player.transform.position - top;
             // A timed waypoint may overlap the preceding shelf. The arrival at a fixed shelf

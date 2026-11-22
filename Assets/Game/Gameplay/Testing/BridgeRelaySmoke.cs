@@ -19,7 +19,7 @@ namespace TwinEdge.Gameplay
         BridgeGameplay bridge;
         PlayerMovement player;
         Keyboard keyboard;
-        Gamepad contactGamepad;
+        Gamepad movementPad;
         BridgePlankV3[] planks;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
@@ -72,7 +72,7 @@ namespace TwinEdge.Gameplay
             CheckSupport(0);
             player = manager.LocalClient.PlayerObject.GetComponent<PlayerMovement>();
             keyboard = InputSystem.AddDevice<Keyboard>();
-            if (host && contactWithoutFall) contactGamepad = InputSystem.AddDevice<Gamepad>();
+            movementPad = InputSystem.AddDevice<Gamepad>();
             player.GetComponent<GameplayInput>().SimulateCapturedCursor = true;
             var side = Vector3.right * (host ? -bridge.GripHalfWidth : bridge.GripHalfWidth);
             // Only initial summit station placement. All deliveries and crossing use production input and CC.
@@ -103,6 +103,22 @@ namespace TwinEdge.Gameplay
             keyboard = match.Keyboard;
             planks = FindObjectsByType<BridgePlankV3>(FindObjectsSortMode.None).OrderBy(p => p.plankId).ToArray();
             var side = Vector3.right * (host ? -bridge.GripHalfWidth : bridge.GripHalfWidth);
+            // Use the center approach from either landing, then step up onto the existing stub.
+            var mountain = CooperativePole.Current.mountain;
+            var summit = mountain.destination;
+            yield return WalkTo(new Vector3(summit.position.x, summit.height, summit.position.y) + side, true);
+            yield return WalkTo(mountain.bridgeAnchor - bridge.Forward * 1.8f + side, false, .1f);
+            if (player.transform.position.y < mountain.bridgeAnchor.y - .3f)
+            {
+                yield return Until(() => player.IsGrounded, "Grounded at the summit stub");
+                Steer(bridge.Forward);
+                Keys(Key.Space);
+                yield return Until(() => !player.IsGrounded, "Jump onto the summit stub", 2);
+                Keys();
+                yield return Until(() => player.IsGrounded, "Land on the summit stub", 2, simulationTime: true);
+                Steer(Vector3.zero);
+                Check(player.transform.position.y >= mountain.bridgeAnchor.y - .12f, "Reached the summit stub deck");
+            }
             yield return BuildAndCross(null, match.Manager, match.Game, side);
         }
 
@@ -130,9 +146,9 @@ namespace TwinEdge.Gameplay
                     yield return Tap(Key.E);
                     Check(!bridge.Load.Paired && bridge.Load.right == BridgeGameplay.LoadState.Empty, "The same player cannot occupy both handles");
                     var center = bridge.Load.center;
-                    Keys(Key.W);
+                    Steer(bridge.Forward);
                     yield return new WaitForSeconds(.3f);
-                    Keys();
+                    Steer(Vector3.zero);
                     Check(bridge.Load.center == center && bridge.CompletedDeliveries == 0, "Solo cannot move or install");
                     yield return MarkCancel();
                     yield return Until(() => File.Exists(output + "/client-cancel-observed.txt"), "Client saw cancellation");
@@ -150,25 +166,25 @@ namespace TwinEdge.Gameplay
                 float startZ = bridge.Load.center.z;
                 if (delivery == 0 && fullMatch == null)
                 {
-                    if (host) Keys(Key.W);
+                    if (host) Steer(bridge.Forward);
                     yield return Barrier("single-input");
                     yield return new WaitForSeconds(.35f);
                     Check(Mathf.Abs(bridge.Load.center.z - startZ) < .02f, "One movement input cannot move paired timber");
-                    Keys();
+                    Steer(Vector3.zero);
                     yield return Barrier("both-input");
                 }
                 if (carryDisconnect)
                 {
                     float yaw = bridge.Load.yaw;
-                    Keys(host ? Key.W : Key.S);
+                    Steer(host ? bridge.Forward : -bridge.Forward);
                     yield return Until(() => Mathf.Abs(Mathf.DeltaAngle(yaw, bridge.Load.yaw)) >= 6f, "Opposing inputs rotated the carried load");
-                    Keys();
+                    Steer(Vector3.zero);
                     yield return Barrier("rotation");
                     Check(Mathf.Abs(bridge.Load.center.z - startZ) < .4f, "Rotation opposed translation");
                 }
-                Keys(Key.W);
+                Steer(bridge.Forward);
                 yield return Until(() => bridge.Load.center.z >= bridge.SocketPoint.z - .38f, "Two-input carry " + delivery, 12);
-                Keys();
+                Steer(Vector3.zero);
                 if (carryDisconnect)
                 {
                     yield return Barrier("moving-before-disconnect");
@@ -195,9 +211,9 @@ namespace TwinEdge.Gameplay
                         var character = player.GetComponent<GameplayCharacter>();
                         int before = character.RespawnCount.Value;
                         // Current carry already left the host on the start stub. Walk into the unbuilt span.
-                        Keys(Key.W);
+                        Steer(bridge.Forward);
                         yield return Until(() => player.transform.position.z > bridge.StartPoint.z + 1.2f, "Walk off the uninstalled deck");
-                        Keys();
+                        Steer(Vector3.zero);
                         yield return Until(() => character.RespawnCount.Value > before && character.CheckpointName.Value.ToString().Contains("Big summit") &&
                             (player.transform.position - bridge.StartPoint).sqrMagnitude > 100, "Gravity fall respawn at Big summit");
                         File.WriteAllText(output + "/host-outbound-fall.txt", "PASS actual walk into unbuilt span and Big summit recovery");
@@ -254,10 +270,10 @@ namespace TwinEdge.Gameplay
                 Teleport(planks[hole + 1].socket + side);
                 yield return new WaitForSeconds(.4f);
                 int before = character.RespawnCount.Value;
-                Keys(Key.S);
+                Steer(-bridge.Forward);
                 yield return Until(() => bridge.IsCollapsed(hole), "Real support contact collapsed plank");
                 yield return Until(() => player.transform.position.z < planks[hole].socket.z + .12f, "Enter missing support");
-                Keys();
+                Steer(Vector3.zero);
                 yield return Until(() => character.RespawnCount.Value > before, "Gravity fall");
                 yield return Until(() => character.CheckpointName.Value.ToString() == "Lower dock" && player.transform.position.y < 170, "Lower dock respawn");
                 Check(bridge.IsCollapsed(hole), "Collapse persists after respawn");
@@ -293,16 +309,19 @@ namespace TwinEdge.Gameplay
                     fullMatch?.Capture("bridge-collapse");
                 }
                 yield return Until(() => player.IsGrounded, "Grounded takeoff " + high);
-                if (sprint) Keys(Key.S, Key.Space, Key.LeftShift);
-                else Keys(Key.S, Key.Space);
+                Steer(-bridge.Forward);
+                if (sprint) Keys(Key.Space, Key.LeftShift);
+                else Keys(Key.Space);
                 yield return Until(() => !player.IsGrounded, "Owner jump " + high);
                 // A suspended Player advances realtime without simulating any of the jump.
                 yield return Until(() => player.IsGrounded, "Owner landed " + low, 2.5f, simulationTime: true);
+                Steer(Vector3.zero);
                 Keys();
-                var landing = planks[low].GetComponent<Collider>().bounds;
-                Check(player.transform.position.y > bridge.StartPoint.y - .2f &&
-                    player.transform.position.z <= landing.max.z + .3f && player.transform.position.z >= landing.min.z - .3f,
-                    $"Jump {high}->{low} landed on required remaining support");
+                var feet = player.transform.position;
+                var targetSupport = planks[low].GetComponent<Collider>();
+                bool supported = Physics.Raycast(feet + Vector3.up * .12f, Vector3.down, out var support, .4f, ~0,
+                    QueryTriggerInteraction.Ignore) && support.collider == targetSupport;
+                Check(supported, $"Jump {high}->{low} expected {targetSupport.name}, got {support.collider?.name ?? "no support"}");
                 if (sprint) doubles++;
                 else singles++;
                 Check(character.RespawnCount.Value == respawns, "No respawn during jump " + high);
@@ -324,23 +343,21 @@ namespace TwinEdge.Gameplay
             {
                 Check(Time.realtimeSinceStartup < deadline && player.transform.position.y >= bridge.StartPoint.y - .12f,
                     "Approach collapse contact on the supported edge");
-                var camera = Camera.main.transform;
                 float amount = Mathf.Min(.23f, (player.transform.position.z - target) / .16f);
-                Vector2 input = new(-Vector3.ProjectOnPlane(camera.right, Vector3.up).normalized.z,
-                    -Vector3.ProjectOnPlane(camera.forward, Vector3.up).normalized.z);
                 if (player.transform.position.z - target < .008f) break;
-                SteerContact(input * amount);
+                Steer(-bridge.Forward * amount);
                 yield return null;
             }
-            SteerContact(Vector2.zero);
+            Steer(Vector3.zero);
             yield return new WaitForSeconds(.24f);
             Check(bridge.IsCollapsed(hazard), "Real safe-edge contact collapsed the adjacent plank");
         }
 
-        void SteerContact(Vector2 direction)
+        void Steer(Vector3 worldDirection)
         {
-            if (fullMatch != null) fullMatch.SteerPole(direction);
-            else FullMatchRelayReplay.SteerStick(contactGamepad, direction);
+            // Express the intended world direction through the owner's normal camera-relative input.
+            if (fullMatch != null) fullMatch.SteerWorld(worldDirection);
+            else FullMatchRelayReplay.SteerStick(movementPad, FullMatchRelayReplay.CameraRelativeStick(player, worldDirection));
         }
 
         IEnumerator MarkCancel()
@@ -362,24 +379,18 @@ namespace TwinEdge.Gameplay
 
         IEnumerator WalkTo(Vector3 target, bool sprint, float tolerance = .28f)
         {
-            if (fullMatch != null)
-            {
-                yield return fullMatch.Walk(target, tolerance, sprint);
-                yield break;
-            }
             float deadline = Time.realtimeSinceStartup + 25;
             while (true)
             {
-                var delta = target - player.transform.position;
+                var delta = Vector3.ProjectOnPlane(target - player.transform.position, Vector3.up);
                 if (Mathf.Abs(delta.x) < tolerance && Mathf.Abs(delta.z) < tolerance) break;
                 Check(Time.realtimeSinceStartup < deadline, "Walk to " + target + " from " + player.transform.position);
-                var keys = new System.Collections.Generic.List<Key>();
-                if (Mathf.Abs(delta.x) >= tolerance * .8f) keys.Add(delta.x > 0 ? Key.D : Key.A);
-                if (Mathf.Abs(delta.z) >= tolerance * .8f) keys.Add(delta.z > 0 ? Key.W : Key.S);
-                if (sprint && delta.sqrMagnitude > 2) keys.Add(Key.LeftShift);
-                Keys(keys.ToArray());
+                Steer(Vector3.ClampMagnitude(delta / .45f, 1));
+                if (sprint && delta.sqrMagnitude > 2) Keys(Key.LeftShift);
+                else Keys();
                 yield return null;
             }
+            Steer(Vector3.zero);
             Keys();
             yield return new WaitForSeconds(.18f);
         }
