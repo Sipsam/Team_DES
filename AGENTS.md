@@ -5,29 +5,33 @@ Twin Edge is a two-player Unity project. Use the editor version in [ProjectVersi
 ## Start and resume
 
 1. Read [CURRENT_TASK](Docs/Workflow/CURRENT_TASK.md), then consult [ROADMAP](Docs/Workflow/ROADMAP.md) for priorities, dependencies or final integration. Inspect the branch, HEAD, `origin/main`, and staged, unstaged and untracked changes. Compare the record with Git. Verify actual remote `main` before integrating, pushing or publishing.
-2. Identify the task's inputs, scope, exclusions, dependencies and completion conditions. Follow the applicable route below. Read the smallest relevant diff, source and evidence excerpts. Reuse implementations, tools, results and builds after verifying that their inputs still match. Diagnose failures before retrying and make the smallest fix that addresses the cause.
-3. Implement, run scoped validation, review the final diff and update affected shared contracts and task state. Commit, push, verify the remote and publish official evidence when applicable. Report the commit title, development evidence paths and Git tracking or ignore state, verification and limits. Start another gameplay task only on user request.
+2. Identify the task's inputs, scope, exclusions, dependencies and completion conditions. Select the lightest execution path that covers the work and open the affected Domain entry points.
+3. Finalize once for the whole request. Update affected shared contracts and task state, and follow the validation and publication rules below. Report the commit title, evidence paths and Git tracking or ignore state, verification and limits. Start another gameplay task only on user request.
 
 At milestones, validation failures, blockers and commit preparation, update CURRENT_TASK with the base, open changes, evidence and next action. After a context reset, usage limit or handoff, compare the saved state with the index and worktree. Reuse evidence whose inputs match and continue from the first unfinished step. If a commit exists locally, resume at remote verification or push. If it is already pushed, resume any pending publication from that commit. Preserve existing edits and investigate any mismatch in the records.
 
-## Context routing
+## Task dispatcher
 
-| Task | Open first |
+| Path | Use when | Execution |
+| --- | --- | --- |
+| Fast | Target and effect are clear and localized, such as a number, straightforward fix, small document edit or simple material value. | Direct execution → scoped validation → Finalize. Skip task packets, decomposition and separate handoffs. |
+| Standard | A routine feature or related changes need bounded discovery and regression checks. | Explore → Implement → Validate → Review → Finalize. Choose only needed Worker roles and combine overlapping checks. |
+| Complex | Physics, networking, terrain generation or cross-system changes have uncertain impact, meaningful dependencies or separate acceptance gates. | Explore → Plan and decompose → assign Workers → Implement → Validate → Review → Finalize. Record scope, dependencies and completion only for subtasks that benefit from being tracked. |
+
+The same Codex performs [Worker roles](Docs/Workflow/WORKERS.md) in the active session. Assign roles and Domains independently, such as Diagnose + Rendering. Keep subtasks sequential by default. Reclassify when new findings change the scope or risk. If a check fails, use Diagnose for that failure before retrying. Required validation and the final diff check apply on every path.
+
+## Domain routing
+
+| Domain | Open first |
 | --- | --- |
-| Level design and colliders | [Game Architecture](Docs/Architecture/GameArchitecture.md), `Assets/Game/Level/` config, generator, saved scene and Collider references. Check affected gameplay bindings in `Assets/Game/Gameplay/`. |
-| Movement and camera | [Gameplay Systems](Docs/Architecture/GameplaySystems.md), `Assets/_Project/Scripts/Player/PlayerMovement.cs` and `Assets/_Project/Scripts/Camera/ThirdPersonCamera.cs`. Follow spawn, respawn or network references only as affected. |
-| Pole, PvP and interaction | [Gameplay Systems](Docs/Architecture/GameplaySystems.md) and [Multiplayer](Docs/Architecture/Multiplayer.md), relevant `Assets/Game/Gameplay/Runtime/`, `Assets/_Project/Scripts/Interaction/` or `Player/` code and `Assets/Game/Gameplay/Testing/` fixtures. |
-| NGO and Relay | [Multiplayer](Docs/Architecture/Multiplayer.md), `Assets/_Project/Scripts/Networking/`, affected gameplay state and testing code, and `Tools/Playtest/Run-Relay.ps1`. |
-| UI | Approved design linked from [Game Architecture](Docs/Architecture/GameArchitecture.md), the `V3Gameplay.unity` scene and affected prefabs, `NetworkDebugUI.cs` or `V3GameplayBootstrap.cs` for runtime UI. |
-| Shader or material | [World materials](Docs/Architecture/GameArchitecture.md#v3-월드-재질), `Assets/Game/Level/Data/V3WorldMaterials/`, actual renderer and references, `Assets/Settings/` and the D3D11 checks in the playtest guide. |
-| Build or validation | [Playtest Guide](Docs/Playtest/PlaytestGuide.md), then the referenced existing Unity and PowerShell tools. |
-| Documentation | Changed document and its authoritative contracts, settings or tool implementation. |
-| Session recovery | CURRENT_TASK, Git diff and the referenced evidence. |
-| Final integration | ROADMAP, Validation Summary and the final integration procedures in Playtest Guide. |
+| Level | [Game Architecture](Docs/Architecture/GameArchitecture.md#레벨-편집과-생성물), relevant `Assets/Game/Level/` config, generator, saved scene and Collider references. Follow affected gameplay bindings in `Assets/Game/Gameplay/`. |
+| Gameplay | [Gameplay Systems](Docs/Architecture/GameplaySystems.md), then [PlayerMovement](Assets/_Project/Scripts/Player/PlayerMovement.cs) or [ThirdPersonCamera](Assets/_Project/Scripts/Camera/ThirdPersonCamera.cs) for movement or camera, or the relevant `Assets/Game/Gameplay/Runtime/`, `Assets/_Project/Scripts/Interaction/` and `Assets/Game/Gameplay/Testing/` paths for pole, PvP and interaction. Follow spawn and respawn references when affected and add Network for authority or synchronization changes. |
+| Network | [Multiplayer](Docs/Architecture/Multiplayer.md), `Assets/_Project/Scripts/Networking/`, affected gameplay state and test code, and `Tools/Playtest/Run-Relay.ps1` for isolated peer checks. |
+| Rendering | [World materials](Docs/Architecture/GameArchitecture.md#v3-월드-재질), `Assets/Game/Level/Data/V3WorldMaterials/`, actual renderer, affected references and `Assets/Settings/`. Use the D3D11 checks in the Playtest Guide. |
+| UI | Approved design linked from [Game Architecture](Docs/Architecture/GameArchitecture.md), then the relevant `V3Gameplay.unity` scene or prefabs and, for runtime UI, `NetworkDebugUI.cs` or `V3GameplayBootstrap.cs`. |
+| Workflow | Changed guidance or tool and its authoritative contract. For builds or validation, start from the Playtest Guide and referenced tools. For recovery use CURRENT_TASK, Git and referenced evidence. For final integration use ROADMAP, Validation Summary and the Playtest Guide. |
 
-Prefer Rider MCP for symbols, references and IDE inspections when available. Use local Git for source and remote state, Unity for scene or runtime checks, and existing PowerShell tools for builds, replay and capture. Use context7 for version-sensitive official API details and codex_apps for GitHub or connected services when local tools cannot supply the answer. Use one authoritative tool per lookup. The workflow also works via Markdown and local Git without Rider or extra MCP setup.
-
-One Codex can cover the logical roles in order. The **Orchestrator** selects scope and dependencies, the **Explorer** finds relevant code and evidence, the **Planner** selects the smallest change and checks, the **Implementer** makes it, the **Validator** checks it and investigates failures, the **Reviewer** checks scope and regressions, and the **State Manager** keeps handoff and publication records. Claim independent review only if it actually occurred.
+Read the smallest relevant diff, source and evidence excerpts. Prefer Rider MCP for symbols, references and IDE inspections, with scoped local search as fallback. Use local Git for source and remote state, Unity for scene or runtime checks, and existing PowerShell tools for builds, replay and capture. Use context7 for version-sensitive official API details and codex_apps for connected sources when local tools cannot supply the answer. Use one authoritative tool per lookup.
 
 ## Validate and publish
 
