@@ -76,20 +76,22 @@ namespace TwinEdge.Levels.Editor
             material = new Material(Middle) { name = "MountainBlend" };
             material.SetFloat("_MountainLayers", 1);
             material.EnableKeyword("_MOUNTAIN_LAYERS");
-            SetMountainLayer(material, Top, "_Top");
-            SetMountainLayer(material, Bottom, "_Bottom");
+            material.SetFloat("_BumpScale", .88f);
+            material.SetColor("_BaseColor", new Color(.86f, .86f, .86f));
+            SetMountainLayer(material, Top, "_Top", new Color(.94f, .93f, .91f));
+            SetMountainLayer(material, Bottom, "_Bottom", new Color(.88f, .87f, .85f));
             AssetDatabase.CreateAsset(material, MountainBlendPath);
             return material;
         }
 
-        static void SetMountainLayer(Material target, Material source, string layer)
+        static void SetMountainLayer(Material target, Material source, string layer, Color tint)
         {
             target.SetTexture(layer + "Map", source.GetTexture("_BaseMap"));
             target.SetTextureScale(layer + "Map", source.GetTextureScale("_BaseMap"));
             target.SetTextureOffset(layer + "Map", source.GetTextureOffset("_BaseMap"));
             target.SetTexture(layer + "Normal", source.GetTexture("_BumpMap"));
             target.SetFloat(layer + "NormalScale", source.GetFloat("_BumpScale"));
-            target.SetColor(layer + "Tint", source.GetColor("_BaseColor"));
+            target.SetColor(layer + "Tint", tint);
         }
 
         internal static void SetRiverUV(Mesh mesh)
@@ -138,6 +140,8 @@ namespace TwinEdge.Levels.Editor
             var renderers = UnityEngine.Object.FindObjectsByType<MeshRenderer>(FindObjectsSortMode.None);
             var mountain = renderers.Single(renderer => renderer.name == "Mountain_ConnectedGeology");
             var blend = mountain.sharedMaterial;
+            if (mountain.sharedMaterials.Length != 1 || mountain.GetComponent<MeshFilter>().sharedMesh.subMeshCount != 1)
+                throw new InvalidOperationException("Connected mountain geology requires one submesh and one material slot.");
             if (!blend || !blend.IsKeywordEnabled("_MOUNTAIN_LAYERS") || !blend.IsKeywordEnabled("_TRIPLANAR"))
                 throw new InvalidOperationException("The mountain renderer requires the three-layer surface.");
             var mountainMaps = new[] { (Top, "_TopMap", "_TopNormal"), (Middle, "_BaseMap", "_BumpMap"), (Bottom, "_BottomMap", "_BottomNormal") };

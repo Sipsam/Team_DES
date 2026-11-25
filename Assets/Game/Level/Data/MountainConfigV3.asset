@@ -724,13 +724,15 @@ MonoBehaviour:
     halfWidth: 66
     crestHalfWidth: 18
     flankBias: 0.14
+  westernRavineEnd: {x: -115, y: -246}
+  westernRavineDepth: 24
   entryTrail:
   - {x: -50, y: 73, z: -379}
   - {x: -46, y: 76, z: -366}
-  - {x: -35, y: 84, z: -347}
-  - {x: -22, y: 97, z: -326}
-  - {x: -23, y: 112, z: -302}
-  - {x: -13, y: 123, z: -282}
+  - {x: -35, y: 80, z: -347}
+  - {x: -22, y: 92, z: -326}
+  - {x: -23, y: 108, z: -302}
+  - {x: -13, y: 121, z: -282}
   - {x: 2, y: 130, z: -267}
   - {x: 2, y: 132, z: -258}
   - {x: 0, y: 132, z: -247}

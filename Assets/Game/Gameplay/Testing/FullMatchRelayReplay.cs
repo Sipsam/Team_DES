@@ -50,8 +50,9 @@ namespace TwinEdge.Gameplay
             string output = Arg(args, "-fullMatchEvidence");
             string pole = Arg(args, "-mountainPolePlan");
             string back = Arg(args, "-returnPlan");
+            string link = Arg(args, "-fullMatchLink");
             if (role is not ("host" or "client") || string.IsNullOrWhiteSpace(output) ||
-                !Path.IsPathFullyQualified(output) || !File.Exists(pole) || !File.Exists(back))
+                !Path.IsPathFullyQualified(output) || (link != "mountainEntry" && (!File.Exists(pole) || !File.Exists(back))))
             {
                 Debug.LogError("Use -fullMatchRelay host|client, -fullMatchEvidence <absolute directory>, -mountainPolePlan <plan>, and -returnPlan <plan>.");
                 Application.Quit(2);
@@ -63,7 +64,7 @@ namespace TwinEdge.Gameplay
             replay.Output = output;
             replay.polePlan = pole;
             replay.returnPlan = back;
-            replay.isolatedLink = Arg(args, "-fullMatchLink");
+            replay.isolatedLink = link;
             replay.screenshots = args.Contains("-fullMatchScreenshots");
         }
 
@@ -123,25 +124,27 @@ namespace TwinEdge.Gameplay
             Require(!finish.bounds.Contains(Player.transform.position + Vector3.up * .3f), "initial spawn is outside the finish");
             Require(character.RespawnCount.Value == 0, "ordinary spawn required no respawn");
             yield return Barrier("normal-spawns");
+            bool isolatedMountain = isolatedLink is "mountain" or "mountainEntry";
+            if (isolatedMountain && Camera.main is Camera spawnCamera)
+                File.WriteAllText(Evidence("spawn-camera.txt"),
+                    $"feet={Player.transform.position:F3} position={spawnCamera.transform.position:F3} " +
+                    $"forward={spawnCamera.transform.forward:F3} verticalFov={spawnCamera.fieldOfView:F1}");
             Capture("normal-spawn");
             gcBytes = ProfilerRecorder.StartNew(ProfilerCategory.Memory, "GC Allocated In Frame");
             drawCalls = ProfilerRecorder.StartNew(ProfilerCategory.Render, "Draw Calls Count");
             started = true;
 
-            if (isolatedLink != null && isolatedLink != "mountain")
+            if (isolatedLink != null && !isolatedMountain)
             {
                 yield return ReplayLink(finish);
-                started = false;
-                File.WriteAllText(Evidence("isolated-link-pass.txt"), State());
-                yield return Barrier("isolated-pass");
-                Application.Quit(0);
+                yield return CompleteIsolatedLink();
                 yield break;
             }
 
             stage = "mountain-entry-trail";
             Record("begin");
             var trailLane = Vector3.right * (Host ? -1.5f : 1.5f);
-            if (isolatedLink == "mountain")
+            if (isolatedMountain)
             {
                 yield return Until(() => Player.IsGrounded && Camera.main != null, "grounded at the trailhead with an owner camera");
                 Keys(Key.W, Key.LeftShift);
@@ -168,15 +171,17 @@ namespace TwinEdge.Gameplay
             }
             Require(Game.Phase == FoundationPhase.Outbound && !Game.HasWinner, "passing the finish on the outbound trail cannot end the match");
             Record("end");
+            if (isolatedLink == "mountainEntry")
+            {
+                yield return CompleteIsolatedLink();
+                yield break;
+            }
             yield return Segment("mountain-outbound", CreateDriver<MountainPoleRelayReplay>().ReplayFromSpawn(this, polePlan));
             Require(character.CheckpointName.Value.ToString().EndsWith("Big summit", StringComparison.Ordinal),
                 "summit checkpoint captured");
             if (isolatedLink == "mountain")
             {
-                started = false;
-                File.WriteAllText(Evidence("isolated-link-pass.txt"), State());
-                yield return Barrier("isolated-pass");
-                Application.Quit(0);
+                yield return CompleteIsolatedLink();
                 yield break;
             }
             var bridge = CreateDriver<BridgeRelaySmoke>();
@@ -530,6 +535,14 @@ namespace TwinEdge.Gameplay
                 $"{moment} {State()} frames={frames} meanFps={(frameSeconds > 0 ? frames / frameSeconds : 0):F1} minFps={(peakFrame > 0 ? 1 / peakFrame : 0):F1} allocatedBytes={Profiler.GetTotalAllocatedMemoryLong()} gcBytes={(gcBytes.Valid ? totalGcBytes : -1)} peakGcFrame={(gcBytes.Valid ? peakGcBytes : -1)} networkObjects={Manager.SpawnManager.SpawnedObjectsList.Count} rttMs={rtt} draws={(drawCalls.Valid ? drawCalls.LastValue : -1)} cpuMs={(timingAvailable ? frameTiming[0].cpuFrameTime : -1):F2} gpuMs={(timingAvailable && frameTiming[0].gpuFrameTime > 0 ? frameTiming[0].gpuFrameTime : -1):F2}") + "\n");
             FrameTimingManager.CaptureFrameTimings();
             if (capture) Capture(stage);
+        }
+
+        IEnumerator CompleteIsolatedLink()
+        {
+            started = false;
+            File.WriteAllText(Evidence("isolated-link-pass.txt"), State());
+            yield return Barrier("isolated-pass");
+            Application.Quit(0);
         }
 
         internal void Capture(string label)

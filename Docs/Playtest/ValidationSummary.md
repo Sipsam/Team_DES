@@ -65,6 +65,14 @@ Run16 왕로 산악은 약 905초와 Host 누적 GC 707.67 MiB를 기록했다. 
 - Unity 6000.3.27f1에서 두 V3 씬과 일반·Development Windows 빌드를 검증했다. 두 씬의 누락 스크립트는 0개다. 이전 감사와 같은 URP Volume/Renderer GUID 11개가 남아 있다. 일반 Player의 Assembly-CSharp.dll SHA-256은 `0523FA5FD29A216E9141834C3863BB4BA8FAE054645AE669D5C7F544FCD7FCDD`다.
 - 협곡·강 렌더 표면과 기존 충돌 메시의 이음부를 대조했다. D3D11에서 다리 아래 깊이, 강변 암벽, 성채 표식과 석재, 지하 발광 용암을 확인했다. 강의 플레이 구간 고저차는 10m다.
 
+## 승인된 DeepGullies / FinalPolish 산악
+
+- DeepGullies 저장 메시의 구조, 렌더 메시와 MeshCollider 참조 일치 및 첫 막대 교차 구간의 보행 분리를 확인했다. 산악 정적 검사에서 29개 지점의 방향 연결 94개와 착지 지지 표본을 대조했고 연속 계획 4개가 통과했다.
+- 앞선 Windows 격리 Relay에서는 양쪽이 정상 스폰에서 서쪽 선반을 경유해 Big Summit에 도착했다. 별도 복로 격리에서는 개인 발사를, 산기슭 격리에서는 스폰 카메라와 Trail Entrance까지의 이동을 확인했다. Revision 2에서는 기록된 Relay 좌표를 사용해 양쪽 각각 막대 운반 109구간과 지표 표본 12,962개를 Collider에서 대조했다. 이 Windows 실행 및 기록 대조는 앞선 후보의 검증이다.
+- 승인된 FinalPolish는 DeepGullies 메시와 두 저장 씬을 그대로 사용한다. Unity D3D11에서 Forward+ 조명, 셰이더 컴파일, 재질 및 텍스처 참조, 씬 재개방, 산악 서브메시와 재질 슬롯 각 1개를 확인했다. 비산악 대조 프레임은 픽셀 단위로 일치했다.
+- 최종 통합에서 최신 DeepGullies 메시와 FinalPolish 재질이 함께 패킹된 Windows Player의 지형, 충돌 및 D3D11 화면을 확인해야 한다. 산악 최종화에서는 기존 격리 결과를 사용했다.
+- 선택적 로컬 증거는 `Docs/Development/Level/V3/MountainRedesign/Verification.md`와 그 아래 `RidgelineReview/DeepGullies/FinalPolish/Verification.md`에 있다.
+
 ## 남은 확인
 
 사람 2인의 별도 PC 전체 경기, 실제 조작과 밸런스, 장시간 네트워크 임페어먼트와 실기 성능은 개별 검증이 필요하다. 위 타이머는 한 PC에서 동작한 두 자동화 피어의 결과다. 상세 원본은 선택적으로 참고할 수 있는 로컬 증거다. 새 클론에서의 재현 절차는 [빌드 및 Relay 재생 절차](PlaytestGuide.md#development-build-and-automated-relay-checks)를 따른다.

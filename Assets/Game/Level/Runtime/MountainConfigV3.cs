@@ -65,6 +65,9 @@ namespace TwinEdge.Levels
         public List<MountainPoleCanyonV3> poleCanyons = new List<MountainPoleCanyonV3>();
         [Tooltip("Connected ridge profiles in world metres. An empty list uses the original peak field.")]
         public List<MountainRidgeV3> ridges = new List<MountainRidgeV3>();
+        [Tooltip("World X/Z of the western ravine's eastern end. Zero depth disables erosion.")]
+        public Vector2 westernRavineEnd;
+        [Min(0)] public float westernRavineDepth;
         [Tooltip("Mountain approach centerline, in world metres and increasing Z.")]
         public Vector3[] entryTrail = Array.Empty<Vector3>();
         public Vector3 bridgeAnchor = new Vector3(12,190,330);

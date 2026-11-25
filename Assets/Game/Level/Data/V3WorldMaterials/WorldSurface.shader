@@ -34,6 +34,10 @@ Shader "Twin Edge/V3 World Surface"
         Cull [_Cull]
 
         HLSLINCLUDE
+        // Enable the clustered light loop for the mountain surface only.
+        #if !defined(_MOUNTAIN_LAYERS)
+            #undef _CLUSTER_LIGHT_LOOP
+        #endif
         #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
 
         CBUFFER_START(UnityPerMaterial)
@@ -70,6 +74,7 @@ Shader "Twin Edge/V3 World Surface"
             #pragma multi_compile_fog
             #pragma multi_compile _ _MAIN_LIGHT_SHADOWS _MAIN_LIGHT_SHADOWS_CASCADE _MAIN_LIGHT_SHADOWS_SCREEN
             #pragma multi_compile _ _ADDITIONAL_LIGHTS_VERTEX _ADDITIONAL_LIGHTS
+            #pragma multi_compile _ _CLUSTER_LIGHT_LOOP
             #pragma multi_compile_fragment _ _ADDITIONAL_LIGHT_SHADOWS
             #pragma multi_compile_fragment _ _SHADOWS_SOFT _SHADOWS_SOFT_LOW _SHADOWS_SOFT_MEDIUM _SHADOWS_SOFT_HIGH
             #pragma multi_compile_fragment _ _SCREEN_SPACE_OCCLUSION
@@ -77,7 +82,7 @@ Shader "Twin Edge/V3 World Surface"
             #pragma shader_feature_local_fragment _OCCLUSIONMAP
             #pragma shader_feature_local_fragment _EMISSION
             #pragma shader_feature_local _RIVER_FLOW
-            #pragma shader_feature_local_fragment _MOUNTAIN_LAYERS
+            #pragma shader_feature_local _MOUNTAIN_LAYERS
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
 
             TEXTURE2D(_BaseMap); SAMPLER(sampler_BaseMap);
@@ -167,20 +172,40 @@ Shader "Twin Edge/V3 World Surface"
             }
 
             #if defined(_MOUNTAIN_LAYERS)
+            half2 MountainCoverage(float3 p, half3 normal, float drift)
+            {
+                // The ridge climbs northward. Evaluate foothill height and local relief
+                // separately so high gullies can still take a little darker rock.
+                float crownHeight = lerp(127, 184, saturate((p.z + 155) / 380));
+                float relief = p.y - crownHeight + drift * 21;
+                half upward = saturate(normal.y);
+                half capHeight = smoothstep(-46, 1, relief);
+                // Leave cliff rock visible across the weathered crown.
+                half crown = capHeight * smoothstep(.58, .92, upward) * .78;
+                half foothill = 1 - smoothstep(28, 120, p.y + drift * 17);
+                half gully = (1 - smoothstep(-50, -17, relief)) * .40;
+                half scree = max(foothill, gully) * lerp(.50, 1, upward);
+                return half2(crown, scree * (1 - crown));
+            }
+
             SurfaceSample ProjectMountain(float3 p, float3 tangent, float3 bitangent, half2 coverage)
             {
                 float2 uv = float2(dot(p, tangent), dot(p, bitangent));
                 float2 dx = ddx(uv), dy = ddy(uv);
-                SurfaceSample result = SampleSurface(TRANSFORM_TEX(uv, _BaseMap), tangent, bitangent);
+                // Keep slight vertical jointing without doubling the apparent cliff texel height.
+                float2 cliffUV = uv * lerp(float2(1, 1), float2(1.16, .86), abs(bitangent.y));
+                SurfaceSample result = SampleSurface(TRANSFORM_TEX(cliffUV, _BaseMap), tangent, bitangent);
                 result.color *= _BaseColor.rgb;
+                half3 cliffColor = result.color;
+                half3 cliffNormal = result.normalOffset;
                 if (coverage.x > .002)
                 {
                     float2 topUV = TRANSFORM_TEX(uv, _TopMap);
                     half3 color = SAMPLE_TEXTURE2D_GRAD(_TopMap, sampler_TopMap, topUV, dx*_TopMap_ST.xy, dy*_TopMap_ST.xy).rgb * _TopTint.rgb;
                     half2 normal = UnpackNormalScale(SAMPLE_TEXTURE2D_GRAD(_TopNormal, sampler_TopMap, topUV,
                         dx*_TopMap_ST.xy, dy*_TopMap_ST.xy), _TopNormalScale).xy;
-                    result.color = lerp(result.color, color, coverage.x);
-                    result.normalOffset = lerp(result.normalOffset, normal.x * tangent + normal.y * bitangent, coverage.x);
+                    result.color += coverage.x * (color - cliffColor);
+                    result.normalOffset += coverage.x * (normal.x * tangent + normal.y * bitangent - cliffNormal);
                 }
                 if (coverage.y > .002)
                 {
@@ -189,8 +214,8 @@ Shader "Twin Edge/V3 World Surface"
                         dx*_BottomMap_ST.xy, dy*_BottomMap_ST.xy).rgb * _BottomTint.rgb;
                     half2 normal = UnpackNormalScale(SAMPLE_TEXTURE2D_GRAD(_BottomNormal, sampler_BottomMap, bottomUV,
                         dx*_BottomMap_ST.xy, dy*_BottomMap_ST.xy), _BottomNormalScale).xy;
-                    result.color = lerp(result.color, color, coverage.y);
-                    result.normalOffset = lerp(result.normalOffset, normal.x * tangent + normal.y * bitangent, coverage.y);
+                    result.color += coverage.y * (color - cliffColor);
+                    result.normalOffset += coverage.y * (normal.x * tangent + normal.y * bitangent - cliffNormal);
                 }
                 return result;
             }
@@ -214,15 +239,12 @@ Shader "Twin Edge/V3 World Surface"
                 half3 weights = pow(abs(normal), 4);
                 weights /= weights.x + weights.y + weights.z;
             #if defined(_MOUNTAIN_LAYERS)
-                // Wind deposits follow the mountain's aspect and broken seams across the exposed rock.
-                float seam = sin(dot(p, float3(.042, .037, .017)) + 1.8 * cos(dot(p.xz, float2(.025, -.043))));
-                float drift = .62 * seam + .26 * cos(dot(p, float3(-.061, .012, .089))) +
-                    .12 * sin(dot(p, float3(.131, -.08, -.115)));
-                float exposure = .31 * normal.y + dot(normal.xz, float2(.22, -.19));
-                half snow = smoothstep(.17, .94, exposure + drift*.39 + (p.y-141)*.003) * .80;
-                half scree = 1 - smoothstep(22, 140, p.y + drift*31 - (1-normal.y)*16);
-                half2 layers = half2(snow, scree);
-                float3 warped = p + float3(1.6 * drift, .7 * seam, -1.1 * drift);
+                // Keep the pattern continuous across adjoining rock faces while breaking up repetition.
+                float mineralField = cos(dot(p, float3(.026, .010, -.034)) + .000075 * p.x * p.z);
+                float weathering = sin(dot(p, float3(-.075, .041, .099)) + 1.7 * mineralField);
+                float drift = .60 * mineralField + .40 * weathering;
+                half2 layers = MountainCoverage(p, normal, drift);
+                float3 warped = p + float3(2.1 * drift, .8 * weathering, -1.7 * drift);
                 SurfaceSample x = ProjectMountain(warped, float3(0, 0, normal.x < 0 ? 1 : -1), float3(0, 1, 0), layers);
                 SurfaceSample y = ProjectMountain(warped, float3(1, 0, 0), float3(0, 0, normal.y < 0 ? 1 : -1), layers);
                 SurfaceSample z = ProjectMountain(warped, float3(normal.z < 0 ? -1 : 1, 0, 0), float3(0, 1, 0), layers);
@@ -233,8 +255,15 @@ Shader "Twin Edge/V3 World Surface"
             #endif
                 surface.color = x.color * weights.x + y.color * weights.y + z.color * weights.z;
             #if defined(_MOUNTAIN_LAYERS)
-                half sediment = (1-smoothstep(38,143,p.y+drift*26))*smoothstep(.38,.91,normal.y);
-                surface.color *= lerp(half3(1.30,1.29,1.26),half3(1.56,1.37,1.15),sediment) * (1.0 + .19 * drift);
+                half warm = saturate(.49 + .48 * mineralField + dot(normal.xz, half2(.18, -.15)));
+                half3 mineral = lerp(half3(.82, .97, 1.16), half3(1.16, 1.01, .83), warm);
+                // Weathered seams stay visible along outer slopes at overview distance.
+                surface.color *= mineral * (1 + .055 * weathering + .07 * mineralField);
+
+                half soil = layers.y * smoothstep(.55, .87, normal.y) * smoothstep(-.12, .78, weathering);
+                half moss = 1 - smoothstep(-.65, .32, mineralField);
+                half3 groundTint = lerp(half3(.97, .85, .72), half3(.79, .92, .68), moss);
+                surface.color *= lerp(1, groundTint, soil * .68);
             #endif
                 surface.normalOffset = x.normalOffset * weights.x + y.normalOffset * weights.y + z.normalOffset * weights.z;
                 surface.occlusion = dot(half3(x.occlusion, y.occlusion, z.occlusion), weights);

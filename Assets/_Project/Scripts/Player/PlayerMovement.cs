@@ -293,7 +293,7 @@ public sealed class PlayerMovement : NetworkBehaviour
     {
         PlaceAtOwner(position, rotation);
         if (IsOwner && TwinEdge.Gameplay.V3GameplayBootstrap.Current?.state.Phase < FoundationPhase.Outbound)
-            ownerCamera?.FaceSpawn(rotation);
+            ownerCamera?.FaceInitialSpawn(rotation);
     }
 
     [Rpc(SendTo.SpecifiedInParams, InvokePermission = RpcInvokePermission.Server)]

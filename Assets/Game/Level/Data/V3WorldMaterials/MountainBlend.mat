@@ -31,7 +31,7 @@ Material:
         m_Offset: {x: 0, y: 0}
     - _BottomMap:
         m_Texture: {fileID: 2800000, guid: b9f2edacb52b1f84d8de4237ca1c7b21, type: 3}
-        m_Scale: {x: 0.125, y: 0.125}
+        m_Scale: {x: 0.108, y: 0.108}
         m_Offset: {x: 0, y: 0}
     - _BottomNormal:
         m_Texture: {fileID: 2800000, guid: 3ae6daba1a7a93342b67dcb11f8fd183, type: 3}
@@ -55,7 +55,7 @@ Material:
         m_Offset: {x: 0, y: 0}
     - _TopMap:
         m_Texture: {fileID: 2800000, guid: 21512f129f64fec45be3bb07b6e11e91, type: 3}
-        m_Scale: {x: 0.09090909, y: 0.09090909}
+        m_Scale: {x: 0.108, y: 0.108}
         m_Offset: {x: 0, y: 0}
     - _TopNormal:
         m_Texture: {fileID: 2800000, guid: e14238aa74f3e504cb9029a5c9cf1c18, type: 3}
@@ -63,21 +63,21 @@ Material:
         m_Offset: {x: 0, y: 0}
     m_Ints: []
     m_Floats:
-    - _BottomNormalScale: 0.63
-    - _BumpScale: 0.72
+    - _BottomNormalScale: 0.72
+    - _BumpScale: 0.98
     - _Cull: 2
     - _MountainLayers: 1
     - _OcclusionStrength: 0.65
     - _RiverFlow: 0
-    - _Smoothness: 0.15
-    - _TopNormalScale: 0.54
+    - _Smoothness: 0.08
+    - _TopNormalScale: 0.66
     - _Triplanar: 1
     - _UseEmission: 0
     - _UseOcclusion: 0
     m_Colors:
-    - _BaseColor: {r: 0.62, g: 0.65, b: 0.68, a: 1}
-    - _BottomTint: {r: 0.39999998, g: 0.45999992, b: 0.50999993, a: 1}
+    - _BaseColor: {r: 0.84, g: 0.81, b: 0.79, a: 1}
+    - _BottomTint: {r: 0.86, g: 0.83, b: 0.79, a: 1}
     - _EmissionColor: {r: 0, g: 0, b: 0, a: 0}
-    - _TopTint: {r: 0.95, g: 0.96999997, b: 1, a: 1}
+    - _TopTint: {r: 0.77, g: 0.72, b: 0.68, a: 1}
   m_BuildTextureStacks: []
   m_AllowLocking: 1

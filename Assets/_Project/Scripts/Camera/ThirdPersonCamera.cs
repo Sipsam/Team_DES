@@ -13,6 +13,7 @@ public sealed class ThirdPersonCamera : MonoBehaviour
     [SerializeField, Min(0f)] private float sensitivity = 0.15f;
     [SerializeField] private float minimumPitch = -25f;
     [SerializeField] private float maximumPitch = 65f;
+    [SerializeField] private float initialSpawnPitch = 15f;
     [SerializeField, Min(0f)] private float positionSmoothTime = 0.05f;
 
     private float yaw;
@@ -112,6 +113,12 @@ public sealed class ThirdPersonCamera : MonoBehaviour
     {
         yaw = rotation.eulerAngles.y;
         hasInitializedPosition = false;
+    }
+
+    internal void FaceInitialSpawn(Quaternion rotation)
+    {
+        FaceSpawn(rotation);
+        pitch = Mathf.Clamp(initialSpawnPitch, minimumPitch, maximumPitch);
     }
 
     public void SetTarget(Transform newTarget)

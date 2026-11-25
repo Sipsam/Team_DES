@@ -128,7 +128,7 @@ namespace TwinEdge.Levels.Editor
                 UnityEngine.Object.DestroyImmediate(mesh);
             }
             Refresh(filter.sharedMesh, collider);
-            filter.GetComponent<MeshRenderer>().sharedMaterial = V3WorldMaterials.MountainBlend();
+            filter.GetComponent<MeshRenderer>().sharedMaterials = new[] { V3WorldMaterials.MountainBlend() };
             foreach (var peak in peaks)
                 owner.generated.transform.Find(peak.id).position = new Vector3(peak.position.x, peak.height, peak.position.y);
             if (config.entryTrail.Length > 0)
