@@ -67,3 +67,13 @@ cd Team_DES
 - [멀티플레이](Docs/Architecture/Multiplayer.md)
 - [플레이테스트 가이드](Docs/Playtest/PlaytestGuide.md)
 - [검증 요약](Docs/Playtest/ValidationSummary.md)
+
+## 2026-11-25 플레이테스트 변경 사항
+
+Windows에서 Unity **6000.3.27f1**로 프로젝트를 연 뒤, Play Mode를 끈 상태에서 아래 메뉴를 사용합니다.
+
+- **솔로 플레이** — **Tools → Twin Edge → Play Solo**를 선택합니다. 한 창에서 `F6` 또는 **Switch player** 버튼으로 조작할 캐릭터를 바꿉니다. 두 캐릭터가 각각 목재를 잡거나 공용 뗏목에 타면, 한쪽 입력으로 함께 운반하거나 노를 저을 수 있습니다.
+- **자동 재생** — **Tools → Twin Edge → Run Full Replay**를 선택합니다. 두 캐릭터가 정해진 경로와 행동에 따라 플레이하고, 한 창에서 경기를 볼 수 있습니다. 두 모드는 같은 PC에서 연결하므로 방 코드가 필요 없습니다.
+- **관전 카메라** — 우클릭을 누른 채 드래그해 회전하고, 휠로 확대·축소합니다. 휠 클릭으로 기본 시점에 돌아갑니다.
+
+[상세 실행 방법과 결과 저장 위치](Docs/Playtest/PlaytestGuide.md#2026-11-25-플레이테스트-변경-사항)
