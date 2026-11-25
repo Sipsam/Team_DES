@@ -2,6 +2,7 @@
 using System;
 using System.Collections;
 using System.IO;
+using System.Linq;
 using Unity.Netcode;
 using UnityEngine;
 
@@ -62,7 +63,9 @@ namespace TwinEdge.Gameplay
             var cc = player.GetComponent<CharacterController>(); cc.enabled = false;
             player.GetComponent<OwnerNetworkTransform>().Teleport(target,Quaternion.identity,Vector3.one);
             player.ResetVerticalVelocity(); cc.enabled = true;
-            yield return new WaitForSeconds(1);
+            yield return Until(() => FindObjectsByType<GameplayCharacter>(FindObjectsSortMode.None).Count(c =>
+                c.CheckpointName.Value.ToString() == "GameplayCheckpoint_Pole start") == 2,
+                "Both pole-start checkpoints replicated");
             if (!host) yield return Until(()=>pole.Snapshot.phase == PolePhase.OneAttached,"First player attached");
             pole.UseRpc(pole.Snapshot.revision);
             yield return Until(()=>pole.IsAttached(player.OwnerClientId),"Own grip attached");
@@ -108,7 +111,14 @@ namespace TwinEdge.Gameplay
             }
             yield return Until(()=>pole.Snapshot.phase == PolePhase.Idle,"Collision failure resets pair");
             Check(pole.Snapshot.failure.ToString().Contains("collision"),"Actual collider caused failure");
-            if(!host) yield return Until(()=>player.GetComponent<GameplayCharacter>().RespawnCount.Value>respawns,"Failed orbit respawned");
+            if (!host)
+            {
+                var own = player.GetComponent<GameplayCharacter>();
+                yield return Until(() => own.RespawnCount.Value > respawns &&
+                    Vector3.Distance(player.transform.position, pole.Snapshot.b) < 5,
+                    "Failed orbit respawned at the pole summit");
+                Check(own.CheckpointName.Value.ToString() == "GameplayCheckpoint_Pole start", "Pole checkpoint retained");
+            }
             else Check(player.GetComponent<GameplayCharacter>().RespawnCount.Value==respawns,"Pivot not forced to respawn");
             yield return Until(()=>!player.GetComponent<PoleMotor>().Attached && cc.enabled,"Recovery unlocks controller");
             yield return AttachAgain("disconnect");

@@ -328,8 +328,8 @@ public sealed partial class V3GameplaySmoke
         yield return TestDeathRegion(game, carrier, "river", Vector3.Lerp(upper, lower, .5f), lower);
         yield return TestDeathRegion(game, carrier, "bridge", bridge.StartPoint + bridge.Forward * (bridge.Length * .5f), big);
         yield return TestDeathRegion(game, carrier, "small-peak", V3GameplayBootstrap.SafeGround(Peak("Peak_10")), big);
-        Vector3 approach = V3GameplayBootstrap.SafeGround(Peak("Peak_04"));
-        yield return TestDeathRegion(game, carrier, "final-approach", approach, approach);
+        Vector3 startSummit = V3GameplayBootstrap.SafeGround(MarkerPoint("Mountain.V3.Start"));
+        yield return TestDeathRegion(game, carrier, "start-summit", startSummit, startSummit);
     }
 
     IEnumerator TestDeathRegion(GameStateManager game, GameplayCharacter carrier, string label,

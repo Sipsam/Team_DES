@@ -115,7 +115,7 @@ public sealed class RespawnManager : NetworkBehaviour
         var bridge = TwinEdge.Gameplay.BridgeGameplay.Current;
         bridge?.BeforeRespawnServer(player);
         if (lastBridgeFeet.Remove(player.OwnerClientId, out Vector3 feet) && !useAssignedCheckpoint && !regionalCheckpoint && bridge != null &&
-            bridge.TryFallCheckpoint(feet, out Pose bridgeCheckpoint, out string bridgeLabel))
+            bridge.TryFallCheckpoint(player, feet, out Pose bridgeCheckpoint, out string bridgeLabel))
             SetCheckpoint(player, bridgeCheckpoint.position, bridgeCheckpoint.rotation, bridgeLabel);
         TwinEdge.Gameplay.CooperativePole.Current?.BeforeRespawnServer(player.OwnerClientId);
         player.GetComponent<TwinEdge.Gameplay.MountainReturnLaunch>()?.BeforeRespawnServer();
@@ -175,7 +175,13 @@ public sealed class RespawnManager : NetworkBehaviour
 
     private void HandleGameStateChanged(GameState previous, GameState next)
     {
-        if (!IsServer || next != GameState.Competition || competitionStart == null) return;
+        if (!IsServer || next != GameState.Competition) return;
+        if (gameStateManager.foundationMode)
+        {
+            TwinEdge.Gameplay.UndergroundGameplay.Current?.AssignReturnStartCheckpoints();
+            return;
+        }
+        if (competitionStart == null) return;
         int index = 0;
         foreach (NetworkClient client in NetworkManager.ConnectedClientsList)
         {

@@ -241,6 +241,10 @@ namespace TwinEdge.Gameplay
             yield return WalkTo(bridge.EndPoint + side + Vector3.forward * 3, true);
             Check(player.transform.position.z > bridge.EndPoint.z && player.GetComponent<GameplayCharacter>().RespawnCount.Value == respawns,
                 "Continuous summit-to-Canyon outbound crossing");
+            if (fullMatch == null)
+                Check(FindObjectsByType<GameplayCharacter>(FindObjectsSortMode.None).All(c =>
+                    c.CheckpointName.Value.ToString() != "GameplayCheckpoint_Return / Canyon bridge approach"),
+                    "Outbound crossing leaves the Return approach inactive");
             yield return Barrier("outbound");
             if (host && fullMatch == null) SaveRender("outbound", bridge.EndPoint - Vector3.forward * 12, new Vector3(9, 6, 12));
             File.WriteAllText(output + "/" + peer + "-outbound-pass.txt", "PASS real Relay, 13 deliveries, original support colliders and outbound crossing.");
@@ -260,6 +264,10 @@ namespace TwinEdge.Gameplay
             yield return Until(() => bridge.ReturnActive && File.Exists(output + "/route.txt"), "Return ready");
             CheckSupport(planks.Length);
             if (!host) Check(bridge.ReadServerHazardsForTest() == null, "Client has no hazard assignment");
+            const string approach = "GameplayCheckpoint_Return / Canyon bridge approach";
+            if (fullMatch == null)
+                yield return Until(() => FindObjectsByType<GameplayCharacter>(FindObjectsSortMode.None).Count(c =>
+                    c.CheckpointName.Value.ToString() == approach) == 2, "Both canyon approach checkpoints replicated");
             yield return Barrier("hidden-hazards");
             var route = File.ReadAllText(output + "/route.txt").Select(value => value == '1').ToArray();
             int hole = Enumerable.Range(16, planks.Length - 32).First(i =>
@@ -275,10 +283,11 @@ namespace TwinEdge.Gameplay
                 yield return Until(() => player.transform.position.z < planks[hole].socket.z + .12f, "Enter missing support");
                 Steer(Vector3.zero);
                 yield return Until(() => character.RespawnCount.Value > before, "Gravity fall");
-                yield return Until(() => character.CheckpointName.Value.ToString() == "Lower dock" && player.transform.position.y < 170, "Lower dock respawn");
+                yield return Until(() => character.CheckpointName.Value.ToString() == approach &&
+                    Vector3.Distance(player.transform.position, bridge.EndPoint) < 6, "Canyon bridge approach respawn");
                 Check(bridge.IsCollapsed(hole), "Collapse persists after respawn");
                 SaveRender("collapsed", planks[hole].socket, new Vector3(8, 6, 7));
-                File.WriteAllText(output + "/host-fall-pass.txt", "PASS contact, gravity, Lower dock, persistent collapse");
+                File.WriteAllText(output + "/host-fall-pass.txt", "PASS contact, gravity, canyon bridge approach, persistent collapse");
                 Teleport(bridge.EndPoint + side + Vector3.forward * 3);
             }
             if (!contactWithoutFall)

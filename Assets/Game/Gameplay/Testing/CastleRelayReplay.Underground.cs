@@ -193,6 +193,9 @@ namespace TwinEdge.Gameplay
                 SetKeys();
             }
             yield return Wait(() => game.Phase == FoundationPhase.Return && gem.State == GemState.Carried, "one server-approved E pickup starts Return");
+            if (fullMatch == null)
+                yield return Wait(() => System.Linq.Enumerable.Count(FindObjectsByType<GameplayCharacter>(FindObjectsSortMode.None),
+                    c => c.CheckpointName.Value.ToString() == "Underground seal") == 2, "Gem pickup assigns both Return altar checkpoints");
             bool carrier = gem.Owner == player.OwnerClientId;
             File.WriteAllText(Path.Combine(output, role + "-carrier.txt"), gem.Owner.ToString());
             yield return Rendezvous("carrier-seen");
@@ -257,8 +260,10 @@ namespace TwinEdge.Gameplay
             var stairs = cave.Stairs;
             for (int i = stairs.Length - 1; i >= 0; i--)
                 yield return Walk(stairs[i].x, stairs[i].z, sprint: true);
-            yield return Walk(0, 247.5f);
+            yield return Walk(fullMatch == null && !isolated ? (host ? 1.3f : -1.3f) : 0, 247.5f);
             Require(Mathf.Abs(player.transform.position.y - castle.World(0, 0, 0).y) < 1, "physical return ascends to the castle door");
+            if (fullMatch == null && !isolated)
+                yield return CheckBasementRecovery(FoundationPhase.Return, 246.8f);
             yield return Walk(host ? 2.3f : -2.3f, 241.5f);
             yield return Rendezvous("underground-exit");
         }

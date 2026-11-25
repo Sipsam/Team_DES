@@ -86,7 +86,11 @@ namespace TwinEdge.Gameplay
 #endif
             standbyCamera.transform.SetPositionAndRotation(initial.transform.position + Vector3.up * 6 - initial.transform.forward * 9,
                 Quaternion.Euler(22, initial.transform.eulerAngles.y, 0));
-            // Existing marker IDs are the source of truth. Only planning-approved outbound destinations are enabled.
+            var poleStart = CreateFoundationCheckpoint(transform, respawns, "Pole start", FoundationPhase.Outbound,
+                start.transform.position, Quaternion.identity, new Vector3(cooperativePole.length + 4, 3, 6),
+                cooperativePole.length * .5f - 2, -2);
+            poleStart.RequireSummitLanding(cooperativePole, cooperativePole.mountain.start.id);
+            // Keep the existing route checkpoints bound to their saved markers.
             AddCheckpoint("Mountain.V3.Final", "Big summit", CheckpointPhase.Cooperation);
             AddCheckpoint("Valley.V3.LowerCheckpoint", "Lower dock", CheckpointPhase.Cooperation);
             AddCheckpoint("Valley.V3.UpperCheckpoint", "Upper dock / castle rooms", CheckpointPhase.Cooperation);
@@ -157,6 +161,31 @@ namespace TwinEdge.Gameplay
             if (!Physics.Raycast(candidate + Vector3.up * 6, Vector3.down, out var hit, 18, ~0, QueryTriggerInteraction.Ignore))
                 throw new System.InvalidOperationException("No V3 collider under gameplay point: " + candidate);
             return hit.point + Vector3.up * .12f;
+        }
+
+        internal static Checkpoint CreateFoundationCheckpoint(Transform parent, RespawnManager manager,
+            string label, FoundationPhase phase, Vector3 center, Quaternion facing, Vector3 size,
+            float slotSpacing, float slotDepth = 0, System.Func<bool> progressGate = null)
+        {
+            var poses = new Pose[2];
+            for (int slot = 0; slot < poses.Length; slot++)
+            {
+                Vector3 candidate = center + facing * new Vector3(slot == 0 ? -slotSpacing : slotSpacing, 0, slotDepth);
+                if (!Physics.Raycast(candidate + Vector3.up * 1.25f, Vector3.down, out var hit, 3,
+                        ~0, QueryTriggerInteraction.Ignore) || hit.normal.y < .7f)
+                    throw new System.InvalidOperationException($"No walkable V3 support at {label} slot {slot}: {candidate}");
+                poses[slot] = new Pose(hit.point + Vector3.up * .12f, facing);
+            }
+
+            var obj = new GameObject("GameplayCheckpoint_" + label);
+            obj.transform.SetParent(parent);
+            obj.transform.SetPositionAndRotation(center, facing);
+            var box = obj.AddComponent<BoxCollider>();
+            box.isTrigger = true;
+            box.size = size;
+            var checkpoint = obj.AddComponent<Checkpoint>();
+            checkpoint.ConfigureFoundation(manager, phase, poses, progressGate);
+            return checkpoint;
         }
         void AddCheckpoint(string id, string label, CheckpointPhase phase)
         {

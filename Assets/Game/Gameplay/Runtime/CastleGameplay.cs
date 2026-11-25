@@ -63,6 +63,7 @@ namespace TwinEdge.Gameplay
         NetworkSpawnCoordinator spawns;
         FortressConfigV3 config;
         readonly Pose[] dockPoses = new Pose[2];
+        Checkpoint outboundBasement, returnBasement;
         Scene boundScene;
         int hintStage = -1, hintCode, localNumber = -1, pendingKeypad = -1;
         internal bool IsKeypadOpen => pendingKeypad >= 0;
@@ -164,9 +165,15 @@ namespace TwinEdge.Gameplay
         {
             int slot = Slot(player.OwnerClientId);
             if (!IsSpawned || !IsServer || slot < 0 || !Contains(player.transform.position)) return false;
-            Pose pose = Returning ? ReturnPose(slot) : DockPose(slot);
-            respawns.SetCheckpoint(player, pose.position, pose.rotation,
-                Returning ? "Castle basement door" : "Upper dock / castle rooms");
+            Checkpoint basement = game.Phase == FoundationPhase.Return ? returnBasement : outboundBasement;
+            bool reachedBasement = basement != null &&
+                player.GetComponent<GameplayCharacter>().CheckpointName.Value.ToString() == basement.name;
+            if (!reachedBasement)
+            {
+                Pose pose = Returning ? ReturnPose(slot) : DockPose(slot);
+                respawns.SetCheckpoint(player, pose.position, pose.rotation,
+                    Returning ? "Castle basement door" : "Upper dock / castle rooms");
+            }
             var p = progress[slot];
             if (clearInjuryOnRespawn) p.Injured = false;
             p.SewerLength = 0;

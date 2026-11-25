@@ -127,6 +127,15 @@ namespace TwinEdge.Gameplay
             ready = true;
             ApplyViews();
             Physics.SyncTransforms();
+            Vector3 threshold = config.origin + h;
+            Vector3 approachSize = new(7, 2, 3.8f);
+            outboundBasement = V3GameplayBootstrap.CreateFoundationCheckpoint(layout, respawns,
+                "Outbound / Basement entrance", FoundationPhase.Outbound, threshold + Vector3.back * 2.25f,
+                Quaternion.identity, approachSize, 1.3f, progressGate: () => DoorOpen);
+            returnBasement = V3GameplayBootstrap.CreateFoundationCheckpoint(layout, respawns,
+                "Return / Basement entrance", FoundationPhase.Return, threshold + Vector3.forward * 1.8f,
+                Quaternion.Euler(0, 180, 0), new Vector3(7, 2, 3.2f), 1.3f,
+                progressGate: () => Returning && PartitionsOpen);
         }
 
         void AddReservation(Transform root, string path)

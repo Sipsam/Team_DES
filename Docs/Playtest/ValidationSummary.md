@@ -74,6 +74,13 @@ Run16 왕로 산악은 약 905초와 Host 누적 GC 707.67 MiB를 기록했다. 
 - 최종 통합에서 최신 DeepGullies 메시와 FinalPolish 재질이 함께 패킹된 Windows Player의 지형, 충돌 및 D3D11 화면을 확인해야 한다. 산악 최종화에서는 기존 격리 결과를 사용했다.
 - 선택적 로컬 증거는 `Docs/Development/Level/V3/MountainRedesign/Verification.md`와 그 아래 `RidgelineReview/DeepGullies/FinalPolish/Verification.md`에 있다.
 
+## V3 플레이테스트 피드백 1 · 체크포인트와 복구
+
+- 11월 22일 로컬 `V3Playtest`의 실행 파일, 어셈블리, 패킹된 씬을 포함한 7개 파일 해시가 당시 일반 Player 빌드 기록과 일치했다. `3805710`은 추정 소스이며, 이번 변경은 원격과 일치한 최신 `main` `97611f3`에서 시작했다.
+- Unity 6000.3.27f1 Windows Development Player에서 같은 PC의 두 프로세스로 격리 Relay를 실행했다. 왕로 막대의 실제 충돌과 복로 다리의 발판 붕괴 및 낙하로 새 복구 위치를 검증했다. 성채 지하문은 왕로와 복로 양쪽에서 체크포인트 복제 및 슬롯별 복구를 확인했다.
+- 실제 공동 봉인과 보석 획득으로 복로 제단 복구 지점을 설정했다. 지하문 복구 후에도 복로, 성채 관문 및 열린 봉인이 유지됐다. 성채 함정의 두 번째 피격은 복로 지하문 복구를 사용했다. 기존 Big summit과 뗏목 복구, 보석의 구간별 재배치·재획득 회귀도 통과했다.
+- 격리 Relay 6개 사례가 양쪽 종료 코드 0으로 완료됐다. 성채 재접속 후 양쪽 출구 통과도 확인했다. 일부 격리 테스트는 구간 배치, 단계 설정 또는 사망 호출을 검증용으로 사용했다. 선택적 로컬 기록은 `Docs/Development/CheckpointRecovery/V1/Verification.md`에 있다.
+
 ## 남은 확인
 
 최신 소스의 전체 월드 회귀, 전체 자동 경기 및 E2E Relay, DeepGullies와 FinalPolish를 함께 패킹한 Windows Player, 최종 배포 빌드는 사용자가 시작하는 최종 통합 단계로 보류했다. 이전 전체 경기의 결과는 해당 후보 빌드의 기록이다.

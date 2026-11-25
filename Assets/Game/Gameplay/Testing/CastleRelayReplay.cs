@@ -224,6 +224,8 @@ namespace TwinEdge.Gameplay
             castle.SubmitNumberRpc(castle.LocalNumber, castle.Progress(slot).Revision);
             yield return Wait(() => castle.DoorOpen, "both four-digit codes open basement", 30);
             yield return Walk(host ? 1.7f : -1.7f, 242.6f);
+            if (fullMatch == null)
+                yield return CheckBasementRecovery(FoundationPhase.Outbound, 242.75f);
             if (!host)
             {
                 yield return Wait(() => castle.Crossed == 1, "host crossed while client remains door-front");
@@ -267,6 +269,44 @@ namespace TwinEdge.Gameplay
             else yield return RunSewer();
             yield return TraverseGate(true);
             Capture("gate-exit");
+        }
+
+        IEnumerator CheckBasementRecovery(FoundationPhase phase, float spawnZ)
+        {
+            string label = $"GameplayCheckpoint_{phase} / Basement entrance";
+            var players = FindObjectsByType<GameplayCharacter>(FindObjectsSortMode.None);
+            yield return Wait(() => players.Length == 2 && players.All(c => c.CheckpointName.Value.ToString() == label),
+                "Basement checkpoint replicated for both players in " + phase);
+            var lives = players.Select(c => c.RespawnCount.Value).ToArray();
+            var gem = GemOwnership.Current;
+            bool carryingGem = gem.State == GemState.Carried;
+            yield return Rendezvous("basement-" + phase + "-armed");
+            if (host)
+            {
+                var respawns = game.GetComponent<RespawnManager>();
+                foreach (var peer in players)
+                    respawns.RespawnPlayer(peer.GetComponent<PlayerMovement>());
+            }
+            yield return Wait(() => players.Select((c, i) =>
+            {
+                bool serverPlayer = c.OwnerClientId == NetworkManager.ServerClientId;
+                float side = serverPlayer ? -1.3f : 1.3f;
+                Vector3 expected = castle.World(phase == FoundationPhase.Outbound ? side : -side, 0, spawnZ);
+                return c.RespawnCount.Value > lives[i] && Mathf.Abs(c.transform.position.x - expected.x) < .25f &&
+                    Mathf.Abs(c.transform.position.z - expected.z) < .4f;
+            }).All(recovered => recovered),
+                "Both basement respawns replicated in " + phase);
+            Require(Vector3.Distance(players[0].transform.position, players[1].transform.position) > 2 &&
+                game.Phase == phase && castle.DoorOpen && castle.Stage == 4, "Separate spawns preserve phase and castle progress");
+            if (phase == FoundationPhase.Return)
+            {
+                Require(castle.PartitionsOpen && UndergroundGameplay.Current.Seal == UndergroundSeal.Unsealed,
+                    "Return recovery preserves partitions and unsealed gem");
+                if (carryingGem)
+                    yield return Wait(() => gem.State == GemState.Relocated && gem.Owner == ulong.MaxValue,
+                        "Carrier death uses the existing gem relocation");
+            }
+            yield return Rendezvous("basement-" + phase + "-recovered");
         }
 
         IEnumerator TraverseGate(bool returning)
@@ -352,7 +392,7 @@ namespace TwinEdge.Gameplay
             yield return Walk(x, z);
             Require(character.RespawnCount.Value == deaths, "one attack is not double-counted");
             yield return Wait(() => character.RespawnCount.Value > deaths, "second physical contact respawns", 30);
-            yield return Wait(() => Vector3.Distance(player.transform.position, castle.World(2.3f, .15f, 249)) < 1,
+            yield return Wait(() => Vector3.Distance(player.transform.position, castle.World(1.3f, .15f, 246.8f)) < 1,
                 "return respawn at basement");
             Require(!castle.Progress(slot).Injured && castle.DoorOpen, "death clears injury and preserves opened gate");
             yield return Walk(2.3f, 233);
@@ -484,6 +524,14 @@ namespace TwinEdge.Gameplay
             float progressDeadline = Time.realtimeSinceStartup + 3;
             while (true)
             {
+                if (!game.CanPlay)
+                {
+                    SteerWorld(Vector3.zero);
+                    float pausedAt = Time.realtimeSinceStartup;
+                    yield return Wait(() => game.CanPlay, "Both peers ready to continue walking", 100);
+                    end += Time.realtimeSinceStartup - pausedAt;
+                    progressDeadline = Time.realtimeSinceStartup + 3;
+                }
                 Vector3 delta = Vector3.ProjectOnPlane(destination - player.transform.position, Vector3.up);
                 float distance = delta.magnitude;
                 if (distance <= .32f) break;

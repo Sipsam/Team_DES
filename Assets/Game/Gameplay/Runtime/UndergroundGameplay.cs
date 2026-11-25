@@ -142,6 +142,16 @@ namespace TwinEdge.Gameplay
         Pose LandingPose(int lane, int index) => index == Stages ? AltarPose(lane) :
             new(World(landings[lane, index].position) + new Vector3(0, .15f, 0), Quaternion.Euler(0, 180, 0));
 
+        internal void AssignReturnStartCheckpoints()
+        {
+            if (!IsBound || !IsServer || !Returning || Seal != UndergroundSeal.Unsealed) return;
+            foreach (var peer in NetworkManager.ConnectedClientsList)
+            {
+                if (peer.PlayerObject == null || !spawns.TryGetSlot(peer.ClientId, out int slot)) continue;
+                SetDeathCheckpoint(peer.PlayerObject.GetComponent<PlayerMovement>(), AltarPose(slot), "Underground seal");
+            }
+        }
+
         internal bool HandleFall(PlayerMovement player)
         {
             if (!IsBound || !IsSpawned || !IsServer || !InCavern(player.transform.position)) return false;

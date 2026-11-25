@@ -21,6 +21,7 @@ namespace TwinEdge.Gameplay
         readonly Dictionary<Collider, int> supportIds = new();
         bool[] hazard;
         Pose summitRetry, dockRetry;
+        Checkpoint returnApproach;
         bool retryPositionsReady;
         int lastReportedPlank = -1;
         float nextContactReport;
@@ -57,6 +58,11 @@ namespace TwinEdge.Gameplay
             Physics.SyncTransforms();
             summitRetry = new Pose(V3GameplayBootstrap.SafeGround(summit.transform.position), summit.transform.rotation);
             dockRetry = new Pose(V3GameplayBootstrap.SafeGround(dock.transform.position), dock.transform.rotation);
+            if (returnApproach != null) Destroy(returnApproach.gameObject);
+            returnApproach = V3GameplayBootstrap.CreateFoundationCheckpoint(transform, GetComponent<RespawnManager>(),
+                "Return / Canyon bridge approach", FoundationPhase.Return, EndPoint + Forward * 4,
+                Quaternion.LookRotation(-Forward), new Vector3(layout.walkWidth, 3, 5), 1.5f,
+                progressGate: () => ReturnActive);
             retryPositionsReady = true;
         }
 
@@ -141,12 +147,18 @@ namespace TwinEdge.Gameplay
             }
         }
 
-        public bool TryFallCheckpoint(Vector3 lastDeckFeet, out Pose pose, out string label)
+        internal bool TryFallCheckpoint(PlayerMovement player, Vector3 lastDeckFeet, out Pose pose, out string label)
         {
             pose = default;
             label = null;
             if (!retryPositionsReady || !levelScene.isLoaded || !InBridgeAirspace(lastDeckFeet, 1f)) return false;
-            bool back = game.CurrentState == GameState.Competition;
+            if (ReturnActive && NetworkManager.GetComponent<NetworkSpawnCoordinator>().TryGetSlot(player.OwnerClientId, out int slot))
+            {
+                pose = returnApproach.PoseForSlot(slot);
+                label = returnApproach.name;
+                return true;
+            }
+            bool back = game.Phase == FoundationPhase.Return;
             pose = back ? dockRetry : summitRetry;
             label = back ? "Lower dock" : "Big summit";
             return true;
