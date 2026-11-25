@@ -24,7 +24,8 @@ namespace TwinEdge.Gameplay.Editor
         [MenuItem(MenuPath, true)]
         [MenuItem(SoloMenuPath, true)]
         static bool CanRun() => Application.platform == RuntimePlatform.WindowsEditor &&
-            !EditorApplication.isPlayingOrWillChangePlaymode && replay == null;
+            !EditorApplication.isPlayingOrWillChangePlaymode &&
+            !EditorApplication.isCompiling && !EditorApplication.isUpdating && replay == null;
 
         [MenuItem(MenuPath)]
         static void Run() => Launch(false);

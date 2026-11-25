@@ -19,6 +19,7 @@ namespace TwinEdge.Gameplay
         bool host;
         string directory;
         IntPtr window;
+        float focusedAt;
         string status = "Connecting local players...";
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
@@ -88,9 +89,16 @@ namespace TwinEdge.Gameplay
             if (Keyboard.current?.f6Key.wasPressedThisFrame == true) SwitchPlayer();
         }
 
+        void OnApplicationFocus(bool focused)
+        {
+            if (focused) focusedAt = Time.realtimeSinceStartup;
+        }
+
         void SwitchPlayer()
         {
-            if (window == IntPtr.Zero || !IsWindowVisible(window)) return;
+            // A key event may reach the newly focused player during the same switch.
+            if (window == IntPtr.Zero || GetForegroundWindow() != window ||
+                Time.realtimeSinceStartup - focusedAt < .25f) return;
             string path = WindowFile(!host);
             if (!File.Exists(path) || !long.TryParse(File.ReadAllText(path), out var handle))
                 return;
@@ -98,7 +106,13 @@ namespace TwinEdge.Gameplay
             if (other == IntPtr.Zero || !IsWindow(other))
                 return;
             ShowWindow(other, 9);
+            if (!IsWindowVisible(other)) return;
             SetForegroundWindow(other);
+            if (GetForegroundWindow() != other)
+            {
+                ShowWindow(other, 0);
+                return;
+            }
             ShowWindow(window, 0);
             UnityEngine.Debug.Log($"Solo view switched to Player {(host ? 2 : 1)}.");
         }
@@ -142,6 +156,7 @@ namespace TwinEdge.Gameplay
         [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern bool SetWindowText(IntPtr handle, string text);
         [DllImport("user32.dll")] static extern bool ShowWindow(IntPtr handle, int command);
         [DllImport("user32.dll")] static extern bool SetForegroundWindow(IntPtr handle);
+        [DllImport("user32.dll")] static extern IntPtr GetForegroundWindow();
         [DllImport("user32.dll")] static extern bool IsWindowVisible(IntPtr handle);
         [DllImport("user32.dll")] static extern bool IsWindow(IntPtr handle);
     }
