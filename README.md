@@ -61,6 +61,7 @@ cd Team_DES
 
 ## 문서
 
+- [개발 작업 지침](AGENTS.md) · [로드맵](Docs/Workflow/ROADMAP.md) · [현재 작업](Docs/Workflow/CURRENT_TASK.md)
 - [통합 기획서](Docs/GameDesign/TwinEdge_Latest_GamePlanning_IntegratedSummary.pdf)
 - [게임 구조](Docs/Architecture/GameArchitecture.md)
 - [게임플레이 시스템](Docs/Architecture/GameplaySystems.md)

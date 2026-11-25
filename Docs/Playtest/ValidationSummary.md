@@ -67,6 +67,7 @@ Run16 왕로 산악은 약 905초와 Host 누적 GC 707.67 MiB를 기록했다. 
 
 ## 승인된 DeepGullies / FinalPolish 산악
 
+- 승인 결과의 소스 기준은 `6498cd4`다. 원격 `main`과 일치하는 깨끗한 체크아웃에서 Editor D3D11 공식 캡처 14장(1800×1200)을 푸시 이후 게시했다. 로컬 `Screenshots/`의 파일명은 해당 커밋을 가리킨다.
 - DeepGullies 저장 메시의 구조, 렌더 메시와 MeshCollider 참조 일치 및 첫 막대 교차 구간의 보행 분리를 확인했다. 산악 정적 검사에서 29개 지점의 방향 연결 94개와 착지 지지 표본을 대조했고 연속 계획 4개가 통과했다.
 - 앞선 Windows 격리 Relay에서는 양쪽이 정상 스폰에서 서쪽 선반을 경유해 Big Summit에 도착했다. 별도 복로 격리에서는 개인 발사를, 산기슭 격리에서는 스폰 카메라와 Trail Entrance까지의 이동을 확인했다. Revision 2에서는 기록된 Relay 좌표를 사용해 양쪽 각각 막대 운반 109구간과 지표 표본 12,962개를 Collider에서 대조했다. 이 Windows 실행 및 기록 대조는 앞선 후보의 검증이다.
 - 승인된 FinalPolish는 DeepGullies 메시와 두 저장 씬을 그대로 사용한다. Unity D3D11에서 Forward+ 조명, 셰이더 컴파일, 재질 및 텍스처 참조, 씬 재개방, 산악 서브메시와 재질 슬롯 각 1개를 확인했다. 비산악 대조 프레임은 픽셀 단위로 일치했다.
@@ -74,5 +75,7 @@ Run16 왕로 산악은 약 905초와 Host 누적 GC 707.67 MiB를 기록했다. 
 - 선택적 로컬 증거는 `Docs/Development/Level/V3/MountainRedesign/Verification.md`와 그 아래 `RidgelineReview/DeepGullies/FinalPolish/Verification.md`에 있다.
 
 ## 남은 확인
+
+최신 소스의 전체 월드 회귀, 전체 자동 경기 및 E2E Relay, DeepGullies와 FinalPolish를 함께 패킹한 Windows Player, 최종 배포 빌드는 사용자가 시작하는 최종 통합 단계로 보류했다. 이전 전체 경기의 결과는 해당 후보 빌드의 기록이다.
 
 사람 2인의 별도 PC 전체 경기, 실제 조작과 밸런스, 장시간 네트워크 임페어먼트와 실기 성능은 개별 검증이 필요하다. 위 타이머는 한 PC에서 동작한 두 자동화 피어의 결과다. 상세 원본은 선택적으로 참고할 수 있는 로컬 증거다. 새 클론에서의 재현 절차는 [빌드 및 Relay 재생 절차](PlaytestGuide.md#development-build-and-automated-relay-checks)를 따른다.

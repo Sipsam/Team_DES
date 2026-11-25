@@ -45,7 +45,9 @@ Use this command to reproduce the windowed Direct3D 11 setup used for the Window
 | Return bridge and mountain | Jump gaps and unstable bridge planks. Charge and aim successive R launches from safe summits. An opponent can strike the gem carrier after pickup protection expires, then acquire the drop with E. |
 | Finish | Bring the gem inside the four markers at the top of the mountain approach trail and stay grounded. Compare the shared outcome and stopped time on both PCs. |
 
-## Test order
+## Full route playtest order
+
+Use the full route below during the explicitly started final integration stage. For a scoped task, select only the relevant checks from [Scoped validation](#scoped-validation).
 
 Start with a room lifecycle check. Create, join, start, leave as Client and then rejoin. Verify control recovery after rejoining. Leave as Host and verify both can use a new room. Start the timed course from a fresh room and use the table above. Log elapsed wall-clock time separately from the in-game timer and note retries and pauses. Save a second run for deliberate failures such as a late timed jump, gem loss, a missed launch or a disconnect during a cooperative action.
 
@@ -75,13 +77,45 @@ Record the build, date, testers, Host/Client roles, castle slots, PC specs and n
 
 Record the build and date, Host/Client role, section and phase, nearest landmark/checkpoint, whether either player had the gem, and first failing elapsed time. List exact inputs and reproduction steps. Record expected and observed outcomes from both PCs, occurrence count, whether there was a recovery path, and whether play had to stop. Attach both screenshots or video and relevant excerpts from `%USERPROFILE%\AppData\LocalLow\DefaultCompany\MyGame\Player.log`. Copy logs before restarting and redact active room codes.
 
-## Latest map screenshots
+## Official screenshots
 
-After committing a saved V3 map from a clean project, select **Tools > Twin Edge > Capture Latest Map Screenshots** or run `Tools/Level/Update-MapScreenshots.ps1` with the project closed. The tool publishes the seven regions in Top and Perspective to the local `Screenshots/` folder after all 14 PNGs pass validation. The filenames use `v3` and the seven-character HEAD hash. Run the script with `-InstallHook` once to capture after local map commits. If Unity is open, the hook queues the capture until the Editor can read the saved scene.
+For visible changes to terrain, environments, materials, characters, props, UI, effects or gameplay, push the validated commit to `origin/main` first. Confirm `git rev-parse HEAD` matches `git ls-remote --exit-code origin refs/heads/main` and use a clean checkout with saved scenes. Skip official capture for nonvisual work.
+
+Run `./Tools/Level/Update-MapScreenshots.ps1` with Unity closed. The script checks live remote main and worktree cleanliness before starting Unity with D3D11. If Unity is already open, perform those Git checks yourself, confirm D3D11, exit Play mode and use **Tools > Twin Edge > Capture Latest Map Screenshots**. The Editor menu checks committed inputs and saved scenes. Use explicit post-push execution. Legacy `-AfterCommit` calls return without capture and `-InstallHook` is retired.
+
+The existing tool stages and validates a full set before replacing managed images in ignored `Screenshots/`. Expect 1800×1200 Top and Perspective views for World, Mountain, Bridge, Canyon, River, Castle and Underground with the suffix `_v3_<seven-character-commit>.png`. Retain the capture camera and warm-up settings, inspect the set for blank frames, missing materials and rendering artifacts, and record the full hash and capture environment. For a UI or other visible change outside the saved map camera views, also capture the affected scene or screen from the same pushed checkout using the relevant game or editor view and record its provenance alongside the map set. Use commit-qualified filenames for those views. Keep pre-commit review and Before/After images in ignored development evidence and label their actual source and settings.
+
+If capture is blocked by unrelated edits, use a clean worktree at the verified commit. If publication failed and remote main has since moved, verify that the original commit is still in actual remote main's history and use the Editor capture command in a clean checkout of that commit. Verify the recovered set before publishing it and preserve any newer official set. Leave a failure pending against the original hash and inspect any tracked changes caused by Unity. The capture step needs neither a new source commit nor a full gameplay or Relay run.
+
+## Scoped validation
+
+Use the levels relevant to the change. Select direct regressions and record unused levels only when they matter to the task.
+
+| Level | Coverage |
+| --- | --- |
+| L0 | Diff, structure, static analysis, paths and serialized references |
+| L1 | Compilation and affected unit or EditMode tests |
+| L2 | Feature-specific PlayMode, physics and gameplay checks |
+| L3 | Isolated Host/Client or live Relay checks |
+| L4 | Direct regressions across affected systems |
+| L5 | Whole-world, full E2E Relay and full-match integration |
+
+| Change | Select checks |
+| --- | --- |
+| Documentation or development workflow | L0 links, actual tool interfaces, policy and diff. Skip Unity and Relay. |
+| Shader or material | Shader compilation, references, shared shader impact, D3D11 render and proportionate performance checks. Skip route physics and Relay when terrain, Collider and network behavior are unchanged. |
+| Terrain or Collider | Compare render and collision geometry, landing supports and affected route plans or physics. Use isolated Relay only for directly impacted multiplayer behavior. |
+| Gameplay or interaction | Compile and run applicable feature tests or isolated gameplay, plus directly affected regressions. Select Host/Client checks for network effects. |
+| NGO or Relay | Exercise the affected connection, readiness, reconnect or state sync in isolated peers. |
+| Final integration | After all major development and explicit user initiation, run world and system regressions, full E2E Relay/full match, final Windows Player checks, and validate the release build. |
+
+Record each relevant result as `PASS`, `FAIL`, `BLOCKED`, `NOT_RUN` or `DEFERRED`, with its target and reason. Reuse prior results and Players only after comparing relevant code, saved mesh/scene, config, dependencies and build provenance. Distinguish static checks, recorded Collider playback and live Relay. Distinguish Editor and Windows Player rendering. Record commands, environment, version, scope, and optional local evidence as needed. Investigate the first failure and rerun the affected checks after a fix. Keep fixture placement and state overrides separate from production rules.
 
 ## Development build and automated Relay checks
 
 Run from the repository root with Unity closed. The two build methods explicitly include V3Gameplay and LevelBlockoutV3 in that order. The Playtest build uses StandaloneWindows64 with BuildOptions.None. The Development build uses BuildOptions.Development and includes the opt-in replay drivers.
+
+Reuse a Player if its saved scenes, assets, code and build settings match the check. If a rebuild is required, choose only the build method for the required edition. Use the Development edition for the automated runner.
 
 For isolated verification, set `TWIN_EDGE_V3_BUILD` to a direct child of `Builds/` before invoking either build method. Clear it to restore the standard output paths. The Relay runner records both executable and managed assembly SHA-256 hashes for each run.
 
@@ -111,16 +145,15 @@ Foundation exercises spawn, owner camera, remote movement, interaction range and
 
 Use `-Case bridge` to verify all 13 timber deliveries, the outbound crossing, collapse and Lower dock recovery, and both players' Return crossings. Use `-Case bridgeContact` to verify collapse from the edge of an adjacent plank and complete Return from the Canyon landing in the same run. The fixture steers along the deck through the owner's camera-relative input. Repeat with distinct run names to cover different server-selected hazards and check both peers' Return pass files and exit codes.
 
-The mountain and finish fixtures need route data from the same saved scene. In the same PowerShell session, generate it and run the isolated finish, or select full to replay the complete match.
+The mountain and finish fixtures need route data from the same saved scene. In the same PowerShell session, generate it and run the isolated finish when that path is in scope.
 
 ```powershell
 Invoke-UnityCheck TwinEdge.Levels.Editor.MountainPoleTuning.VerifyCurrent PolePlan -Graphics
 Invoke-UnityCheck TwinEdge.Gameplay.Editor.MountainReturnValidation.Run ReturnPlan
 .\Tools\Playtest\Run-Relay.ps1 -Build $build -Run Finish1 -Case finish
-.\Tools\Playtest\Run-Relay.ps1 -Build $build -Run Full1 -Case full
 ```
 
-The finish fixture exercises normal bridge installation, then provides a test gem. It uses production pickup, return traversal and finish eligibility. The full replay starts from normal spawn and uses production inputs, character controllers and RPCs through the joint seal, first pickup, return and finish. It can take more than 42 minutes. Keep Windows awake for the entire run. System sleep interrupts the live Relay connection and can expire replay deadlines. Both peers must exit successfully and produce their pass files. For finish and full, both peers must also report the same winner and stopped timer. Add -Screenshots to render supporting evidence. Generated route plans and run data are local-only under Docs/Development/Gameplay/V1/.
+The finish fixture exercises normal bridge installation, then provides a test gem. It uses production pickup, return traversal and finish eligibility. Both peers must exit successfully and produce their pass files and agree on the winner and stopped timer. Add `-Screenshots` for local replay evidence. Generated route plans and run data are local-only under `Docs/Development/Gameplay/V1/`.
 
 After generating the route data, use `-Case castleWalk` for the castle gate, puzzle rooms, keypads and basement threshold. This fixture starts outside the gate and sets the host and client cameras to different headings. Use `-Case castle` to continue through the actual seal, gem pickup and castle exit. Use `-Case canyon` for the approach to the lower dock and the return to the bridge. A stalled castle waypoint records its target, camera axes, stick, controller velocity and collision evidence.
 
@@ -131,6 +164,16 @@ Use `-Case mountainEntry -Screenshots` to verify the ordinary spawns, initial ca
 For scene checks use the saved Foundation, Cooperative Pole, River, Castle, Underground and World Materials validators under **Tools > Twin Edge > Gameplay**. Inspect candidate mountain connections with **Tools > Twin Edge > V3 Mountain > Analyze Pole Reachability** and the Level Visualization window. After `MountainPoleTuning.VerifyCurrent` rebuilds the saved graph, run `TwinEdge.Levels.Editor.MountainPoleContinuousPlan.VerifyRepresentativeRoutes` to generate `ContinuousPlan.json`, `AlternativeContinuousPlan.json` and `EasternContinuousPlan.json`. These plans cover different starts, intermediate shelves and entries to Big summit. Replay them against a Development Player built from the same saved level.
 
 Use **Tools > Twin Edge > V3 World > Refresh Environmental Geology** to rebuild the saved visual geology and apply the V3 fortress materials. Use `TwinEdge.Levels.Editor.LatestMapScreenshots.CaptureWorkingMap` to review an uncommitted scene under `Docs/Development/Level/V3/WorldWorking/`.
+
+## Final integration only
+
+Run the following only after the [roadmap](../Workflow/ROADMAP.md) prerequisites are met and the user explicitly starts final integration. Use the matching Development Player and route data prepared above.
+
+```powershell
+.\Tools\Playtest\Run-Relay.ps1 -Build $build -Run Full1 -Case full
+```
+
+The full replay starts at normal spawn and uses production inputs, character controllers and RPCs through the seal, first pickup, return and finish. It can take over 42 minutes. Keep Windows awake and verify that both peers exit successfully, write pass files and report the same winner and stopped timer. Also verify the final saved world, affected system boundaries, and the Windows Player that packs both DeepGullies and FinalPolish. Check D3D11 rendering and collision in that Player and validate the distribution build. Use the [validation summary](ValidationSummary.md) to identify remaining human and platform coverage.
 
 ## 산악 단독 편집기 실험
 
