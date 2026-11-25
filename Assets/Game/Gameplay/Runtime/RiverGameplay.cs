@@ -447,6 +447,13 @@ namespace TwinEdge.Gameplay
             float dt = Time.fixedDeltaTime;
             float left = Thrust(s.Left, hull.Left, ref s.LeftStamina, dt);
             float right = i == 0 ? Thrust(s.Right, hull.Right, ref s.RightStamina, dt) : 0;
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+            if (LocalMatch.Solo && i == 0 && s.Left != Empty && s.Right != Empty)
+            {
+                if (Mathf.Abs(left) < .01f) left = right;
+                else if (Mathf.Abs(right) < .01f) right = left;
+            }
+#endif
             s.LeftDrive = left;
             s.RightDrive = right;
             s.Drive = i == 0 ? (left + right) * .5f : left;

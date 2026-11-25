@@ -80,6 +80,12 @@ namespace TwinEdge.Gameplay
             Application.logMessageReceived += ObserveLog;
             InputSystem.settings = Instantiate(InputSystem.settings);
             InputSystem.settings.backgroundBehavior = InputSettings.BackgroundBehavior.IgnoreFocus;
+            // The visible replay windows are for watching. Keep viewer input out of the
+            // match so a physical Esc cannot release a pole grip or cancel a puzzle.
+            bool orbit = Host && Environment.GetCommandLineArgs().Contains("-replayOrbit");
+            foreach (var device in InputSystem.devices.ToArray())
+                if (device is Keyboard || device is Gamepad || device is Mouse && !orbit)
+                    InputSystem.DisableDevice(device);
             gamepad = InputSystem.AddDevice<Gamepad>();
             Keyboard = InputSystem.AddDevice<Keyboard>();
             var bootstrap = FindFirstObjectByType<V3GameplayBootstrap>();
@@ -94,9 +100,17 @@ namespace TwinEdge.Gameplay
             var finish = finishObject.GetComponent<BoxCollider>();
             valley = FindObjectsByType<ValleySectionV3>(FindObjectsSortMode.None).First(s => s.part == ValleyPartV3.Bridge).config;
 
-            stage = "Relay room";
+            stage = LocalMatch.Port == 0 ? "Relay room" : "local match";
             string roomFile = Path.Combine(Output, "room.txt");
-            if (Host)
+            if (LocalMatch.Port != 0)
+            {
+                yield return Until(() => bootstrap.LevelIsReady, "V3 ready for local transport", 90);
+                if (!Host)
+                    yield return Until(() => File.Exists(roomFile), "local host ready", 90);
+                Require(LocalMatch.Connect(Manager, Host), "local transport started");
+                if (Host) File.WriteAllText(roomFile, "local");
+            }
+            else if (Host)
             {
                 var task = bootstrap.sessions.CreateRoomAsync();
                 yield return Until(() => task.IsCompleted, "Relay create request completed", 90);
@@ -117,7 +131,14 @@ namespace TwinEdge.Gameplay
                 Game.Phase == FoundationPhase.Outbound && CooperativePole.Current != null, "both peers ready and automatically started", 90);
             Player = Manager.LocalClient.PlayerObject.GetComponent<PlayerMovement>();
             character = Player.GetComponent<GameplayCharacter>();
-            Player.GetComponent<GameplayInput>().SimulateCapturedCursor = true;
+            var gameplayInput = Player.GetComponent<GameplayInput>();
+            gameplayInput.SimulateCapturedCursor = true;
+            if (orbit)
+            {
+                gameplayInput.UseReplayDevices(Keyboard, gamepad);
+                var view = bootstrap.standbyCamera.gameObject.AddComponent<ReplayOrbitCamera>();
+                view.Target = Player.transform;
+            }
             var trail = FindFirstObjectByType<MountainSectionV3>().config.entryTrail;
             Require(Vector3.Distance(Player.transform.position, trail[1]) < 3f, "player spawned at the trailhead");
             Require(!finish.bounds.Contains(Player.transform.position + Vector3.up * .3f), "initial spawn is outside the finish");

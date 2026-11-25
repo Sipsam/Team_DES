@@ -96,6 +96,7 @@ namespace TwinEdge.Gameplay
             respawns.ConfigureFallRecovery(colliders.Min(c => c.bounds.min.y) - 15f);
             ready = true;
         }
+        internal bool LevelIsReady => ready;
         internal bool ReadyForNetworkPlay => ready && state.IsSpawned && cooperativePole.IsSpawned &&
             state.GetComponent<BridgeGameplay>().IsSpawned && state.GetComponent<RiverGameplay>().IsSpawned &&
             state.GetComponent<CastleGameplay>().IsSpawned && state.GetComponent<UndergroundGameplay>().IsSpawned &&
@@ -182,7 +183,11 @@ namespace TwinEdge.Gameplay
 
         void OnGUI()
         {
-            if (MenuVisible) DrawRoomMenu();
+            if (MenuVisible
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+                && LocalMatch.Port == 0
+#endif
+                ) DrawRoomMenu();
             var player = manager.LocalClient?.PlayerObject;
             if (player != null && state.Phase >= FoundationPhase.Outbound) DrawMatchHud(player);
 #if UNITY_EDITOR || DEVELOPMENT_BUILD

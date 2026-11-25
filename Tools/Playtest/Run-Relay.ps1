@@ -1,23 +1,41 @@
 param(
     [Parameter(Mandatory)][string]$Build,
     [Parameter(Mandatory)][string]$Run,
-    [ValidateSet('foundation','foundationImpaired','poleRecovery','bridge','bridgeContact','bridgeDisconnect','river','riverRecovery','castleUnderground','castleReconnect','cavernHazards','cavernReconnect','contest','contestRegions','contestLifecycle','return','returnInput','returnReconnect','mountain','mountainFromSpawn','full','canyon','approach','summit','castle','castleWalk','riverLink','middle','finish')]
+    [ValidateSet('solo','foundation','foundationImpaired','poleRecovery','bridge','bridgeContact','bridgeDisconnect','river','riverRecovery','castleUnderground','castleReconnect','cavernHazards','cavernReconnect','contest','contestRegions','contestLifecycle','return','returnInput','returnReconnect','mountain','mountainFromSpawn','full','canyon','approach','summit','castle','castleWalk','riverLink','middle','finish')]
     [string]$Case = 'foundation',
     [string]$PolePlan = 'Docs/Development/Gameplay/V1/MountainPole/ContinuousPlan.json',
     [string]$ReturnPlan = 'Docs/Development/Gameplay/V1/MountainReturn/Route.json',
     [switch]$Headless,
-    [switch]$Screenshots
+    [switch]$Screenshots,
+    [switch]$ShowWindows,
+    [switch]$Spectate
 )
 
 $ErrorActionPreference = 'Stop'
+if ($ShowWindows -and $Headless) { throw 'ShowWindows and Headless cannot be used together.' }
+if ($Spectate -and ($Case -ne 'full' -or $Headless -or $ShowWindows)) {
+    throw 'Spectate is for a visible full replay with one game window.'
+}
+if ($Case -eq 'solo' -and $Headless) { throw 'Solo requires a game window.' }
 if ($Run -notmatch '^[a-zA-Z0-9][a-zA-Z0-9_-]*$') { throw 'Use a single directory name for -Run.' }
 $project = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '../..')).Path
 Push-Location -LiteralPath $project
 $players = @()
+
+function Get-ReplayFileHash([string]$Path) {
+    $stream = [System.IO.File]::OpenRead($Path)
+    try {
+        $sha256 = [System.Security.Cryptography.SHA256]::Create()
+        try { return [BitConverter]::ToString($sha256.ComputeHash($stream)).Replace('-', '') }
+        finally { $sha256.Dispose() }
+    }
+    finally { $stream.Dispose() }
+}
+
 try {
     $exe = (Resolve-Path -LiteralPath $Build).Path
     $dll = Join-Path (Split-Path $exe) 'V3Gameplay_Data/Managed/Assembly-CSharp.dll'
-    $hash = (Get-FileHash -LiteralPath $dll).Hash
+    $hash = Get-ReplayFileHash $dll
     $mode = 'v3Smoke'
     $evidence = 'v3Evidence'
     $timeout = 240
@@ -80,15 +98,31 @@ try {
     if (Test-Path -LiteralPath $output) { throw "Evidence already exists: $output" }
     New-Item -ItemType Directory -Path $output -Force | Out-Null
     $hash | Set-Content -LiteralPath "$output/assembly-sha256.txt"
-    (Get-FileHash -LiteralPath $exe).Hash | Set-Content -LiteralPath "$output/player-sha256.txt"
+    Get-ReplayFileHash $exe | Set-Content -LiteralPath "$output/player-sha256.txt"
     $graphics = if ($Headless) { @('-batchmode','-nographics') } else {
         @('-force-d3d11','-screen-fullscreen','0','-screen-width','1024','-screen-height','720')
     }
+    if ($Spectate -or $Case -eq 'solo') {
+        $portProbe = [System.Net.Sockets.UdpClient]::new(
+            [System.Net.IPEndPoint]::new([System.Net.IPAddress]::Loopback, 0))
+        try { $extra += @('-localMatchPort', $portProbe.Client.LocalEndPoint.Port.ToString()) }
+        finally { $portProbe.Dispose() }
+    }
     if ($Screenshots -and !$Headless -and $captureFlag) { $extra += $captureFlag }
     foreach ($role in 'host','client') {
-        $arguments = $graphics + @('-runInBackground',"-$mode",$role,"-$evidence",$output,'-logFile',"$output/$role.log") + $extra
+        $arguments = $graphics + @('-runInBackground','-logFile',"$output/$role.log") + $extra
+        if ($Case -eq 'solo') { $arguments += @('-soloMatch', $role, $output) }
+        else { $arguments += @("-$mode", $role, "-$evidence", $output) }
+        if ($Spectate -and $role -eq 'client') { $arguments += '-batchmode' }
+        if ($Spectate -and $role -eq 'host') { $arguments += '-replayOrbit' }
         $quoted = $arguments | ForEach-Object { if ($_ -match '\s') { '"' + $_ + '"' } else { $_ } }
-        $players += Start-Process -FilePath $exe -ArgumentList $quoted -PassThru -WindowStyle Hidden
+        $windowStyle = if ($ShowWindows -or (($Spectate -or $Case -eq 'solo') -and $role -eq 'host')) { 'Normal' } else { 'Hidden' }
+        $players += Start-Process -FilePath $exe -ArgumentList $quoted -PassThru -WindowStyle $windowStyle
+    }
+    if ($Case -eq 'solo') {
+        while (!($players | Where-Object HasExited)) { Start-Sleep -Seconds 1 }
+        Write-Output "Solo session ended ($output)"
+        return
     }
     $deadline = [DateTime]::UtcNow.AddSeconds($timeout)
     while ([DateTime]::UtcNow -lt $deadline) {

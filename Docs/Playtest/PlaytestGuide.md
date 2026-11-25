@@ -137,3 +137,13 @@ Fortress 검토 도구가 참조하는 `Assets/Game/Level/Testing/MountainTraver
 고정 BaselineConfig와 Sparse/Balanced/Dense 메시를 사용하는 단독 콜라이더 실험이다. 발판 표본, 테스트 포물선과 두 캡슐이 설 수 있는 지점을 실제 MeshCollider에서 조사한다. V3 지형·설정 변경과 별도로 이전 실험의 재현성을 유지한다. 현재 막대·탄성 발사와 Relay 수용 검증에는 위의 V3 회귀를 사용한다. 배치 스모크는 `TwinEdge.Levels.Testing.Editor.TraversalSmoke.Run`을 호출한다. 이 메서드가 직접 에디터를 종료하므로 `-quit`을 생략한다. 결과는 `Docs/Development/Level/V3/TraversalTests/`에 있다.
 
 [검증 요약](ValidationSummary.md) · [게임플레이 시스템](../Architecture/GameplaySystems.md)
+
+## 2026-11-25 플레이테스트 변경 사항
+
+Windows에서 Unity **6000.3.27f1**로 프로젝트를 열고 Play Mode를 종료한 상태에서 아래 메뉴를 사용한다. 두 모드는 같은 PC 안에서 연결하며, 처음 실행할 때 개발용 빌드를 준비한다.
+
+- **솔로 플레이** — **Tools → Twin Edge → Play Solo**를 선택한다. `F6` 또는 **Switch player**로 조작하는 캐릭터를 전환한다. 화면을 클릭하면 마우스를 잡는다. 두 캐릭터가 각각 목재를 잡거나 공용 뗏목에 타면, 현재 조작하는 캐릭터의 입력으로 함께 운반하거나 노를 젓는다. 게임 창을 닫으면 세션이 끝난다.
+- **자동 재생 관전** — **Tools → Twin Edge → Run Full Replay**를 선택한다. 필요한 산악·귀환 경로를 준비한 뒤 두 캐릭터가 정해진 경로와 행동 순서로 플레이한다. 한 캐릭터의 화면이 표시되며 상대는 백그라운드에서 실행된다.
+- **관전 카메라** — 우클릭을 누른 채 드래그하면 회전하고, 휠로 확대·축소하며, 휠 클릭으로 기본 시점에 복귀한다. 관전 시점은 자동 플레이의 이동과 기믹 입력에 영향을 주지 않는다.
+
+빌드는 `Builds/V3DevelopmentLocal/`, 자동 재생 결과와 캡처는 `Docs/Development/Gameplay/V1/RelayRuns/`에 저장된다. 맵을 수정한 뒤에는 같은 맵에서 경로를 다시 생성하고 개발용 빌드를 갱신한다.

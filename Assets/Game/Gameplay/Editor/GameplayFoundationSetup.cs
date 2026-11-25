@@ -123,7 +123,7 @@ namespace TwinEdge.Gameplay.Editor
             BuildWindows(Environment.GetEnvironmentVariable("TWIN_EDGE_V3_BUILD") ?? "Builds/V3Playtest", BuildOptions.None);
         }
 
-        static void BuildWindowsDevelopment(string directory) => BuildWindows(directory, BuildOptions.Development);
+        internal static void BuildWindowsDevelopment(string directory) => BuildWindows(directory, BuildOptions.Development);
 
         static void BuildWindows(string directory, BuildOptions options)
         {

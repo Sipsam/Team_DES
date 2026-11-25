@@ -393,11 +393,19 @@ namespace TwinEdge.Gameplay
                 ResetLoad();
                 return;
             }
-            if (!current.Paired || now - inputAt[0] > .3 || now - inputAt[1] > .3 ||
-                directions[0].sqrMagnitude < .01f || directions[1].sqrMagnitude < .01f) return;
-
-            var left = directions[0] * efforts[0];
-            var right = directions[1] * efforts[1];
+            if (!current.Paired) return;
+            bool leftReady = now - inputAt[0] <= .3 && directions[0].sqrMagnitude >= .01f;
+            bool rightReady = now - inputAt[1] <= .3 && directions[1].sqrMagnitude >= .01f;
+            var left = leftReady ? directions[0] * efforts[0] : Vector3.zero;
+            var right = rightReady ? directions[1] * efforts[1] : Vector3.zero;
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+            if (LocalMatch.Solo && leftReady != rightReady)
+            {
+                if (leftReady) { right = left; rightReady = true; }
+                else { left = right; leftReady = true; }
+            }
+#endif
+            if (!leftReady || !rightReady) return;
             var next = current;
             next.center += (left + right) * (.5f * carrySpeed * Time.fixedDeltaTime);
             var loadForward = Quaternion.Euler(0, current.yaw, 0) * Vector3.forward;

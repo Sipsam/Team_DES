@@ -23,6 +23,11 @@ namespace TwinEdge.Gameplay
         #if UNITY_EDITOR || DEVELOPMENT_BUILD
         // Headless smoke has no OS cursor. Never enabled by normal gameplay or release builds.
         public bool SimulateCapturedCursor { private get; set; }
+        internal void UseReplayDevices(Keyboard keyboard, Gamepad gamepad)
+        {
+            Activate();
+            instance.devices = new InputDevice[] { keyboard, gamepad };
+        }
 #endif
         bool CapturedCursor
         {

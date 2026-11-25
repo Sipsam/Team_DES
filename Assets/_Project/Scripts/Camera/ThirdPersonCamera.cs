@@ -45,6 +45,9 @@ public sealed class ThirdPersonCamera : MonoBehaviour
 
     private void Update()
     {
+#if DEVELOPMENT_BUILD || UNITY_EDITOR
+        if (TryGetComponent<TwinEdge.Gameplay.ReplayOrbitCamera>(out _)) return;
+#endif
         HandleCursor();
 
         if (target == null || Cursor.lockState != CursorLockMode.Locked || Mouse.current == null)
@@ -149,6 +152,9 @@ public sealed class ThirdPersonCamera : MonoBehaviour
         else if (mouse != null && mouse.leftButton.wasPressedThisFrame &&
                  !NetworkDebugUI.IsPointerOverMenu(mouse.position.ReadValue()) &&
                  !TwinEdge.Gameplay.V3GameplayBootstrap.PointerOverMenu(mouse.position.ReadValue()) &&
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+                 !TwinEdge.Gameplay.LocalMatch.PointerOverControls(mouse.position.ReadValue()) &&
+#endif
                  !DoorPuzzleUI.IsPointerOverPanel(mouse.position.ReadValue()))
         {
             Cursor.lockState = CursorLockMode.Locked;
