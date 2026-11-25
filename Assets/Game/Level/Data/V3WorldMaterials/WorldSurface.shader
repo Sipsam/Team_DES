@@ -214,17 +214,18 @@ Shader "Twin Edge/V3 World Surface"
                 half3 weights = pow(abs(normal), 4);
                 weights /= weights.x + weights.y + weights.z;
             #if defined(_MOUNTAIN_LAYERS)
-                // Wind exposure and irregular deposits break up the snow line across both cliffs and shelves.
-                float drift = .47 * sin(dot(p, float3(.041, .019, .063))) +
-                    .31 * cos(dot(p, float3(.107, .071, -.03))) +
-                    .22 * sin(dot(p, float3(.149, -.11, -.13)));
-                float exposure = normal.y + dot(normal.xz, float2(.16, -.22));
-                half snow = smoothstep(.28, 1.3, exposure + drift*.65 + (p.y-135)*.004) * .83;
-                half scree = 1 - smoothstep(28, 108, p.y + drift*19 - (1-normal.y)*9);
+                // Wind deposits follow the mountain's aspect and broken seams across the exposed rock.
+                float seam = sin(dot(p, float3(.042, .037, .017)) + 1.8 * cos(dot(p.xz, float2(.025, -.043))));
+                float drift = .62 * seam + .26 * cos(dot(p, float3(-.061, .012, .089))) +
+                    .12 * sin(dot(p, float3(.131, -.08, -.115)));
+                float exposure = .31 * normal.y + dot(normal.xz, float2(.22, -.19));
+                half snow = smoothstep(.17, .94, exposure + drift*.39 + (p.y-141)*.003) * .80;
+                half scree = 1 - smoothstep(22, 140, p.y + drift*31 - (1-normal.y)*16);
                 half2 layers = half2(snow, scree);
-                SurfaceSample x = ProjectMountain(p, float3(0, 0, normal.x < 0 ? 1 : -1), float3(0, 1, 0), layers);
-                SurfaceSample y = ProjectMountain(p, float3(1, 0, 0), float3(0, 0, normal.y < 0 ? 1 : -1), layers);
-                SurfaceSample z = ProjectMountain(p, float3(normal.z < 0 ? -1 : 1, 0, 0), float3(0, 1, 0), layers);
+                float3 warped = p + float3(1.6 * drift, .7 * seam, -1.1 * drift);
+                SurfaceSample x = ProjectMountain(warped, float3(0, 0, normal.x < 0 ? 1 : -1), float3(0, 1, 0), layers);
+                SurfaceSample y = ProjectMountain(warped, float3(1, 0, 0), float3(0, 0, normal.y < 0 ? 1 : -1), layers);
+                SurfaceSample z = ProjectMountain(warped, float3(normal.z < 0 ? -1 : 1, 0, 0), float3(0, 1, 0), layers);
             #else
                 SurfaceSample x = Project(p, float3(0, 0, normal.x < 0 ? 1 : -1), float3(0, 1, 0));
                 SurfaceSample y = Project(p, float3(1, 0, 0), float3(0, 0, normal.y < 0 ? 1 : -1));
@@ -232,8 +233,8 @@ Shader "Twin Edge/V3 World Surface"
             #endif
                 surface.color = x.color * weights.x + y.color * weights.y + z.color * weights.z;
             #if defined(_MOUNTAIN_LAYERS)
-                half sediment = (1-smoothstep(55,134,p.y+drift*16))*smoothstep(.5,.9,normal.y);
-                surface.color *= lerp(half3(1,1,1),half3(1.14,1.07,.94),sediment);
+                half sediment = (1-smoothstep(38,143,p.y+drift*26))*smoothstep(.38,.91,normal.y);
+                surface.color *= lerp(half3(1.30,1.29,1.26),half3(1.56,1.37,1.15),sediment) * (1.0 + .19 * drift);
             #endif
                 surface.normalOffset = x.normalOffset * weights.x + y.normalOffset * weights.y + z.normalOffset * weights.z;
                 surface.occlusion = dot(half3(x.occlusion, y.occlusion, z.occlusion), weights);

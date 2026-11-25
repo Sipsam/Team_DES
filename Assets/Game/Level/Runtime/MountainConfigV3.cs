@@ -11,7 +11,7 @@ namespace TwinEdge.Levels
     {
         public MountainShapeV3 shape;
         [Range(0, 1)] public float asymmetry = .45f;
-        [Tooltip("Flatten the permitted summit ellipse into real rock; retains the outer mountain shoulder.")]
+        [Tooltip("Provide room for both pole ends at landing height.")]
         public bool landingTerrace;
         [Tooltip("Half-width of a rock-cut approach through a crest; zero preserves the original crest.")]
         public float landingApproachWidth;
@@ -30,6 +30,16 @@ namespace TwinEdge.Levels
     public sealed class MountainPoleCanyonV3 {
         public string from, to, island;
         public float width=6, span=70, depth=25;
+    }
+
+    [Serializable]
+    public sealed class MountainRidgeV3
+    {
+        [Tooltip("Crest points in world metres, from one end of the ridge to the other.")]
+        public Vector3[] crest = Array.Empty<Vector3>();
+        [Min(1)] public float halfWidth = 75;
+        [Min(0)] public float crestHalfWidth;
+        [Range(-.8f, .8f)] public float flankBias;
     }
 
     [CreateAssetMenu(menuName = "Twin Edge/V3 Mountain Field")]
@@ -53,6 +63,8 @@ namespace TwinEdge.Levels
         [Tooltip("Unordered boundary summits in world X/Z. Connecting lower shoulders form the enclosing ranges.")]
         public List<MountainPeakV3> boundary = new List<MountainPeakV3>();
         public List<MountainPoleCanyonV3> poleCanyons = new List<MountainPoleCanyonV3>();
+        [Tooltip("Connected ridge profiles in world metres. An empty list uses the original peak field.")]
+        public List<MountainRidgeV3> ridges = new List<MountainRidgeV3>();
         [Tooltip("Mountain approach centerline, in world metres and increasing Z.")]
         public Vector3[] entryTrail = Array.Empty<Vector3>();
         public Vector3 bridgeAnchor = new Vector3(12,190,330);

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using TwinEdge.Gameplay;
 using UnityEditor;
@@ -16,7 +17,6 @@ namespace TwinEdge.Levels.Editor
         {
             var scene = EditorSceneManager.OpenScene(MountainGeneratorV3.ScenePath, OpenSceneMode.Single);
             var mountain = ValleyGeneratorV3.Mountain();
-            var trail = mountain.config.entryTrail;
             var terrain = mountain.generated.GetComponentsInChildren<MeshFilter>().Single(f => f.name == "Mountain_ConnectedGeology");
             if (mountain.generated.transform.Find("InitialSpawn"))
                 throw new InvalidOperationException("The saved mountain already contains the V3 approach.");
@@ -32,7 +32,7 @@ namespace TwinEdge.Levels.Editor
             MountainGeneratorV3.AddTrailMarkers(mountain.config, mountain.generated.transform);
 
             RefreshValleyMeshes(scene);
-            ValidateTrail(trail);
+            ValidateTrail(mountain.config);
             if (!EditorSceneManager.SaveScene(scene)) throw new InvalidOperationException("Could not save the V3 world.");
             AssetDatabase.SaveAssets();
         }
@@ -99,9 +99,35 @@ namespace TwinEdge.Levels.Editor
             var filter = owner.generated.GetComponentsInChildren<MeshFilter>()
                 .Single(meshFilter => meshFilter.name == "Mountain_ConnectedGeology");
             var mesh = MountainGeneratorV3.BuildTerrainMesh(config, peaks);
-            EditorUtility.CopySerialized(mesh, filter.sharedMesh);
-            UnityEngine.Object.DestroyImmediate(mesh);
-            Refresh(filter.sharedMesh, filter.GetComponent<MeshCollider>());
+            var collider = filter.GetComponent<MeshCollider>();
+            var existing = filter.sharedMesh;
+            if (config.entryTrail.Length > 0)
+            {
+                collider.sharedMesh = mesh;
+                try { ValidateTrail(config); }
+                catch
+                {
+                    collider.sharedMesh = existing;
+                    UnityEngine.Object.DestroyImmediate(mesh);
+                    throw;
+                }
+            }
+            const string ridgelineMesh = MountainGeneratorV3.RidgelineMeshFile;
+            if (config.ridges.Count > 0 && Path.GetFileName(AssetDatabase.GetAssetPath(existing)) != ridgelineMesh)
+            {
+                string parent = "Assets/Game/Level/Data/Generated";
+                string generation = "MountainV3_" + Guid.NewGuid().ToString("N");
+                AssetDatabase.CreateFolder(parent, generation);
+                owner.generationAssets = parent + "/" + generation;
+                AssetDatabase.CreateAsset(mesh, owner.generationAssets + "/" + ridgelineMesh);
+                filter.sharedMesh = mesh;
+            }
+            else
+            {
+                EditorUtility.CopySerialized(mesh, filter.sharedMesh);
+                UnityEngine.Object.DestroyImmediate(mesh);
+            }
+            Refresh(filter.sharedMesh, collider);
             filter.GetComponent<MeshRenderer>().sharedMaterial = V3WorldMaterials.MountainBlend();
             foreach (var peak in peaks)
                 owner.generated.transform.Find(peak.id).position = new Vector3(peak.position.x, peak.height, peak.position.y);
@@ -113,7 +139,6 @@ namespace TwinEdge.Levels.Editor
                 owner.generated.transform.Find("TrailEntrance").position = config.entryTrail[^1];
                 owner.generated.transform.Find("ReturnFinish").position = config.entryTrail[^2];
             }
-            if (config.entryTrail.Length > 0) ValidateTrail(config.entryTrail);
             if (!EditorSceneManager.SaveScene(scene)) throw new InvalidOperationException("Could not save the V3 mountain.");
             AssetDatabase.SaveAssets();
         }
@@ -121,6 +146,18 @@ namespace TwinEdge.Levels.Editor
         public static void RefreshAndAnalyzeMountain()
         {
             RefreshMountainMesh();
+            AnalyzeSavedMountain();
+        }
+
+        public static void RefreshAndReviewMountain()
+        {
+            RefreshMountainMesh();
+            LatestMapScreenshots.CaptureMountainDesignReview();
+            AnalyzeSavedMountain();
+        }
+
+        static void AnalyzeSavedMountain()
+        {
             MountainPoleReachability.Load();
             MountainPoleReachability.Analyze("Tuned");
             MountainPoleTuning.InspectCurrent();
@@ -208,22 +245,27 @@ namespace TwinEdge.Levels.Editor
             RenderSettings.fogEndDistance = 1750;
         }
 
-        static void ValidateTrail(Vector3[] trail)
+        static void ValidateTrail(MountainConfigV3 config)
         {
+            var trail = config.entryTrail;
+            var ridgeline = config.ridges.Count > 0 ? new MountainRidgelineV3(config, Array.Empty<MountainPeakV3>()) : null;
             Physics.SyncTransforms();
             float maxStep = 0, length = 0;
-            for (int i = 2; i < trail.Length; i++) length += Vector3.Distance(trail[i - 1], trail[i]);
             Vector3 previous = default;
             for (float z = trail[1].z; z <= trail[^1].z; z++)
             {
-                Vector3 point = MountainGeneratorV3.SampleTrail(trail, z);
+                Vector3 point = ridgeline != null ? ridgeline.Approach(z) : MountainGeneratorV3.SampleTrail(trail, z);
                 var ground = V3GameplayBootstrap.SafeGround(point);
                 if (Mathf.Abs(ground.y - .12f - point.y) > .5f)
                     throw new InvalidOperationException("Approach ground diverges from its authored grade at " + point);
                 foreach (float lane in new[] { -2f, 2f })
                     if (Mathf.Abs(V3GameplayBootstrap.SafeGround(point + Vector3.right * lane).y - ground.y) > .55f)
                         throw new InvalidOperationException("Approach lane lacks continuous support at " + point);
-                if (z > trail[1].z) maxStep = Mathf.Max(maxStep, Mathf.Abs(ground.y - previous.y));
+                if (z > trail[1].z)
+                {
+                    maxStep = Mathf.Max(maxStep, Mathf.Abs(ground.y - previous.y));
+                    length += Vector3.Distance(previous, ground);
+                }
                 previous = ground;
             }
             if (maxStep > .8f) throw new InvalidOperationException("Approach too steep: " + maxStep);

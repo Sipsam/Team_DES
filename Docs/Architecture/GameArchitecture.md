@@ -31,7 +31,9 @@
 
 LevelSection, 안정된 마커 ID와 설정 자산을 통해 씬과 런타임이 연결된다. 생성기는 선택한 범위의 `Generated`를 교체하고 `Manual`에 있는 제작자 편집을 유지한다. 게임플레이 오브젝트는 생성기 소유 계층 밖에 둔다.
 
-V3 산악의 `MountainConfigV3`는 시작점, Big Summit, 중간 봉우리와 외곽 능선의 설계 좌표를 담는다. 산기슭과 진입로의 표고, 봉우리 어깨와 골짜기는 하나의 지질 메시에서 생성된다. `Mountain.V3.InitialSpawn`은 진입로 초입, `Mountain.V3.Start`는 막대의 홈, `Mountain.V3.ReturnFinish`는 정상에서 산길이 내려가기 시작하는 지점에 있다. 막대는 설정에 지정된 정상 타원과 저장 Collider의 지지면을 함께 검사한다. 봉우리 간 연결 검사는 이 Collider에서 캡슐과 막대의 회전 및 연속 이동을 검증한다.
+V3 산악의 `MountainConfigV3`는 바깥 암릉과 횡단 능선을 월드 좌표로 정의한다. 생성기는 비대칭 사면과 공유 암석 선반을 만들고, 그 위에 막대 착지용 지지면과 협곡을 맞춘다. 남쪽 산기슭의 보행 단면도 같은 지질 메시와 Collider에 이어진다. `Mountain.V3.InitialSpawn`은 산기슭, `Mountain.V3.Start`는 막대의 홈, `Mountain.V3.ReturnFinish`는 시작 정상에서 산기슭으로 내려가는 입구다. 착지 시 막대는 설정에 지정된 지지 좌표와 저장 Collider를 함께 검사한다. 연결 검사는 이 Collider에서 두 캡슐과 막대의 회전 및 연속 이동을 검증한다.
+
+저장한 산악의 Top, Perspective, World Top과 주요 지상 시점을 **Tools > Twin Edge > V3 Mountain > Capture Design Review**에서 캡처할 수 있다. 검토용 이미지는 로컬 `Docs/Development/Level/V3/MountainRedesign/RidgelineReview/After/`에 저장된다.
 
 생성 디렉터리는 새 GUID로 추가된다. 저장된 씬·프리팹·설정에서 사용 중인 생성 파일과 폴더 메타를 커밋한다. 저장하지 않은 상태와 Undo가 이전 생성물을 참조할 수 있다. 생성, 플레이 또는 Undo 세션을 끝내고 씬을 저장한 뒤 Unity를 정상 종료한다. `Tools/ProjectAudit/clean-generated.ps1`은 새 배치 세션에서 전체 비생성 에셋의 전이 의존성과 직렬화된 소유 경로를 검사한다. 형식과 출처를 확인할 수 있는 생성 폴더만 정리 대상으로 취급한다. 변경된 씬 및 새 메시와 함께 Git 삭제 목록을 검토한다.
 
@@ -41,7 +43,7 @@ V3 산악의 `MountainConfigV3`는 시작점, Big Summit, 중간 봉우리와 �
 
 산악과 자연 암벽은 세 축의 월드 공간 투영을 혼합한다. 석조 바닥·벽과 지붕은 월드 공간의 면 방향으로 타일링한다. 강은 저장 메시의 폭과 중심선 누적 거리로 수면 UV를 만들고 하류 방향으로 두 레이어를 움직인다. `RiverGameplay`도 같은 Water 재질을 참조한다. 동굴 외피와 런타임 하수로는 Canyon Rock의 색상·노멀·AO를 공유하는 어두운 파생 재질을 사용한다. 생성기는 동일한 재질을 사용하며 충돌과 마커는 별도로 유지한다.
 
-산악의 `MountainBlend`는 팀의 Top, Middle, Bottom 색상 맵과 노멀 맵을 사용한다. 높이, 경사와 월드 공간의 변화에 따라 픽셀 단위로 혼합한다. 정상 타원과 메시 Collider는 재질의 혼합 가중치를 사용하지 않는다.
+산악의 `MountainBlend`는 팀의 Top, Middle, Bottom 색상 맵과 노멀 맵을 사용한다. 높이, 경사 방향과 암석 결을 픽셀 단위로 혼합한다. 월드 공간의 세 방향으로 텍스처를 투영하고 투영 좌표에 작은 변화를 주어 암벽에서 늘어짐과 반복을 줄인다.
 
 `V3 Geological Context`는 다리 아래 협곡, 외곽 능선, 강 끝 암벽과 성채 기단을 렌더링한다. 협곡과 강의 `TerrainSurface`는 기존 Collider 메시에서 생성한 별도 렌더 메시다. 보행로, 수로, 접합부의 정점은 충돌 메시와 일치한다. 성채 지붕·바닥과 동굴 용암은 원본 텍스처와 노멀을 공유하는 V3 파생 재질을 사용한다.
 

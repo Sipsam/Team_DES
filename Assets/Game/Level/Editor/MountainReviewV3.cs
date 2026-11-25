@@ -71,7 +71,8 @@ namespace TwinEdge.Levels.Editor
             var markers=owner.generated.GetComponentsInChildren<LevelMarker>();
             check(markers.Count(m=>m.kind==MarkerKind.PlatformPlacement)==c.smallPeakCount,"Distinct small peak candidates: "+c.smallPeakCount);
             check(markers.Any(m=>m.kind==MarkerKind.BridgeAnchor),"Bridge anchor exists; only short exit stub");
-            check(c.boundary.Count>=8,"Enclosing non-route range summits: "+c.boundary.Count);
+            if(c.ridges.Count==0)check(c.boundary.Count>=8,"Enclosing non-route range summits: "+c.boundary.Count);
+            else check(c.ridges.Any(r=>r.crestHalfWidth>0),"Ridge profiles with shared rock shelves: "+c.ridges.Count);
             var filter=owner.generated.GetComponentInChildren<MeshFilter>();
             check(filter!=null && filter.sharedMesh!=null,"Persisted geological mesh");
             if(filter==null || filter.sharedMesh==null)return report;
@@ -85,13 +86,16 @@ namespace TwinEdge.Levels.Editor
                 if(terrainCollider.Raycast(ray,out var hit,600) && hit.point.y>c.bridgeAnchor.y+.1f)exitClear=false;
             }
             check(exitClear,"Bridge stub deck is exposed above terrain along its centreline");
-            // Weld exact coordinates, then conservatively join all <=45 degree triangle vertices.
-            // Vertex-only contacts are also joined, making disconnection a stronger check.
+            // Shared edges give a continuous walking corridor. A corner contact alone cannot
+            // support a character moving between faces on the ridgeline mesh.
             var ids=new Dictionary<Vector3,int>();var welded=new List<Vector3>();var map=new int[v.Length];
             for(int i=0;i<v.Length;i++){if(!ids.TryGetValue(v[i],out int id)){id=welded.Count;ids.Add(v[i],id);welded.Add(v[i]);}map[i]=id;}
-            var parents=Enumerable.Range(0,welded.Count).ToArray();
-            Func<int,int> find=null;find=i=>{while(parents[i]!=i){parents[i]=parents[parents[i]];i=parents[i];}return i;};
-            Action<int,int> join=(a,b)=>parents[find(a)]=find(b);
+            bool sharedEdges = c.ridges.Count > 0;
+            var parents=Enumerable.Range(0,sharedEdges?t.Length/3:welded.Count).ToArray();
+            int Find(int i) {while(parents[i]!=i){parents[i]=parents[parents[i]];i=parents[i];}return i;}
+            void Join(int a,int b) => parents[Find(a)]=Find(b);
+            var facesByEdge = new Dictionary<(int,int),int>();
+            var walkFaceAtVertex = Enumerable.Repeat(-1,welded.Count).ToArray();
             var edges=new Dictionary<(int,int),int>();
             int badNormals=0,degenerate=0,thin=0;float maxEdge=0;
             for(int i=0;i<t.Length;i+=3){
@@ -101,8 +105,18 @@ namespace TwinEdge.Levels.Editor
                 if(n.magnitude/Mathf.Max(.0001f,longest)<.015f)thin++;
                 if(n.sqrMagnitude<.000001f)degenerate++;
                 if(n.y<=0)badNormals++;
-                if(n.normalized.y>=Mathf.Cos(45*Mathf.Deg2Rad)){join(map[t[i]],map[t[i+1]]);join(map[t[i]],map[t[i+2]]);}
-                for(int k=0;k<3;k++) {int u=map[t[i+k]],w=map[t[i+(k+1)%3]];var key=(Math.Min(u,w),Math.Max(u,w));edges.TryGetValue(key,out int count);edges[key]=count+1;}
+                bool walkable = n.normalized.y >= Mathf.Cos(45 * Mathf.Deg2Rad);
+                if (walkable && !sharedEdges) {Join(map[t[i]],map[t[i+1]]);Join(map[t[i]],map[t[i+2]]);}
+                for(int k=0;k<3;k++) {
+                    int u=map[t[i+k]],w=map[t[i+(k+1)%3]];
+                    var key=(Math.Min(u,w),Math.Max(u,w));
+                    edges.TryGetValue(key,out int count);
+                    edges[key]=count+1;
+                    if (!walkable || !sharedEdges) continue;
+                    int face = i / 3;
+                    walkFaceAtVertex[u] = face;
+                    if (!facesByEdge.TryAdd(key, face)) Join(face, facesByEdge[key]);
+                }
             }
             report.Add("METRIC: triangles="+t.Length/3+" thin faces (area ratio < .015)="+thin+" longest edge="+maxEdge);
             check(mesh.normals.Length==v.Length && mesh.normals.All(n=>float.IsFinite(n.x)&&float.IsFinite(n.y)&&float.IsFinite(n.z)&&n.sqrMagnitude>.9f),"Finite unit mesh normals");
@@ -115,15 +129,22 @@ namespace TwinEdge.Levels.Editor
             };
             check(edges.Where(e=>e.Value==1).All(e=>perimeterRadius(welded[e.Key.Item1])>1-3*c.meshSpacing/460),"No internal mesh seams / broken shared boundaries");
             Func<MountainPeakV3,int> component=p=>{
-                var target=new Vector3(p.position.x,p.height,p.position.y);int nearest=0;float best=float.MaxValue;
-                for(int i=0;i<welded.Count;i++){float distance=(welded[i]-target).sqrMagnitude;if(distance<best){best=distance;nearest=i;}}
-                return find(nearest);
+                var target=new Vector3(p.position.x,p.height,p.position.y);int nearest=-1;float best=float.MaxValue;
+                for(int i=0;i<welded.Count;i++){
+                    if (sharedEdges && walkFaceAtVertex[i] < 0) continue;
+                    float distance=(welded[i]-target).sqrMagnitude;
+                    if(distance<best){best=distance;nearest=i;}
+                }
+                return nearest < 0 ? -1 : Find(sharedEdges ? walkFaceAtVertex[nearest] : nearest);
             };
             int start=component(c.start),end=component(c.destination);
             check(start!=end,"No ordinary walking connection start-to-final on generated triangles at slope <=45 degrees (no jumping)");
             var candidates=c.smallPeaks.Select(p=>MountainGeneratorV3.WorldPeak(c,p)).ToArray();
             var components=candidates.Select(component).ToArray();
-            check(components.Distinct().Count()==c.smallPeakCount && components.All(x=>x!=start && x!=end),"Each small landing is a separate walking component");
+            if(c.ridges.Count==0)
+                check(components.Distinct().Count()==c.smallPeakCount && components.All(x=>x!=start && x!=end),"Each small landing is a separate walking component");
+            else
+                check(components.All(x=>x!=start),"The first pole crossing interrupts ordinary passage from Start to the ridge shelves");
             foreach(var group in candidates.Select((p,i)=>new {p.id,part=components[i]}).GroupBy(x=>x.part).Where(g=>g.Count()>1||g.Key==start||g.Key==end))report.Add("Walking component: "+string.Join(", ",group.Select(x=>x.id))+(group.Key==start?" + Start":"")+(group.Key==end?" + Final":""));
             report.Add("UNVERIFIED: Actual pole reach, character jump/step controller, landing balance, camera collision, two-player gameplay and runtime fall/respawn behavior. Triangle connectivity is a structural test, not mechanic approval.");
             return report;

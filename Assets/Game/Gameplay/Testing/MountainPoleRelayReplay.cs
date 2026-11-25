@@ -144,6 +144,7 @@ namespace TwinEdge.Gameplay {
      swaps++;
      if(fullMatch!=null){
       if(swaps is 1 or 4 or 7)fullMatch.Capture("mountain-landing-"+swaps);
+      if(action.summit is "Peak_25" or "Peak_26" or "Peak_27")fullMatch.Capture("mountain-side-ridge-"+action.summit);
      }else{
       ScreenCapture.CaptureScreenshot(output+"/"+prefix+"-landing-"+swaps+".png");
       PoleRuntimeCapture.Save(pole,output+"/"+prefix+"-pole-"+swaps+".png");

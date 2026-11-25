@@ -183,7 +183,7 @@ namespace TwinEdge.Levels.Editor
         {
             if (c == null || c.smallPeaks.Count < 12 || c.smallPeaks.Count != c.smallPeakCount)
                 throw new InvalidOperationException("Field count must match Small Peak Count (at least 12). Use Reseed Field after count changes.");
-            if (c.meshSpacing < 2 || c.meshSpacing > 8 || c.clusterSize.x < 200 || c.clusterSize.y < 200 || c.minimumGap < 4 || c.bridgeStubLength <= 0 || c.bridgeStubLength > 12 || c.boundary.Count < 8)
+            if (c.meshSpacing < 2 || c.meshSpacing > 8 || c.clusterSize.x < 200 || c.clusterSize.y < 200 || c.minimumGap < 4 || c.bridgeStubLength <= 0 || c.bridgeStubLength > 12 || (c.ridges.Count == 0 && c.boundary.Count < 8))
                 throw new InvalidOperationException("Invalid terrain dimensions, gap, boundary count or exit stub (max 12m).");
             if (c.entryTrail.Length > 0)
             {
@@ -193,6 +193,13 @@ namespace TwinEdge.Levels.Editor
                     if (c.entryTrail[i].z <= c.entryTrail[i - 1].z)
                         throw new InvalidOperationException("Approach control points must increase Z.");
             }
+            foreach (var ridge in c.ridges)
+                if (ridge.crest.Length < 2 || !float.IsFinite(ridge.halfWidth) || ridge.halfWidth <= 0 ||
+                    !float.IsFinite(ridge.crestHalfWidth) || ridge.crestHalfWidth < 0 || ridge.crestHalfWidth >= ridge.halfWidth ||
+                    !float.IsFinite(ridge.flankBias) || Mathf.Abs(ridge.flankBias) >= 1 ||
+                    ridge.crest.Any(p => !float.IsFinite(p.x) || !float.IsFinite(p.y) || !float.IsFinite(p.z)) ||
+                    ridge.crest.Zip(ridge.crest.Skip(1), (a, b) => a.x == b.x && a.z == b.z).Any(equal => equal))
+                    throw new InvalidOperationException("A mountain ridge needs finite, distinct crest points and positive flank widths.");
             var peaks = new[] {c.start,c.destination}.Concat(c.smallPeaks.Select(p=>WorldPeak(c,p))).ToArray();
             foreach (var p in peaks.Concat(c.boundary))
                 if (p == null || p.summitSize.x < 12 || p.summitSize.y < 12 || p.shoulderWidth < 0 || p.height < 80 || p.height > 400 || !float.IsFinite(p.position.x) || !float.IsFinite(p.position.y))
@@ -352,7 +359,7 @@ namespace TwinEdge.Levels.Editor
         static void BuildTerrain(MountainConfigV3 c,MountainPeakV3[] peaks,Transform parent,string folder)
         {
             var mesh = BuildTerrainMesh(c, peaks);
-            AssetDatabase.CreateAsset(mesh, folder + "/ConnectedGeology.asset");
+            AssetDatabase.CreateAsset(mesh, folder + "/" + (c.ridges.Count > 0 ? RidgelineMeshFile : "ConnectedGeology.asset"));
             var g = new GameObject("Mountain_ConnectedGeology");
             g.transform.SetParent(parent, false);
             g.AddComponent<MeshFilter>().sharedMesh = mesh;
@@ -361,14 +368,17 @@ namespace TwinEdge.Levels.Editor
             EditorUtility.SetDirty(mesh);
         }
 
+        internal const string RidgelineMeshFile = "ConnectedRidgeline.asset";
+
         internal static Mesh BuildTerrainMesh(MountainConfigV3 c, MountainPeakV3[] peaks)
         {
             // A jittered triangulation clipped to an irregular geological perimeter. One shared surface.
             var vertices=new List<Vector3>();var triangles=new List<int>();
             int nx=Mathf.CeilToInt(1060/c.meshSpacing)+1,nz=Mathf.CeilToInt(1250/c.meshSpacing)+1;
             var inside=new bool[nx*nz];
-            var ranges=c.boundary.Select((p,i)=>RangePeak(c,p,i)).ToArray();
             var terraces=peaks.Where(p=>p.landingTerrace).ToArray();
+            var ridgeline = c.ridges.Count > 0 ? new MountainRidgelineV3(c, terraces) : null;
+            var ranges = ridgeline == null ? c.boundary.Select((p,i)=>RangePeak(c,p,i)).ToArray() : Array.Empty<MountainPeakV3>();
             var cuts = c.poleCanyons.Select(cut =>
             {
                 var from = peaks.First(p => p.id == cut.from);
@@ -384,17 +394,25 @@ namespace TwinEdge.Levels.Editor
             }).ToArray();
             Func<float,float,float> height=(x,z)=> {
                 float floor=c.basinHeight+c.terrainHeightVariation*(Mathf.Sin(x*.028f+z*.012f)+Mathf.Cos(z*.039f-x*.009f))*.5f;
-                float y=floor;
-                foreach(var p in peaks) y=Mathf.Max(y,RockHeight(p,x,z,floor));
-                foreach(var p in ranges) y=Mathf.Max(y,RockHeight(p,x,z,floor));
+                var position = new Vector2(x,z);
+                float y = ridgeline != null ? ridgeline.Height(position, floor) : floor;
+                foreach(var p in peaks)
+                {
+                    if (ridgeline != null && p.landingTerrace) continue;
+                    float peakHeight = RockHeight(p, x, z, floor);
+                    if (ridgeline != null && p == c.start)
+                        peakHeight = Mathf.Lerp(floor, peakHeight, MountainRidgelineV3.StartCrownWeight(z - c.start.position.y));
+                    y=Mathf.Max(y,peakHeight);
+                }
+                if (ridgeline == null)
+                    foreach(var p in ranges) y=Mathf.Max(y,RockHeight(p,x,z,floor));
                 // Cut authored landing terraces into any overlapping higher geological shoulder.
                 // This changes the rendered mesh and its collider together; no support object is added.
-                foreach(var p in terraces) {
+                if (ridgeline == null) foreach(var p in terraces) {
                     float distance=Vector2.Distance(new Vector2(x,z),p.position)-(Mathf.Min(p.summitSize.x,p.summitSize.y)*.5f+2);
                     if(distance<6) y=Mathf.Lerp(Mathf.Min(y,p.height),y,Mathf.SmoothStep(0,1,Mathf.InverseLerp(0,6,distance)));
                 }
                 // Real canyon cuts separate walkable endpoint shoulders while leaving summit ellipses intact.
-                var position = new Vector2(x,z);
                 foreach(var (cut, from, to, axis, middle, island, neighbours) in cuts) {
                     Vector2 delta=position-middle;
                     if(island!=null) {
@@ -433,7 +451,8 @@ namespace TwinEdge.Levels.Editor
                 inside[j*nx+i]=radius<=1;
                 float y=inside[j*nx+i]?height(x,z):c.basinHeight;
                 if(radius>1-c.boundaryTaper)y=Mathf.Lerp(y,c.basinHeight-25,Mathf.SmoothStep(0,1,Mathf.InverseLerp(1-c.boundaryTaper,1,radius)));
-                vertices.Add(new Vector3(x,TrailHeight(c,x,z,y),z));
+                y = ridgeline != null ? ridgeline.Foothill(new Vector2(x,z), y) : TrailHeight(c,x,z,y);
+                vertices.Add(new Vector3(x,y,z));
             }
             for(int j=0;j<nz-1;j++) for(int i=0;i<nx-1;i++) {
                 int a=j*nx+i,b=a+1,d=a+nx,e=d+1;

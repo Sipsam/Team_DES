@@ -66,6 +66,81 @@ namespace TwinEdge.Levels.Editor
             CaptureSet(Path.GetFullPath("Docs/Development/Level/V3/WorldWorking"), "working", false);
         }
 
+        [MenuItem("Tools/Twin Edge/V3 Mountain/Capture Design Review")]
+        public static void CaptureMountainDesignReview()
+        {
+            if (EditorApplication.isPlayingOrWillChangePlaymode ||
+                Enumerable.Range(0, SceneManager.sceneCount).Any(i => SceneManager.GetSceneAt(i).isDirty))
+                throw new InvalidOperationException("Save the level and exit Play mode before capturing the mountain.");
+            string output = Path.GetFullPath(MountainGeneratorV3.Notes + "/MountainRedesign/RidgelineReview/After");
+            Directory.CreateDirectory(output);
+            var setup = EditorSceneManager.GetSceneManagerSetup();
+            try
+            {
+                var scene = EditorSceneManager.OpenScene(TerrainPath, OpenSceneMode.Single);
+                Render(scene, output, "candidate", "Mountain");
+                Render(scene, output, "candidate", "World", topOnly: true);
+                CaptureMountainGroundViews(scene, output);
+            }
+            finally
+            {
+                if (setup.Length > 0 && setup.All(s => !string.IsNullOrEmpty(s.path)))
+                    EditorSceneManager.RestoreSceneManagerSetup(setup);
+            }
+        }
+
+        static void CaptureMountainGroundViews(Scene scene, string output)
+        {
+            var section = scene.GetRootGameObjects().SelectMany(root => root.GetComponentsInChildren<MountainSectionV3>()).Single();
+            var generated = section.generated.transform;
+            var trail = section.config.entryTrail;
+            var spawn = generated.Find("InitialSpawn");
+            var views = new (string name, Vector3 feet, float yaw, float pitch)[]
+            {
+                ("Spawn", spawn.position, spawn.eulerAngles.y, -10),
+                ("Foothill", trail[trail.Length / 2], 20, -12),
+                ("PoleHome", generated.Find("Start").position + new Vector3(-11, 0, -5), 3, 4),
+                ("MiddleJunction", generated.Find("Peak_11").position, 18, 7),
+                ("SideRidge", generated.Find("Peak_26").position, -56, 8),
+                ("BigSummit", generated.Find("Final").position + new Vector3(12, 0, -12), 164, 16)
+            };
+            var camera = new GameObject("Mountain ground review camera").AddComponent<Camera>();
+            var render = new RenderTexture(Width, Height, 24);
+            var pixels = new Texture2D(Width, Height, TextureFormat.RGB24, false);
+            var previous = RenderTexture.active;
+            try
+            {
+                camera.enabled = false;
+                camera.targetTexture = render;
+                camera.farClipPlane = 2600;
+                var preview = scene.GetRootGameObjects().SelectMany(root => root.GetComponentsInChildren<Camera>()).First(c => c != camera);
+                camera.clearFlags = preview.clearFlags;
+                camera.backgroundColor = preview.backgroundColor;
+                Physics.SyncTransforms();
+                foreach (var view in views)
+                {
+                    Vector3 eye = TwinEdge.Gameplay.V3GameplayBootstrap.SafeGround(view.feet) + Vector3.up * 1.65f;
+                    var rotation = Quaternion.Euler(view.pitch, view.yaw, 0);
+                    Vector3 back = -(rotation * Vector3.forward);
+                    float distance = Physics.SphereCast(eye, .22f, back, out var hit, 5, ~0, QueryTriggerInteraction.Ignore)
+                        ? Mathf.Max(.15f, hit.distance - .1f) : 5;
+                    camera.transform.SetPositionAndRotation(eye + back * distance, rotation);
+                    camera.Render();
+                    RenderTexture.active = render;
+                    pixels.ReadPixels(new Rect(0, 0, Width, Height), 0, 0);
+                    pixels.Apply();
+                    File.WriteAllBytes(Path.Combine(output, $"Mountain_{view.name}_editor.png"), pixels.EncodeToPNG());
+                }
+            }
+            finally
+            {
+                RenderTexture.active = previous;
+                UnityEngine.Object.DestroyImmediate(camera.gameObject);
+                UnityEngine.Object.DestroyImmediate(pixels);
+                UnityEngine.Object.DestroyImmediate(render);
+            }
+        }
+
         static string Git(string arguments)
         {
             using var git = Process.Start(new ProcessStartInfo("git", arguments)
@@ -152,7 +227,7 @@ namespace TwinEdge.Levels.Editor
             foreach (string file in retired) File.Delete(Path.Combine(previous, Path.GetFileName(file)));
         }
 
-        static void Render(Scene scene, string staging, string commit, string onlyRegion = null)
+        static void Render(Scene scene, string staging, string commit, string onlyRegion = null, bool topOnly = false)
         {
             var all = scene.GetRootGameObjects().SelectMany(root => root.GetComponentsInChildren<Renderer>())
                 .Where(r => r.enabled && r.gameObject.activeInHierarchy).ToArray();
@@ -214,6 +289,7 @@ namespace TwinEdge.Levels.Editor
                     foreach (var r in contents) box.Encapsulate(r.bounds);
                     foreach (bool top in new[] { true, false })
                     {
+                        if (topOnly && !top) continue;
                         camera.orthographic = top;
                         camera.transform.rotation = LevelViewCamera.Rotation(top ? LevelViewMode.Top : LevelViewMode.Perspective, false);
                         Vector3 center = box.center;

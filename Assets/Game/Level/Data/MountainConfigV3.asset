@@ -85,7 +85,7 @@ MonoBehaviour:
     asymmetry: 0.772
     landingTerrace: 1
     id: Peak_04
-    position: {x: -0.200000000, y: -0.408823529}
+    position: {x: -0.238461538, y: -0.426470588}
     height: 141.3
     summitSize: {x: 38, y: 38}
     rotation: 46
@@ -97,7 +97,7 @@ MonoBehaviour:
     crestOffset: {x: 24.5, y: 20.6}
     crestRise: 8
     id: Peak_05
-    position: {x: -0.071794872, y: -0.370588235}
+    position: {x: -0.082051282, y: -0.370588235}
     height: 143
     summitSize: {x: 39, y: 36}
     rotation: 14
@@ -107,8 +107,8 @@ MonoBehaviour:
     asymmetry: 0.430
     landingTerrace: 1
     id: Peak_06
-    position: {x: 0.110256410, y: -0.405882353}
-    height: 145.6
+    position: {x: 0.158974359, y: -0.429411765}
+    height: 142.7
     summitSize: {x: 37, y: 37}
     rotation: 147
     silhouette: 0.178
@@ -119,7 +119,7 @@ MonoBehaviour:
     crestOffset: {x: -33.9, y: -2.0}
     crestRise: 14
     id: Peak_07
-    position: {x: -0.156410256, y: -0.247058824}
+    position: {x: -0.197435897, y: -0.258823529}
     height: 148.1
     summitSize: {x: 36, y: 40}
     rotation: 115
@@ -129,7 +129,7 @@ MonoBehaviour:
     asymmetry: 0.644
     landingTerrace: 1
     id: Peak_08
-    position: {x: -0.038461538, y: -0.205882353}
+    position: {x: -0.048717949, y: -0.211764706}
     height: 149.0
     summitSize: {x: 38, y: 37}
     rotation: 136
@@ -139,7 +139,7 @@ MonoBehaviour:
     asymmetry: 0.799
     landingTerrace: 1
     id: Peak_09
-    position: {x: 0.120512821, y: -0.255882353}
+    position: {x: 0.158974359, y: -0.285294118}
     height: 151.1
     summitSize: {x: 38, y: 39}
     rotation: 156
@@ -151,7 +151,7 @@ MonoBehaviour:
     crestOffset: {x: 9.1, y: 32.8}
     crestRise: 11
     id: Peak_10
-    position: {x: -0.117948718, y: -0.079411765}
+    position: {x: -0.153846154, y: -0.102941176}
     height: 155
     summitSize: {x: 38, y: 37}
     rotation: 157
@@ -161,7 +161,7 @@ MonoBehaviour:
     asymmetry: 0.483
     landingTerrace: 1
     id: Peak_11
-    position: {x: 0.058974359, y: -0.105882353}
+    position: {x: 0.074358974, y: -0.132352941}
     height: 154.4
     summitSize: {x: 36, y: 38}
     rotation: 47
@@ -173,7 +173,7 @@ MonoBehaviour:
     crestOffset: {x: 29.5, y: 12.5}
     crestRise: 14
     id: Peak_12
-    position: {x: 0.179487179, y: -0.126470588}
+    position: {x: 0.235897436, y: -0.152941176}
     height: 154.3
     summitSize: {x: 39, y: 36}
     rotation: 164
@@ -183,7 +183,7 @@ MonoBehaviour:
     asymmetry: 0.594
     landingTerrace: 1
     id: Peak_13
-    position: {x: -0.128205128, y: 0.091176471}
+    position: {x: -0.153846154, y: 0.082352941}
     height: 163
     summitSize: {x: 38, y: 37}
     rotation: 163
@@ -195,7 +195,7 @@ MonoBehaviour:
     crestOffset: {x: -21.8, y: 29.9}
     crestRise: 9
     id: Peak_14
-    position: {x: -0.002564103, y: 0.041176471}
+    position: {x: 0.005128205, y: 0.032352941}
     height: 161.0
     summitSize: {x: 37, y: 41}
     rotation: 58
@@ -205,7 +205,7 @@ MonoBehaviour:
     asymmetry: 0.552
     landingTerrace: 1
     id: Peak_15
-    position: {x: 0.151282051, y: 0.035294118}
+    position: {x: 0.182051282, y: 0.020588235}
     height: 161.9
     summitSize: {x: 37, y: 38}
     rotation: 53
@@ -217,7 +217,7 @@ MonoBehaviour:
     crestOffset: {x: -20.9, y: -24.2}
     crestRise: 8
     id: Peak_16
-    position: {x: -0.158974359, y: 0.229411765}
+    position: {x: -0.205128205, y: 0.250000000}
     height: 167.4
     summitSize: {x: 38, y: 39}
     rotation: 149
@@ -227,7 +227,7 @@ MonoBehaviour:
     asymmetry: 0.674
     landingTerrace: 1
     id: Peak_17
-    position: {x: -0.035897436, y: 0.211764706}
+    position: {x: -0.035897436, y: 0.202941176}
     height: 168.8
     summitSize: {x: 37, y: 37}
     rotation: 48
@@ -239,7 +239,7 @@ MonoBehaviour:
     crestOffset: {x: 31.4, y: 6.4}
     crestRise: 13
     id: Peak_18
-    position: {x: 0.087179487, y: 0.182352941}
+    position: {x: 0.115384615, y: 0.179411765}
     height: 166.8
     summitSize: {x: 39, y: 36}
     rotation: 141
@@ -249,7 +249,7 @@ MonoBehaviour:
     asymmetry: 0.783
     landingTerrace: 1
     id: Peak_19
-    position: {x: -0.189743590, y: 0.391176471}
+    position: {x: -0.235897436, y: 0.408823529}
     height: 173.9
     summitSize: {x: 38, y: 38}
     rotation: 65
@@ -261,7 +261,7 @@ MonoBehaviour:
     crestOffset: {x: 26.4, y: -21.5}
     crestRise: 11
     id: Peak_20
-    position: {x: -0.066666667, y: 0.355882353}
+    position: {x: -0.079487179, y: 0.370588235}
     height: 173.5
     summitSize: {x: 36, y: 39}
     rotation: 120
@@ -271,7 +271,7 @@ MonoBehaviour:
     asymmetry: 0.503
     landingTerrace: 1
     id: Peak_21
-    position: {x: 0.102564103, y: 0.355882353}
+    position: {x: 0.110256410, y: 0.358823529}
     height: 174.7
     summitSize: {x: 37, y: 38}
     rotation: 117
@@ -283,7 +283,7 @@ MonoBehaviour:
     crestOffset: {x: 24.5, y: 20.6}
     crestRise: 10
     id: Peak_22
-    position: {x: -0.107692308, y: 0.529411765}
+    position: {x: -0.130769231, y: 0.544117647}
     height: 179.7
     summitSize: {x: 38, y: 38}
     rotation: 126
@@ -293,7 +293,7 @@ MonoBehaviour:
     asymmetry: 0.503
     landingTerrace: 1
     id: Peak_23
-    position: {x: 0.020512821, y: 0.502941176}
+    position: {x: 0.017948718, y: 0.514705882}
     height: 181
     summitSize: {x: 39, y: 37}
     rotation: 169
@@ -305,7 +305,7 @@ MonoBehaviour:
     crestOffset: {x: 31.9, y: -2.7}
     crestRise: 13
     id: Peak_24
-    position: {x: 0.153846154, y: 0.529411765}
+    position: {x: 0.169230769, y: 0.526470588}
     height: 182
     summitSize: {x: 38, y: 36}
     rotation: 127
@@ -313,31 +313,31 @@ MonoBehaviour:
     shoulderWidth: 3
   - shape: 1
     asymmetry: 0.667
-    landingTerrace: 0
+    landingTerrace: 1
     id: Peak_25
-    position: {x: -0.369230769, y: -0.179411765}
-    height: 172
-    summitSize: {x: 37, y: 51}
+    position: {x: -0.323076923, y: -0.311764706}
+    height: 145.0
+    summitSize: {x: 39, y: 40}
     rotation: 137
     silhouette: 0.268
     shoulderWidth: 11
   - shape: 5
     asymmetry: 0.529
-    landingTerrace: 0
+    landingTerrace: 1
     id: Peak_26
-    position: {x: 0.351282051, y: 0.050000000}
-    height: 160
-    summitSize: {x: 51, y: 34}
+    position: {x: 0.312820513, y: -0.029411765}
+    height: 159.8
+    summitSize: {x: 39, y: 40}
     rotation: 11
     silhouette: 0.233
     shoulderWidth: 6
   - shape: 3
     asymmetry: 0.678
-    landingTerrace: 0
+    landingTerrace: 1
     id: Peak_27
-    position: {x: -0.330769231, y: 0.335294118}
-    height: 194
-    summitSize: {x: 47, y: 42}
+    position: {x: -0.338461538, y: 0.264705882}
+    height: 176.8
+    summitSize: {x: 39, y: 40}
     rotation: 77
     silhouette: 0.278
     shoulderWidth: 11
@@ -508,13 +508,13 @@ MonoBehaviour:
   - from: Start
     to: Peak_01
     width: 7
-    span: 61
-    depth: 22
+    span: 140
+    depth: 34
   - from: Start
     to: Peak_03
     width: 6
-    span: 67
-    depth: 24
+    span: 190
+    depth: 41
   - from: Peak_22
     to: Final
     width: 7
@@ -530,16 +530,208 @@ MonoBehaviour:
     width: 7
     span: 57
     depth: 24
+  - from: Start
+    to: Peak_02
+    width: 5
+    span: 95
+    depth: 27
+  - from: Peak_03
+    to: Peak_06
+    width: 5
+    span: 41
+    depth: 16
+  - from: Peak_04
+    to: Peak_25
+    width: 6
+    span: 48
+    depth: 14
+  - from: Peak_06
+    to: Peak_09
+    width: 5
+    span: 59
+    depth: 14
+  - from: Peak_16
+    to: Peak_27
+    width: 6
+    span: 53
+    depth: 18
+  ridges:
+  - crest:
+    - {x: -199, y: 55, z: -357}
+    - {x: -176, y: 133, z: -287}
+    - {x: -212, y: 196, z: -202}
+    - {x: -181, y: 190, z: -149}
+    - {x: -176, y: 165, z: -82}
+    - {x: -155, y: 177, z: -37}
+    halfWidth: 117
+    flankBias: 0.2
+  - crest:
+    - {x: -154, y: 171, z: -49}
+    - {x: -192, y: 204, z: 20}
+    - {x: -221, y: 213, z: 92}
+    - {x: -194, y: 199, z: 146}
+    - {x: -157, y: 195, z: 201}
+    - {x: -131, y: 160, z: 260}
+    halfWidth: 103
+    flankBias: -0.18
+  - crest:
+    - {x: 157, y: 49, z: -362}
+    - {x: 189, y: 144, z: -287}
+    - {x: 166, y: 194, z: -202}
+    - {x: 191, y: 182, z: -120}
+    - {x: 167, y: 169, z: -67}
+    - {x: 158, y: 173, z: -16}
+    halfWidth: 98
+    flankBias: 0.16
+  - crest:
+    - {x: 140, y: 171, z: 4}
+    - {x: 199, y: 203, z: 52}
+    - {x: 229, y: 217, z: 111}
+    - {x: 160, y: 171, z: 163}
+    - {x: 168, y: 182, z: 228}
+    - {x: 99, y: 171, z: 272}
+    halfWidth: 111
+    flankBias: -0.13
+  - crest:
+    - {x: -148, y: 79, z: -330}
+    - {x: -88, y: 103, z: -308}
+    - {x: -28, y: 114, z: -309}
+    - {x: 57, y: 130, z: -259}
+    - {x: 125, y: 146, z: -213}
+    - {x: 152, y: 164, z: -175}
+    halfWidth: 78
+    flankBias: 0.22
+  - crest:
+    - {x: -201, y: 183, z: -183}
+    - {x: -130, y: 127, z: -153}
+    - {x: -56, y: 116, z: -135}
+    - {x: 17, y: 110, z: -104}
+    - {x: 67, y: 129, z: -83}
+    - {x: 146, y: 155, z: -73}
+    halfWidth: 63
+    flankBias: -0.25
+  - crest:
+    - {x: -167, y: 174, z: -32}
+    - {x: -114, y: 134, z: -46}
+    - {x: -44, y: 127, z: -19}
+    - {x: 35, y: 125, z: -7}
+    - {x: 102, y: 146, z: 18}
+    - {x: 155, y: 177, z: 19}
+    halfWidth: 79
+    flankBias: 0.23
+  - crest:
+    - {x: 171, y: 177, z: 71}
+    - {x: 109, y: 145, z: 59}
+    - {x: 61, y: 144, z: 83}
+    - {x: -4, y: 142, z: 86}
+    - {x: -62, y: 151, z: 116}
+    - {x: -158, y: 179, z: 128}
+    halfWidth: 67
+    flankBias: -0.24
+  - crest:
+    - {x: -190, y: 186, z: 170}
+    - {x: -133, y: 158, z: 185}
+    - {x: -62, y: 157, z: 187}
+    - {x: 10, y: 156, z: 161}
+    - {x: 63, y: 164, z: 177}
+    - {x: 146, y: 185, z: 196}
+    halfWidth: 76
+    flankBias: 0.14
+  - crest:
+    - {x: -132, y: 144, z: 257}
+    - {x: -67, y: 158, z: 272}
+    - {x: 6, y: 176, z: 285}
+    - {x: 70, y: 162, z: 270}
+    - {x: 131, y: 155, z: 264}
+    halfWidth: 79
+    flankBias: -0.19
+  - crest:
+    - {x: -301, y: 77, z: 29}
+    - {x: -294, y: 118, z: 125}
+    - {x: -265, y: 131, z: 206}
+    - {x: -242, y: 101, z: 281}
+    halfWidth: 96
+    flankBias: 0.21
+  - crest:
+    - {x: 294, y: 72, z: -136}
+    - {x: 303, y: 114, z: -70}
+    - {x: 303, y: 128, z: 40}
+    - {x: 283, y: 83, z: 147}
+    halfWidth: 103
+    flankBias: -0.2
+  - crest:
+    - {x: -127, y: 121, z: -167}
+    - {x: -93, y: 141, z: -115}
+    - {x: -126, y: 145, z: -76}
+    - {x: -150, y: 146, z: -30}
+    halfWidth: 58
+    crestHalfWidth: 17
+    flankBias: 0.14
+  - crest:
+    - {x: -35, y: 130, z: -145}
+    - {x: -32, y: 143, z: -96}
+    - {x: -19, y: 149, z: -42}
+    - {x: 29, y: 154, z: -15}
+    - {x: 62, y: 151, z: -67}
+    - {x: 97, y: 153, z: -83}
+    halfWidth: 58
+    crestHalfWidth: 18
+    flankBias: -0.14
+  - crest:
+    - {x: -136, y: 141, z: -83}
+    - {x: -77, y: 148, z: -58}
+    - {x: -60, y: 155, z: -5}
+    - {x: -60, y: 163, z: 58}
+    - {x: -113, y: 161, z: 92}
+    halfWidth: 62
+    crestHalfWidth: 14
+    flankBias: 0.13
+  - crest:
+    - {x: 28, y: 149, z: -22}
+    - {x: 58, y: 151, z: -33}
+    - {x: 92, y: 154, z: -22}
+    - {x: 122, y: 160, z: 20}
+    - {x: 164, y: 171, z: 46}
+    halfWidth: 59
+    crestHalfWidth: 19
+    flankBias: -0.21
+  - crest:
+    - {x: 131, y: 155, z: 3}
+    - {x: 71, y: 161, z: 37}
+    - {x: 45, y: 167, z: 91}
+    - {x: -14, y: 169, z: 99}
+    - {x: -54, y: 163, z: 77}
+    halfWidth: 68
+    crestHalfWidth: 17
+    flankBias: 0.19
+  - crest:
+    - {x: -179, y: 182, z: 116}
+    - {x: -132, y: 176, z: 120}
+    - {x: -80, y: 167, z: 115}
+    - {x: -31, y: 173, z: 156}
+    - {x: 43, y: 174, z: 152}
+    - {x: 99, y: 170, z: 134}
+    halfWidth: 63
+    crestHalfWidth: 16
+    flankBias: -0.14
+  - crest:
+    - {x: -131, y: 167, z: 203}
+    - {x: -92, y: 173, z: 169}
+    - {x: -51, y: 179, z: 215}
+    - {x: 7, y: 181, z: 205}
+    - {x: 66, y: 182, z: 209}
+    - {x: 111, y: 180, z: 200}
+    halfWidth: 66
+    crestHalfWidth: 18
+    flankBias: 0.14
   entryTrail:
-  - {x: -68, y: 63, z: -403}
-  - {x: -66, y: 64, z: -394}
-  - {x: -51, y: 68, z: -375}
-  - {x: -29, y: 76, z: -356}
-  - {x: -11, y: 87, z: -335}
-  - {x: -16, y: 97, z: -316}
-  - {x: -9, y: 109, z: -297}
-  - {x: 7, y: 122.5, z: -277}
-  - {x: 4, y: 132, z: -262}
+  - {x: -50, y: 73, z: -379}
+  - {x: -46, y: 76, z: -366}
+  - {x: -35, y: 84, z: -347}
+  - {x: -22, y: 97, z: -326}
+  - {x: -23, y: 112, z: -302}
+  - {x: -13, y: 123, z: -282}
+  - {x: 2, y: 130, z: -267}
   - {x: 2, y: 132, z: -258}
   - {x: 0, y: 132, z: -247}
   bridgeAnchor: {x: 12, y: 190, z: 330}
