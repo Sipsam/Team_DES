@@ -836,7 +836,6 @@ MonoBehaviour:
   configuredA: 2718
   configuredB: 6043
   injuredSpeed: 0.55
-  retryDelay: 3
   respawnGrace: 2
   clearInjuryOnRespawn: 1
   clearInjuryOnExit: 1
@@ -862,7 +861,6 @@ MonoBehaviour:
   slowSeconds: 1.3
   trapSpeed: 0.78
   knockback: 1.65
-  movingPeriod: 8
   vanishPeriod: 8
   vanishWarning: 1.25
   vanishAbsent: 2
@@ -875,7 +873,6 @@ MonoBehaviour:
   flameModel: {fileID: 5812028425063935952, guid: 3b23429bc9b70f9488b4f6eb8b5b1900, type: 3}
   arrowModel: {fileID: 6663240412609322937, guid: 9341ef79f68d1124e9003341fdc8f7fc, type: 3}
   spikesModel: {fileID: 2220372562359086639, guid: 344b280bb4eb32c4dacbdc599322ad8b, type: 3}
-  movingModel: {fileID: 8509150300877193925, guid: 478ee3760e6722445b880657c1c74399, type: 3}
   vanishModel: {fileID: 4137733382187006812, guid: 0faff894bbd7e404ebaf7c6863560702, type: 3}
   leftMaterial: {fileID: 2100000, guid: 62b0aee63436d164fbdfc3f0987a513f, type: 2}
   rightMaterial: {fileID: 2100000, guid: 9bc4fae7a3b8ab44ea9e18a90cdf336f, type: 2}

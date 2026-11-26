@@ -301,7 +301,14 @@ namespace TwinEdge.Gameplay
                 yield return Walk(-32, 46, sprint: true);
                 yield return Walk(-32, 41);
             }
-            else if (host) yield return RunTraps();
+            else if (host)
+            {
+                yield return ObserveSewerPress(sewerAnswer[0], 1);
+                yield return Wait(() => castle.SewerOpen && castle.Progress(1).SewerLength == sewerAnswer.Length,
+                    "both peers see the twelve-glyph bypass open", 100);
+                yield return Rendezvous("sewer-open");
+                yield return RunTraps();
+            }
             else yield return RunSewer();
             yield return TraverseGate(true);
             Capture("gate-exit");
@@ -424,7 +431,6 @@ namespace TwinEdge.Gameplay
             SteerWorld(Vector3.zero);
             Require(castle.SprintBlocked(player) && castle.SpeedScale(player) < 1 &&
                 speed > 1.2f && speed <= 3.5f * castle.SpeedScale(player) + .08f, $"slowed movement while Shift held ({speed:F2} m/s)");
-            File.WriteAllText(Path.Combine(output, "host-trap-speed.txt"), "PASS");
             CaptureView("rolling-rock", castle.World(x + 4, 2.7f, z + 7), castle.World(x, 1.3f, z));
             yield return Walk(x, z);
             Require(character.RespawnCount.Value == deaths, "one attack is not double-counted");
@@ -447,37 +453,32 @@ namespace TwinEdge.Gameplay
 
         IEnumerator RunSewer()
         {
-            var (_, trapZ) = castle.TrapPoint(4);
-            yield return Walk(-1.8f, 234);
-            yield return Walk(-2.3f, trapZ);
-            yield return Wait(() => castle.Progress(slot).Injured, "client made physical trap contact", 30);
-            yield return Walk(-2.3f, trapZ + 4.8f);
-            yield return Wait(() => File.Exists(Path.Combine(output, "host-trap-speed.txt")), "host measured injured movement");
-            yield return Reconnect("after physical trap contact");
-            Require(castle.Returning && castle.DoorOpen && castle.Stage == 4 && castle.Progress(slot).Injured,
-                "rejoin restores gates, phase, path and physical trap injury");
             yield return GoToSewer();
             int deaths = character.RespawnCount.Value;
-            var wrong = new int[12];
-            yield return EnterSewer(wrong);
-            yield return Wait(() => character.RespawnCount.Value == deaths + 1 && !castle.Progress(slot).Injured,
-                "trap and sewer contacts accumulate together");
-            yield return GoToSewer();
-            yield return Wait(() => castle.Now >= castle.Progress(slot).RetryAt, "retry after mixed damage");
-            yield return EnterSewer(wrong);
-            yield return Wait(() => castle.Progress(slot).Injured && castle.Progress(slot).RetryAt > castle.Now,
-                "wrong sewer sequence causes injury and cooldown");
-            var blocked = castle.Progress(slot).Revision;
-            castle.UseRpc(Station(CastleGameplay.Action.SewerPad, -1, 4).Id, 4, blocked);
-            yield return new WaitForSeconds(.3f);
-            Require(castle.Progress(slot).Revision == blocked, "cooldown request ignored");
-            yield return Wait(() => castle.Now >= castle.Progress(slot).RetryAt, "retry delay elapsed");
-            yield return EnterSewer(wrong);
-            yield return Wait(() => character.RespawnCount.Value == deaths + 2, "second wrong sequence respawns");
-            yield return GoToSewer();
-            yield return Wait(() => castle.Now >= castle.Progress(slot).RetryAt, "sewer retry cooldown elapsed");
-            yield return EnterSewer(sewerAnswer);
-            yield return Wait(() => castle.SewerOpen, "all twelve outbound glyphs unlock sewer");
+            CaptureSewerPad("sewer-pad-idle", sewerAnswer[0]);
+
+            for (int i = 0; i < sewerAnswer.Length; i++)
+            {
+                int glyph = sewerAnswer[i];
+                if (i is 1 or 11)
+                {
+                    int wrongGlyph = (glyph + 1) % CastleGameplay.Glyphs.Length;
+                    if (wrongGlyph == sewerAnswer[i - 1]) wrongGlyph = (glyph + 2) % CastleGameplay.Glyphs.Length;
+                    var wrong = Station(CastleGameplay.Action.SewerPad, -1, 4, wrongGlyph);
+                    var before = castle.Progress(slot);
+                    yield return Use(wrong);
+                    Require(castle.Progress(slot).Equals(before) && character.RespawnCount.Value == deaths &&
+                        castle.SpeedScale(player) == 1 && !castle.SprintBlocked(player) && !castle.SewerOpen &&
+                        castle.CanUse(Station(CastleGameplay.Action.SewerPad, -1, 4, glyph), slot),
+                        $"wrong sewer glyph preserves {i} correct inputs and allows the next input immediately");
+                    Require(!SewerPadIsPressed(wrong), "wrong glyph does not show the accepted press");
+                }
+                var pad = Station(CastleGameplay.Action.SewerPad, -1, 4, glyph);
+                yield return UseAndConfirm(pad, () => castle.Progress(slot).SewerLength == i + 1, $"sewer input {i + 1}/12");
+                Require(castle.SewerOpen == (i == sewerAnswer.Length - 1), "only the complete sequence opens the bypass");
+                if (i == 0) yield return ObserveSewerPress(glyph, slot);
+            }
+            yield return Rendezvous("sewer-open");
             yield return Reconnect("after opening sewer");
             Require(castle.SewerOpen && castle.Returning, "opened sewer restored after reconnect");
             yield return GoToSewer();
@@ -490,6 +491,32 @@ namespace TwinEdge.Gameplay
             Require(player.IsGrounded, "sewer descends to walkable entrance hall");
             Require(character.RespawnCount.Value == deaths, "sewer traversed on foot with no trap hits");
             Capture("sewer-exit");
+        }
+
+        IEnumerator ObserveSewerPress(int glyph, int inputSlot)
+        {
+            var pad = Station(CastleGameplay.Action.SewerPad, -1, 4, glyph);
+            yield return Wait(() => castle.Progress(inputSlot).SewerLength == 1 && SewerPadIsPressed(pad),
+                "approved sewer input lowers and lights the same cap", 35);
+            CaptureSewerPad("sewer-pad-accepted", glyph);
+            yield return Wait(() => !SewerPadIsPressed(pad), "accepted cap releases");
+        }
+
+        static bool SewerPadIsPressed(CastleStation pad)
+        {
+            var cap = pad.transform.Find("Sewer pad cap");
+            if (cap.localPosition.y >= .1f) return false;
+            var plate = cap.Find("Sewer press plate").GetComponent<Renderer>();
+            var properties = new MaterialPropertyBlock();
+            plate.GetPropertyBlock(properties);
+            Color tint = properties.GetColor("_BaseColor");
+            return tint.g > tint.r;
+        }
+
+        void CaptureSewerPad(string label, int glyph)
+        {
+            var point = Station(CastleGameplay.Action.SewerPad, -1, 4, glyph).transform.position;
+            CaptureView(label, point + new Vector3(-2.1f, 2.4f, 3.8f), point + Vector3.up * .35f);
         }
 
         IEnumerator GoToSewer()

@@ -16,7 +16,6 @@ namespace TwinEdge.Gameplay
             public int Revision, Steps, SewerLength, Feedback;
             public byte PressedGlyphs;
             public bool Injured;
-            public double RetryAt;
 
             public void NetworkSerialize<T>(BufferSerializer<T> serializer) where T : IReaderWriter
             {
@@ -26,12 +25,11 @@ namespace TwinEdge.Gameplay
                 serializer.SerializeValue(ref SewerLength);
                 serializer.SerializeValue(ref Feedback);
                 serializer.SerializeValue(ref Injured);
-                serializer.SerializeValue(ref RetryAt);
             }
 
             public bool Equals(PlayerProgress other) => Revision == other.Revision && Steps == other.Steps &&
                 PressedGlyphs == other.PressedGlyphs &&
-                SewerLength == other.SewerLength && Feedback == other.Feedback && Injured == other.Injured && RetryAt == other.RetryAt;
+                SewerLength == other.SewerLength && Feedback == other.Feedback && Injured == other.Injured;
         }
 
         const int Stages = 4, Both = 3;
@@ -40,7 +38,7 @@ namespace TwinEdge.Gameplay
         [SerializeField] bool randomizeNumbers = true;
         [SerializeField, Range(0, 9999)] int configuredA = 2718, configuredB = 6043;
         [SerializeField, Range(.1f, 1f)] float injuredSpeed = .55f;
-        [SerializeField, Min(.1f)] float retryDelay = 3f, respawnGrace = 2f;
+        [SerializeField, Min(.1f)] float respawnGrace = 2f;
         [SerializeField] bool clearInjuryOnRespawn = true, clearInjuryOnExit = true;
 
         readonly NetworkVariable<int> stage = new(), signal = new(), collected = new(), accepted = new(), crossed = new();
@@ -49,7 +47,7 @@ namespace TwinEdge.Gameplay
         readonly NetworkVariable<double> returnStart = new();
         readonly NetworkVariable<ulong> clientA = new(ulong.MaxValue), clientB = new(ulong.MaxValue);
         readonly byte[] answer = new byte[Stages * 3];
-        readonly int[] numbers = new int[2], sewerCodes = new int[2];
+        readonly int[] numbers = new int[2];
         readonly double[] graceUntil = new double[2];
         readonly bool[] resumeAtCastle = new bool[2];
         readonly Crossing[] crossings = new Crossing[2];
@@ -100,6 +98,7 @@ namespace TwinEdge.Gameplay
             respawns = GetComponent<RespawnManager>();
             progress = new NetworkList<PlayerProgress>();
             activations = new NetworkList<double>();
+            sewerPressTimes = new NetworkList<double>();
         }
 
         public override void OnDestroy()
@@ -120,12 +119,13 @@ namespace TwinEdge.Gameplay
             sewerOpen.Value = false;
             clientA.Value = clientB.Value = ulong.MaxValue;
             progress.Clear();
+            sewerPressTimes.Clear();
+            foreach (string glyph in Glyphs) sewerPressTimes.Add(-1);
             for (int slot = 0; slot < 2; slot++)
             {
                 progress.Add(default);
                 occupants[slot] = ulong.MaxValue;
                 crossings[slot] = default;
-                sewerCodes[slot] = 0;
                 graceUntil[slot] = 0;
                 resumeAtCastle[slot] = false;
                 numbers[slot] = randomizeNumbers ? UnityEngine.Random.Range(0, 10000) : slot == 0 ? configuredA : configuredB;
@@ -185,7 +185,6 @@ namespace TwinEdge.Gameplay
             p.SewerLength = 0;
             p.Revision++;
             progress[slot] = p;
-            sewerCodes[slot] = 0;
             crossings[slot] = default;
             if (!PartitionsOpen) crossed.Value &= ~(1 << slot);
             graceUntil[slot] = Now + respawnGrace;
@@ -214,7 +213,6 @@ namespace TwinEdge.Gameplay
                 p.Revision++;
                 p.SewerLength = 0;
                 progress[slot] = p;
-                sewerCodes[slot] = 0;
                 occupants[slot] = ulong.MaxValue;
                 crossings[slot] = default;
                 if (!PartitionsOpen) crossed.Value &= ~(1 << slot);
@@ -304,7 +302,7 @@ namespace TwinEdge.Gameplay
         {
             if (!IsSpawned || !game.CanPlay || slot < 0 || station.Slot >= 0 && station.Slot != slot) return false;
             if (station.Kind is Action.SewerPad or Action.ClearSewer)
-                return Returning && !SewerOpen && Now >= Progress(slot).RetryAt;
+                return Returning && !SewerOpen;
             if (Returning) return false;
             if (game.Phase != FoundationPhase.Outbound) return false;
             if (station.Kind == Action.Collect) return Stage == Stages;
@@ -348,24 +346,13 @@ namespace TwinEdge.Gameplay
                     OpenKeypadRpc(slot, RpcTarget.Single(player.OwnerClientId, RpcTargetUse.Temp));
                     return;
                 case Action.SewerPad:
-                    sewerCodes[slot] = sewerCodes[slot] * 3 + station.Value;
+                    if (station.Value != answer[p.SewerLength]) return;
+                    sewerPressTimes[station.Value] = Now;
                     p.SewerLength++;
-                    p.Feedback = 1;
-                    if (p.SewerLength == answer.Length)
-                    {
-                        bool matches = sewerCodes[slot] == SewerAnswer();
-                        p.SewerLength = sewerCodes[slot] = 0;
-                        p.Feedback = matches ? 1 : -1;
-                        if (matches) sewerOpen.Value = true;
-                        else p.RetryAt = Now + retryDelay;
-                        p.Revision++;
-                        progress[slot] = p;
-                        if (!matches) Damage(player, slot);
-                        return;
-                    }
+                    if (p.SewerLength == answer.Length) sewerOpen.Value = true;
                     break;
                 case Action.ClearSewer:
-                    p.SewerLength = sewerCodes[slot] = 0;
+                    p.SewerLength = 0;
                     p.Feedback = 0;
                     break;
             }
@@ -422,13 +409,6 @@ namespace TwinEdge.Gameplay
         int CodeForStage(int index) => (answer[index * 3] + 1) | ((answer[index * 3 + 1] + 1) << 2) |
             ((answer[index * 3 + 2] + 1) << 4);
         internal static int SignalLength(int code) => code >= 16 ? 3 : code >= 4 ? 2 : code > 0 ? 1 : 0;
-        int SewerAnswer()
-        {
-            int code = 0;
-            foreach (byte glyph in answer) code = code * 3 + glyph;
-            return code;
-        }
-
         [Rpc(SendTo.SpecifiedInParams, InvokePermission = RpcInvokePermission.Server)]
         void ShowHintRpc(int index, int code, RpcParams rpc = default)
         {

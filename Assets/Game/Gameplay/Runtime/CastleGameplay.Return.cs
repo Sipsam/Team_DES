@@ -26,10 +26,17 @@ namespace TwinEdge.Gameplay
 
         readonly Trap[] traps = new Trap[5];
         readonly double[] nextTrap = new double[5];
-        NetworkList<double> activations;
+        NetworkList<double> activations, sewerPressTimes;
+        readonly Transform[] sewerCaps = new Transform[Glyphs.Length];
+        readonly Renderer[] sewerPlates = new Renderer[Glyphs.Length];
+        MaterialPropertyBlock sewerPlateProperties;
+        static readonly int SewerPlateColor = Shader.PropertyToID("_BaseColor");
+        static readonly Color SewerAcceptedColor = new(.28f, 1f, .47f);
+        const float SewerPressSeconds = .8f;
 
         void BuildSewer()
         {
+            sewerPlateProperties = new MaterialPropertyBlock();
             var sewer = Group(returnLayout, "Sewer bypass");
             float deckSouth = SewerExit + RampLength, deckNorth = SewerEntry - RampLength;
             SewerSegment(sewer, new Vector3(SewerX, 0, SewerExit), new Vector3(SewerX, SewerHeight, deckSouth), false);
@@ -42,13 +49,33 @@ namespace TwinEdge.Gameplay
             {
                 var pad = Station(sewer, Action.SewerPad, -1, Stages, glyph,
                     new Vector3(-24 + glyph * 3.5f, .3f, z), "E: sewer " + Glyphs[glyph]);
-                Symbol(pad.transform, glyph, 1.45f);
+                Block(pad.transform, "Sewer pad base", Vector3.down * .23f, new Vector3(1.98f, .14f, 1.98f), darkMaterial, false);
+                var cap = Group(pad.transform, "Sewer pad cap");
+                cap.localPosition = Vector3.up * .26f;
+                sewerCaps[glyph] = cap;
+                Block(cap, "Sewer plunger", Vector3.down * .35f, new Vector3(.95f, .25f, .95f), darkMaterial, false);
+                sewerPlates[glyph] = Block(cap, "Sewer press plate", Vector3.down * .22f,
+                    new Vector3(1.75f, .16f, 1.75f), accentMaterial, false).GetComponent<Renderer>();
+                Symbol(cap, glyph, 1.45f);
                 Label(pad.transform, Glyphs[glyph], Vector3.up * .8f, 0);
             }
             var clear = Station(sewer, Action.ClearSewer, -1, Stages, 0,
                 new Vector3(-12, .9f, z), "E: clear your sewer entry");
             Label(clear.transform, "CLEAR", Vector3.up * .72f, 0);
             Label(sewer, "SEWER", new Vector3(SewerX, 3f, SewerEntry + .6f), 0, .26f);
+        }
+
+        void DrawSewerPads()
+        {
+            for (int glyph = 0; glyph < sewerPressTimes.Count; glyph++)
+            {
+                double elapsed = sewerPressTimes[glyph] < 0 ? SewerPressSeconds : Now - sewerPressTimes[glyph];
+                float press = Mathf.Clamp01((float)elapsed / .08f) *
+                    Mathf.Clamp01((SewerPressSeconds - (float)elapsed) / .22f);
+                sewerCaps[glyph].localPosition = Vector3.up * Mathf.Lerp(.26f, .02f, press);
+                sewerPlateProperties.SetColor(SewerPlateColor, Color.Lerp(accentMaterial.color, SewerAcceptedColor, press));
+                sewerPlates[glyph].SetPropertyBlock(sewerPlateProperties);
+            }
         }
 
         void SewerSegment(Transform root, Vector3 from, Vector3 to, bool covered)

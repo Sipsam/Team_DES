@@ -322,7 +322,7 @@ namespace TwinEdge.Gameplay
             return block;
         }
 
-        internal static void Model(Transform parent, GameObject prefab, Vector3 size, bool fitAxes = false)
+        internal static void Model(Transform parent, GameObject prefab, Vector3 size, bool fitAxes = false, bool meshBoundsOnly = false)
         {
             if (prefab == null) return;
             var frame = Group(parent, prefab.name + " display");
@@ -335,17 +335,23 @@ namespace TwinEdge.Gameplay
                 body.detectCollisions = false;
             }
 
-            var renderers = clone.GetComponentsInChildren<Renderer>();
+            Renderer[] renderers = meshBoundsOnly
+                ? clone.GetComponentsInChildren<MeshRenderer>()
+                : clone.GetComponentsInChildren<Renderer>();
             if (renderers.Length == 0) return;
             // Measure in the display's basis, including rotations stored by the source prefab.
             var bounds = new Bounds(frame.InverseTransformPoint(renderers[0].bounds.center), Vector3.zero);
             foreach (var renderer in renderers)
             {
-                var b = renderer.bounds;
+                var b = meshBoundsOnly ? renderer.localBounds : renderer.bounds;
                 for (int x = -1; x <= 1; x += 2)
                 for (int y = -1; y <= 1; y += 2)
                 for (int z = -1; z <= 1; z += 2)
-                    bounds.Encapsulate(frame.InverseTransformPoint(b.center + Vector3.Scale(b.extents, new Vector3(x, y, z))));
+                {
+                    Vector3 corner = b.center + Vector3.Scale(b.extents, new Vector3(x, y, z));
+                    Vector3 world = meshBoundsOnly ? renderer.transform.TransformPoint(corner) : corner;
+                    bounds.Encapsulate(frame.InverseTransformPoint(world));
+                }
             }
 
             Vector3 scale = new(size.x / Mathf.Max(.001f, bounds.size.x), size.y / Mathf.Max(.001f, bounds.size.y),
@@ -403,7 +409,11 @@ namespace TwinEdge.Gameplay
                     else stone.localPosition = Vector3.back * .3f;
                 }
             }
-            if (returning) DrawTraps();
+            if (returning)
+            {
+                DrawTraps();
+                DrawSewerPads();
+            }
         }
 
         static void SetActive(GameObject value, bool active)
@@ -430,10 +440,7 @@ namespace TwinEdge.Gameplay
                 GUILayout.Label(p.Injured ? "Castle / Injured · slowed · sprint locked" : "Castle / Return corridor");
                 if (SewerOpen) GUILayout.Label("Sewer open");
                 else if (NearSewer(player.transform.position))
-                {
-                    double wait = p.RetryAt - Now;
-                    GUILayout.Label(wait > 0 ? $"Sewer locked · retry in {wait:F1}s" : $"Sewer symbols {p.SewerLength}/12");
-                }
+                    GUILayout.Label($"Sewer symbols {p.SewerLength}/{answer.Length}");
             }
             else
             {

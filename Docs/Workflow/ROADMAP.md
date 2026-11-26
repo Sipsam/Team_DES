@@ -14,8 +14,8 @@ Use this page for ordering and dependencies. [CURRENT_TASK](CURRENT_TASK.md) hol
 | V3-FEEDBACK-05 | Player Appearance and PvP · Feedback 8, 9, 10, 11, 27 | `COMPLETED` | Isolated D3D11 Relay contest, lifecycle and controls passed. Official map and both players’ PvP images captured. | `263d821`. Full integration deferred. |
 | V3-FEEDBACK-06 | Collapsing Bridge and Stairway · Feedback 2, 25 | `COMPLETED` | Ordered proximity with persistent server collapse and isolated bridge and Canyon stair checks. | `5109724`. Official map and runtime views captured. Full integration deferred. |
 | V3-FEEDBACK-07 | River and Raft Gameplay · Feedback 12, 13, 24 | `COMPLETED` | Isolated D3D11 Relay crossings and hit recovery passed. Official map and runtime views captured. | `009fe65`. Full integration deferred. |
-| V3-FEEDBACK-08 | Castle Environment and Puzzle UX · Feedback 14–19 | See [CURRENT_TASK](CURRENT_TASK.md) | Scoped castle presentation, puzzle state and stair traversal checks. | See active checkpoint. |
-| V3-FEEDBACK-09 | Dungeon and Sewer Puzzle · Feedback 20–23 | `PLANNED` | After V3-FEEDBACK-08, when authorized. | Pending. |
+| V3-FEEDBACK-08 | Castle Environment and Puzzle UX · Feedback 14–19 | `COMPLETED` | Scoped castle presentation, puzzle state and stair traversal checks. Official map and runtime views published. | `4af54c8`. Full integration deferred. |
+| V3-FEEDBACK-09 | Dungeon and Sewer Puzzle · Feedback 20–23 | `COMPLETED` | Scoped underground traversal, hazards and Return sewer checks passed. | See [CURRENT_TASK](CURRENT_TASK.md) for the source checkpoint and capture receipt. Human replay and full integration deferred. |
 | V3-INTEGRATION | Final integration and release build · last | `DEFERRED` | All approved major development complete and user explicitly starts integration. Run whole-world and cross-system regression, full E2E Relay/full match, the latest combined DeepGullies/FinalPolish Windows Player check, and validate the final distribution build. Use the outstanding human playtest and platform checks in Validation Summary to plan coverage. | Pending. |
 
 Start the next feedback task only on user request.

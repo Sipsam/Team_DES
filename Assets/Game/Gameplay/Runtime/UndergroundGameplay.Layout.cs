@@ -12,7 +12,7 @@ namespace TwinEdge.Gameplay
     {
         [Header("Underground presentation")]
         [SerializeField] GameObject platformModel, leftSwitchModel, rightSwitchModel, altarModel, sealModel, gemModel;
-        [SerializeField] GameObject flameModel, arrowModel, spikesModel, movingModel, vanishModel;
+        [SerializeField] GameObject flameModel, arrowModel, spikesModel, vanishModel;
         [SerializeField] Material leftMaterial, rightMaterial, warningMaterial;
         [SerializeField] Shader signShader;
 
@@ -112,7 +112,8 @@ namespace TwinEdge.Gameplay
                 Sign(station.transform, lane == 0 ? "SEAL A" : "SEAL B", Vector3.up * .4f);
             }
             Sign(layout, "A  <     >  B", config.start + new Vector3(0, 1.55f, -3.5f));
-            BuildHazards();
+            Physics.SyncTransforms();
+            BuildHazards(generated.Find("FacetedCavernWalls").GetComponent<MeshCollider>());
             ApplyViews();
             Physics.SyncTransforms();
         }
@@ -125,10 +126,10 @@ namespace TwinEdge.Gameplay
             return item;
         }
 
-        Transform Display(Transform parent, GameObject prefab, Vector3 point, Vector3 size, bool fit = false)
+        Transform Display(Transform parent, GameObject prefab, Vector3 point, Vector3 size, bool fit = false, bool meshBoundsOnly = false)
         {
             var view = Create(prefab.name, parent, point);
-            CastleGameplay.Model(view, prefab, size, fitAxes: fit);
+            CastleGameplay.Model(view, prefab, size, fitAxes: fit, meshBoundsOnly: meshBoundsOnly);
             return view;
         }
 

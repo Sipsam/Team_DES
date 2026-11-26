@@ -38,6 +38,22 @@ namespace TwinEdge.Gameplay
         IEnumerator RunUndergroundHazardProbe(UndergroundGameplay cave)
         {
             yield return Rendezvous("hazards-start");
+            Require(cave.ProbeTrapLayoutMatches(out string layoutError), layoutError);
+            for (int attack = 0; attack < 3; attack++)
+            {
+                int index = attack;
+                yield return Wait(() => cave.ProbeWarningAt(index), $"replicated warning for {cave.ProbeAttackName(index)}", 13);
+                yield return Wait(() => cave.ProbeAttackAt(index), $"replicated attack for {cave.ProbeAttackName(index)}", 4);
+                if (screenshots)
+                {
+                    // Let the nozzle particles appear before framing the whole shelf.
+                    yield return new WaitForSeconds(.4f);
+                    var point = cave.ProbeAttackCenter(index);
+                    CaptureView("cavern-trap-" + cave.ProbeAttackName(index),
+                        point + new Vector3(-1, 9.5f, -16f), point);
+                }
+            }
+            yield return Rendezvous("hazard-views");
             if (host)
             {
                 for (int attack = 0; attack < 3; attack++)
@@ -54,22 +70,6 @@ namespace TwinEdge.Gameplay
                     yield return Wait(() => cave.SpeedScale(player) == 1, "movement speed recovers");
                 }
 
-                float prior = cave.ProbeMovingFraction;
-                bool readyToBoard = false;
-                yield return Wait(() =>
-                {
-                    float fraction = cave.ProbeMovingFraction;
-                    readyToBoard |= fraction > prior && fraction is > .60f and < .70f;
-                    prior = fraction;
-                    return readyToBoard;
-                }, "moving stone emerges from its wall", 10);
-                Vector3 platform = cave.ProbeMovingPosition;
-                player.PlaceAtOwner(platform + Vector3.up * .31f, Quaternion.identity);
-                yield return new WaitForSeconds(.65f);
-                Require(player.IsGrounded && player.transform.position.x - platform.x > 1f &&
-                    Mathf.Abs(player.transform.position.x - cave.ProbeMovingPosition.x) < .85f,
-                    "CharacterController rides the moving collider");
-
                 yield return Wait(() => cave.ProbeVanishVisible && !cave.ProbeVanishWarning,
                     "independent vanish collider available", 10);
                 player.PlaceAtOwner(cave.ProbeVanishTop + Vector3.up * .1f, Quaternion.identity);
@@ -79,7 +79,7 @@ namespace TwinEdge.Gameplay
                 yield return Wait(() => character.RespawnCount.Value > old, "normal gravity from the trap collider reaches lava");
             }
             yield return Rendezvous("hazards-passed");
-            File.WriteAllText(Path.Combine(output, role + "-hazards-pass.txt"), "PASS attacks, carry, warning, and trap support");
+            File.WriteAllText(Path.Combine(output, role + "-hazards-pass.txt"), "PASS full-width attacks, warning, slow/knockback and retracting trap support");
             yield return new WaitForSeconds(1);
             Application.Quit();
         }
@@ -319,20 +319,18 @@ namespace TwinEdge.Gameplay
 
         IEnumerator CheckReturnHazards(UndergroundGameplay cave)
         {
-            Vector3 movingStart = cave.ProbeMovingPosition;
-            bool sawVisible = false, sawRetracted = false, sawAttack = false, sawWarning = false, sawMovement = false;
+            bool sawVisible = false, sawRetracted = false, sawAttack = false, sawWarning = false;
             double until = cave.Now + 18;
-            while (cave.Now < until && !(sawVisible && sawRetracted && sawAttack && sawWarning && sawMovement))
+            while (cave.Now < until && !(sawVisible && sawRetracted && sawAttack && sawWarning))
             {
                 sawVisible |= cave.ProbeVanishVisible;
                 sawRetracted |= !cave.ProbeVanishVisible;
                 sawAttack |= cave.ProbeAttackVisible;
                 sawWarning |= cave.ProbeWarningVisible;
-                sawMovement |= Vector3.Distance(cave.ProbeMovingPosition, movingStart) > .5f;
                 yield return null;
             }
-            Require(sawVisible && sawRetracted && sawAttack && sawWarning && sawMovement && cave.AllGroupsPermanent,
-                "moving, warning, attack and vanish cycles continue alongside permanent supports");
+            Require(sawVisible && sawRetracted && sawAttack && sawWarning && cave.AllGroupsPermanent,
+                "warning, attack and vanish cycles continue alongside permanent supports");
         }
 
         IEnumerator CheckLavaExpiry(UndergroundGameplay cave)
@@ -448,11 +446,55 @@ namespace TwinEdge.Gameplay
             if (IsServer) platformSeconds = Mathf.Clamp(seconds, 20, 30);
         }
 
-        internal Vector3 ProbeAttackFeet(int index) => World(traps[index].Origin) + new Vector3(.23f, .1f, -.18f);
+        internal Vector3 ProbeAttackFeet(int index) =>
+            traps[index].Frame.TransformPoint(new Vector3(-traps[index].Size.x * .35f, .1f, -.18f));
+        internal Vector3 ProbeAttackCenter(int index) => traps[index].Attack.position;
+        internal bool ProbeWarningAt(int index) => traps[index].Warning.activeSelf;
+        internal bool ProbeAttackAt(int index) => traps[index].Attack.gameObject.activeSelf;
+
+        internal bool ProbeTrapLayoutMatches(out string check)
+        {
+            int deckCount = 0;
+            foreach (var group in groups) deckCount += group.Count;
+            check = "only the 111 timed decks and two retracting stones are built";
+            int deckColliders = 0;
+            foreach (var support in layout.GetComponentsInChildren<BoxCollider>(true))
+                if (support.enabled) deckColliders++;
+            if (deckCount != 111 || deckColliders != deckCount + vanishing.Length) return false;
+            for (int i = 0; i < traps.Length; i++)
+            {
+                var trap = traps[i];
+                int lane = i / 3, stage = i % 3 + 1;
+                var surface = landingSurfaces[lane, stage];
+                check = $"trap {i + 1} fits its shelf in the local basis and leaves the switch clear";
+                if (Vector3.Dot(surface.transform.right, trap.Frame.right) < .999f ||
+                    !float.IsFinite(trap.Size.x) || trap.Size.x < landings[lane, stage].size.x ||
+                    !surface.Raycast(new Ray(trap.Frame.TransformPoint(new Vector3(.5f - trap.Size.x / 2, 2, 0)), -trap.Frame.up), out _, 3) ||
+                    !surface.Raycast(new Ray(trap.Frame.TransformPoint(new Vector3(trap.Size.x / 2 - .5f, 2, 0)), -trap.Frame.up), out _, 3) ||
+                    Mathf.Abs(trap.Frame.InverseTransformPoint(stations[lane * Stages + stage].transform.position).z)
+                        <= .45f + trap.Size.z / 2) return false;
+
+                var meshBounds = new Bounds(Vector3.zero, Vector3.zero);
+                foreach (var view in trap.Attack.GetComponentsInChildren<MeshRenderer>(true))
+                {
+                    var bounds = view.localBounds;
+                    for (int x = -1; x <= 1; x += 2)
+                    for (int y = -1; y <= 1; y += 2)
+                    for (int z = -1; z <= 1; z += 2)
+                    {
+                        Vector3 corner = bounds.center + Vector3.Scale(bounds.extents, new Vector3(x, y, z));
+                        meshBounds.Encapsulate(trap.Attack.InverseTransformPoint(view.transform.TransformPoint(corner)));
+                    }
+                }
+                check = $"trap {i + 1} mesh {meshBounds.size:F2} at {meshBounds.center:F2} matches damage volume {trap.Size:F2}";
+                if (Vector3.Distance(meshBounds.size, trap.Size) > .05f ||
+                    meshBounds.center.sqrMagnitude > .0025f) return false;
+            }
+            check = "six traps fit their shelves with matching visual and damage bounds and clear switches";
+            return true;
+        }
         internal string ProbeAttackName(int index) => traps[index].Kind.ToString();
         internal double ProbeSlowDeadline => slowedUntil[0];
-        internal Vector3 ProbeMovingPosition => moving[0].bounds.center;
-        internal float ProbeMovingFraction => (ProbeMovingPosition.x - movingStarts[0].x) / movingTravel[0].x;
         internal Vector3 ProbeVanishTop => vanishing[0].SupportTop;
         internal bool ProbeVanishWarning => vanishing[0].WarningVisible;
         internal bool ProbeVanishVisible => vanishing[0].SupportVisible;

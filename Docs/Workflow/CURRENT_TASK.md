@@ -1,20 +1,14 @@
 # Current task
 
-**V3-FEEDBACK-08** ? Castle Environment and Puzzle UX
+**V3-FEEDBACK-09** · Dungeon and Sewer Puzzle
 
-**Checkpoint** `READY_TO_COMMIT` ? **Base** `009fe65ae54d22e8aabea5bbb263040832a5a0c0` ? **Updated** 2026-11-27 KST
+**Checkpoint** `READY_TO_COMMIT` · **Base** `4af54c83fbaa891de3e176aecd23b5bafa063ce6` · **Updated** 2026-11-27 KST
 
-- **Scope** Feedback 14?19. Castle stone floor, stair render seams and enclosure, wall guidance, sewer records and authoritative door pad presentation.
-- **Open changes** Fortress generator, derived stair masonry and saved level, castle layout and progress, castle validator and replay, and shared documentation.
-- **Validation** Final saved scene and five D3D11 Editor views passed. Isolated Windows D3D11 Relay ran the four castle stages, basement checkpoints, stair descent and ascent, seal, Return trap and sewer routes, and two reconnects with exits 0/0. The final saved scene extends the gallery ceiling and trims the cavern entry render seam. Existing walking Colliders and puzzle rules match the passing Relay inputs. Full-world, full E2E and full match are deferred.
-- **Evidence** Optional local `Docs/Development/CastlePuzzle/V1/Verification.md` and `Docs/Development/Gameplay/V1/RelayRuns/Feedback08-CastleVerified/`.
-- **Next** Verify actual remote main, commit and push the scoped files, then publish official D3D11 maps and owner-camera images from the verified source.
-
-| Work | Logical Worker and domain | State | Evidence |
-| --- | --- | --- | --- |
-| Saved flooring and stair enclosure | Implement / Validate ? Level / Rendering | `COMPLETED` | Saved scene validator, retained Collider records, D3D11 chamber and descent views. |
-| Wall guidance, pads and sewer record | Validate ? Gameplay / Network / UI | `COMPLETED` | Both peers confirmed accepted caps, wrong input and stage reset, solved records and sewer entry. |
-| Commit, push and captures | Review / Finalize ? Workflow | `IN_PROGRESS` | Verify live main and capture the clean pushed source. |
+- **Scope** Feedback 20–23. Remove two optional underground wall slides, fit six landing traps to the playable deck in its local frame, and replicate accepted Return sewer pad presses. Ignore incorrect sewer glyphs while preserving the accepted prefix and the twelve-glyph completion condition.
+- **Open changes** Underground and castle runtime, gameplay scene fields, underground installer, player movement cleanup, focused existing Relay fixtures and shared contracts.
+- **Validation** Saved underground structure and castle structure/presentation passed. Windows D3D11 live Relay `Feedback09-HazardsMeshFit` and `Feedback09-Candidate` both exited 0/0. Verified six mesh and damage ranges, both peers’ warning and attack states, actual edge hits and recovery, eight cooperative crossings and the physical Return route. The castle run retained outbound pad resets and verified sewer press and release on both peers, harmless wrong inputs, the twelve-glyph unlock, reconnect and bypass traversal.
+- **Evidence** Optional local `Docs/Development/DungeonSewer/V1/Verification.md` and `Docs/Development/Gameplay/V1/RelayRuns/`. The candidate PDB and scene blob record match the source inputs.
+- **Next** Verify actual remote main, commit and push the scoped files, then capture the official D3D11 map and runtime views. Record source hash and publication in local evidence. All nine feedback tasks have scoped evidence. Separate-PC human replay and final integration remain deferred.
 
 ## State and handoff
 

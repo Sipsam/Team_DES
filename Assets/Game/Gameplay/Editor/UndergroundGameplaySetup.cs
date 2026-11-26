@@ -20,7 +20,7 @@ namespace TwinEdge.Gameplay.Editor
             ("rightSwitchModel", "MOV_JUMP_SWITCH_02"), ("altarModel", "FIX_GEM_ALTAR_01"),
             ("sealModel", "MOV_GEM_SEAL_01"), ("gemModel", "ITEM_GEM_01"),
             ("flameModel", "FIX_JUMP_FIRE_NOZZLE_01"), ("arrowModel", "MOV_TRAP_ARROW_01"),
-            ("spikesModel", "MOV_JUMP_SPIKES_01"), ("movingModel", "MOV_JUMP_MOVING_PLATFORM_01"),
+            ("spikesModel", "MOV_JUMP_SPIKES_01"),
             ("vanishModel", "MOV_JUMP_VANISH_PLATFORM_01")
         };
 

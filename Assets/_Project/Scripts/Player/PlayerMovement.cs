@@ -34,7 +34,6 @@ public sealed class PlayerMovement : NetworkBehaviour
     private bool sprintJump;
     private float bufferedJumpUntil = float.NegativeInfinity;
     private Vector3 externalVelocity;
-    private Vector3 undergroundSupportDelta;
     private readonly NetworkVariable<float> movementSpeedMultiplier = new NetworkVariable<float>(
         1f, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
     private Pose initialSpawnPose;
@@ -166,8 +165,7 @@ public sealed class PlayerMovement : NetworkBehaviour
         Vector3 velocity = moveDirection * (horizontalSpeed * GroundSpeedScale);
         velocity += externalVelocity;
         velocity.y = verticalSpeed + externalVelocity.y;
-        characterController.Move(velocity * Time.deltaTime + undergroundSupportDelta);
-        undergroundSupportDelta = Vector3.zero;
+        characterController.Move(velocity * Time.deltaTime);
         externalVelocity = Vector3.MoveTowards(
             externalVelocity, Vector3.zero, externalVelocityDecay * Time.deltaTime);
 
@@ -221,7 +219,6 @@ public sealed class PlayerMovement : NetworkBehaviour
         bufferedJumpUntil = float.NegativeInfinity;
         verticalSpeed = 0f;
         externalVelocity = Vector3.zero;
-        undergroundSupportDelta = Vector3.zero;
         IsGrounded = false;
     }
 
@@ -249,8 +246,6 @@ public sealed class PlayerMovement : NetworkBehaviour
         verticalSpeed = velocity.y;
         if (preserveHorizontal) externalVelocity += Vector3.ProjectOnPlane(velocity, Vector3.up);
     }
-
-    internal void CarryUndergroundPlatform(Vector3 delta) => undergroundSupportDelta = delta;
 
     public void ApplyMovingPlatformDelta(Vector3 displacement, Quaternion rotationDelta)
     {
