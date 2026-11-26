@@ -81,6 +81,7 @@ namespace TwinEdge.Gameplay
             if (rendered != motion.Value)
             {
                 rendered = motion.Value;
+                animator.speed = rendered == 2 ? PlayerMovement.SprintSpeedScale : 1f;
                 animator.CrossFadeInFixedTime(AnimationState, .12f, 0);
             }
         }

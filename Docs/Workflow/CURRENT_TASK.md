@@ -1,16 +1,16 @@
 # Current task
 
-**V3-FEEDBACK-01** · Checkpoint and Recovery Improvements
+**V3-FEEDBACK-02** · Camera-relative Controls and Movement
 
-**Checkpoint** `READY_TO_COMMIT` · **Base** `97611f3968cc13fa7318d3d1b23c0bd6ed7e6435` · **Updated** 2026-11-26 KST
+**Checkpoint** `READY_TO_COMMIT` · **Base** `7f16d5629f6d20ccaa8e8d8311ed774cb1a6ca8f` · **Updated** 2026-11-26 KST
 
-- **Goal and scope** Feedback 1 only. Add recovery at the outbound pole summit, both approaches to the castle basement threshold, and the Return canyon approach to the bridge.
-- **Source** Clean local and live main matched. The 2026-11-22 local standard Player assembly matches the recorded Playtest build. The reported source `3805710` remains a historical reference.
-- **Changes** Grounded, phase-gated checkpoints with separate slot poses. Regional recovery uses the new basement and bridge approaches. Actual gem acquisition starts Return recovery at the altar.
-- **Validation** Unity 6000.3.27f1 Windows Development builds and six isolated Relay cases passed with both peers exiting 0. Castle verified both phases, actual gem acquisition, trap recovery, reconnect and both exits. Existing Big summit, raft, PvP and gem recovery cases passed. Full E2E Relay remains deferred.
-- **Evidence** [Validation Summary](../Playtest/ValidationSummary.md#v3-플레이테스트-피드백-1--체크포인트와-복구) and optional local `Docs/Development/CheckpointRecovery/V1/Verification.md`.
-- **Publication** Verify the commit on live `origin/main`. Official screenshots are skipped for the runtime checkpoint change.
-- **Resume** Reconcile the commit and live main. Start V3-FEEDBACK-02, Camera-relative Controls and Movement (Feedback 4, 5), only when authorized.
+- **Goal and scope** Feedback 4 and 5. Camera-relative pole controls and 1.5× ordinary sprint. Pole-centric movement, grab slowdown changes and full integration are follow-up work.
+- **Source** Clean local HEAD, origin/main and live main matched. Feedback 1 was already committed and pushed.
+- **Changes** Reuse owner camera axes for pole carry and orbit yaw. Keep orbit elevation independent. Scale normal sprint and V3 Run playback, preserving separate movement paths and server validation. Add scoped camera controls Relay case.
+- **Validation** Unity 6000.3.27f1 Windows Development build passed. D3D11 `cameraControls`, `poleRecovery` and `bridgeDisconnect` all passed both Relay peers. Measured 3.500m/s walk and 8.400m/s sprint. Two initial fixture probes encountered capsule settling before measurement, resolved by warming up contact. Full E2E Relay and full match remain deferred.
+- **Evidence** [Validation Summary](../Playtest/ValidationSummary.md) and optional local `Docs/Development/CameraControls/V1/Verification.md`.
+- **Publication** Verify the pushed hash on live main, then capture the official map set and affected runtime views. Record their provenance in the local evidence.
+- **Resume** Reconcile this checkpoint with Git and the capture record. Begin V3-FEEDBACK-03 only on user request.
 
 ## State and handoff
 

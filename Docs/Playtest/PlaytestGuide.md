@@ -21,7 +21,7 @@ Use this command to reproduce the windowed Direct3D 11 setup used for the Window
 | Input | Use |
 | --- | --- |
 | Mouse | Orbit the local character after capture. Direction also aims mountain launches. |
-| WASD | Move. While on the pole, pivot moves the pair on the same summit and orbit uses A/D to turn and W/S to raise or lower. |
+| WASD | Move relative to your camera's horizontal view. On the pole, the pivot carries the pair on the same summit. The orbit player uses A/D to turn left or right relative to their view and W/S to raise or lower the pole. |
 | Left Shift | Sprint using stamina. Hold with W/S on either raft for a stronger stroke. |
 | Space | Jump. |
 | E | Use the displayed target. Grab or swap pole roles, collect and install timber, board or leave a docked raft, operate glyphs and switches, use the keypad, channel the seal or pick up the available gem. |
@@ -142,6 +142,8 @@ $build = 'Builds/V3Development/V3Gameplay.exe'
 ```
 
 Foundation exercises spawn, owner camera, remote movement, interaction range and respawn. Use the same runner with contestLifecycle for stale requests and pickup/reconnect races, bridgeDisconnect for carry recovery, riverRecovery for dock and raft recovery, castleReconnect for slot restoration, and castleUnderground for normal castle passage, the seal and pickup. Use foundationImpaired for the Unity Transport delay/jitter/loss fixture. Tests may use an initial station placement and expect real Relay. Use a run name that identifies the active validation or issue. Keep failure evidence while investigating. After a passing run, preview eligible raw logs with `Tools/ProjectAudit/clean-development.ps1 -CompletedRun <name>` and add `-Apply` to remove them. The script retains pass files, exit status and result summaries. Diagnostic commands are available via Get-Help and the script parameter list.
+
+Use `-Case cameraControls` for the two-peer WASD yaw/pitch matrix, walking and sprinting distance, sprint stamina, jump, a sprint into a thin wall, Run playback and final position replication. The case uses a local flat fixture for movement samples and the saved summit for pole carry and orbit using injected WASD on both owners. Add `-Screenshots` for each peer's Run frame and pole HUD.
 
 Use `-Case bridge` to verify all 13 timber deliveries, the outbound crossing, collapse and Lower dock recovery, and both players' Return crossings. Use `-Case bridgeContact` to verify collapse from the edge of an adjacent plank and complete Return from the Canyon landing in the same run. The fixture steers along the deck through the owner's camera-relative input. Repeat with distinct run names to cover different server-selected hazards and check both peers' Return pass files and exit codes.
 

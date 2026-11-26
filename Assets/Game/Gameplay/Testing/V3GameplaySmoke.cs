@@ -67,6 +67,15 @@ public sealed partial class V3GameplaySmoke : MonoBehaviour
         File.WriteAllText(evidence + (host ? "/host-input-ready.txt" : "/client-input-ready.txt"), "ready");
         yield return Until(() => File.Exists(evidence + "/host-input-ready.txt") && File.Exists(evidence + "/client-input-ready.txt"), "Input barrier");
         var remote = FindObjectsByType<GameplayCharacter>(FindObjectsSortMode.None).Single(x => !x.IsOwner);
+        if (Environment.GetCommandLineArgs().Contains("-v3CameraControls"))
+        {
+            yield return RunCameraControls(remote);
+            if (host) yield return Until(() => !game.IsGameReady, "Camera controls client left");
+            var leave = sessions.LeaveRoomAsync();
+            yield return Until(() => leave.IsCompleted && !manager.IsListening, "Camera controls session closed");
+            Application.Quit(failed ? 2 : 0);
+            yield break;
+        }
         bool impaired = Environment.GetCommandLineArgs().Contains("-v3ImpairedRelay");
         if (impaired)
         {

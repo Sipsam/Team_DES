@@ -155,9 +155,26 @@ namespace TwinEdge.Gameplay
                 if (Time.unscaledTime >= nextSend && s.Paired)
                 {
                     nextSend = Time.unscaledTime + .05f;
-                    SteerRpc(s.revision, input.AcceptsInput ? input.Move.ReadValue<Vector2>() : Vector2.zero);
+                    var movement = local.GetComponent<PlayerMovement>();
+                    Vector2 move = input.AcceptsInput ? input.Move.ReadValue<Vector2>() : Vector2.zero;
+                    SteerRpc(s.revision, CameraSteering(s, local.OwnerClientId, movement, move));
                 }
             }
+        }
+        static Vector2 CameraSteering(PoleSnapshot s, ulong owner, PlayerMovement movement, Vector2 move)
+        {
+            if (s.Pivot == owner)
+            {
+                Vector3 direction = movement.GetCameraRelativeDirection(move);
+                return new Vector2(direction.x, direction.z);
+            }
+
+            movement.GetMovementAxes(out _, out var right);
+            // Choose the yaw direction whose tangent points toward camera-right.
+            // At a radial side view either turn is equally lateral, so default to positive yaw for D.
+            Vector3 tangent = Quaternion.Euler(0f, s.yaw, 0f) * Vector3.right;
+            if (Vector3.Dot(right, tangent) < -.001f) move.x = -move.x;
+            return move; // W/S are the dedicated elevation controls.
         }
         void FixedUpdate()
         {
@@ -281,8 +298,8 @@ namespace TwinEdge.Gameplay
             else
             {
                 GUILayout.Label(s.Pivot == local.OwnerClientId
-                    ? "Pivot: WASD to carry while both are on the same summit"
-                    : "Orbit: A/D turn, W/S raise or lower the pole");
+                    ? "Pivot: WASD to carry relative to camera on the same summit"
+                    : "Orbit: A/D turn relative to camera, W/S raise or lower the pole");
                 GUILayout.Label("Land on the next summit, then E to swap roles | Esc to release");
             }
 #if UNITY_EDITOR || DEVELOPMENT_BUILD

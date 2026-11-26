@@ -1,7 +1,7 @@
 param(
     [Parameter(Mandatory)][string]$Build,
     [Parameter(Mandatory)][string]$Run,
-    [ValidateSet('foundation','foundationImpaired','poleRecovery','bridge','bridgeContact','bridgeDisconnect','river','riverRecovery','castleUnderground','castleReconnect','cavernHazards','cavernReconnect','contest','contestRegions','contestLifecycle','return','returnInput','returnReconnect','mountain','mountainFromSpawn','mountainEntry','full','canyon','approach','summit','castle','castleWalk','riverLink','middle','finish')]
+    [ValidateSet('foundation','foundationImpaired','cameraControls','poleRecovery','bridge','bridgeContact','bridgeDisconnect','river','riverRecovery','castleUnderground','castleReconnect','cavernHazards','cavernReconnect','contest','contestRegions','contestLifecycle','return','returnInput','returnReconnect','mountain','mountainFromSpawn','mountainEntry','full','canyon','approach','summit','castle','castleWalk','riverLink','middle','finish')]
     [string]$Case = 'foundation',
     [string]$PolePlan = 'Docs/Development/Gameplay/V1/MountainPole/ContinuousPlan.json',
     [string]$ReturnPlan = 'Docs/Development/Gameplay/V1/MountainReturn/Route.json',
@@ -27,6 +27,7 @@ try {
 
     switch -Regex ($Case) {
         '^foundationImpaired$' { $extra = @('-v3ImpairedRelay') }
+        '^cameraControls$' { $extra = @('-v3CameraControls'); $captureFlag = '-v3ControlScreenshots' }
         '^poleRecovery$' { $mode = 'poleSmoke'; $evidence = 'poleEvidence' }
         '^bridge' {
             $mode = 'bridgeSmoke'; $evidence = 'bridgeEvidence'; $timeout = 420

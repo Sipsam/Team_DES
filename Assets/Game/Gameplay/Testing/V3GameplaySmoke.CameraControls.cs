@@ -1,0 +1,210 @@
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+using System;
+using System.Collections;
+using System.IO;
+using TwinEdge.Gameplay;
+using UnityEngine;
+using UnityEngine.InputSystem;
+using UnityEngine.InputSystem.LowLevel;
+
+public sealed partial class V3GameplaySmoke
+{
+    IEnumerator RunCameraControls(GameplayCharacter remote)
+    {
+        var camera = Camera.main.GetComponent<ThirdPersonCamera>();
+        bool capture = Array.IndexOf(Environment.GetCommandLineArgs(), "-v3ControlScreenshots") >= 0;
+        // Drive the bound camera transform directly so each sample has a fixed yaw and pitch.
+        camera.enabled = false;
+        var own = player.GetComponent<GameplayCharacter>();
+        var center = new Vector3(host ? -80 : 80, 500, 0);
+        Vector3 runDirection = host ? Vector3.forward : Vector3.back;
+        Box("Controls floor", center + Vector3.down * .5f, new Vector3(60, 1, 60));
+        Box("Remote controls floor", new Vector3(-center.x, center.y - .5f, center.z), new Vector3(60, 1, 60));
+        Box("Controls wall", center + runDirection * 18 + Vector3.up * 2, new Vector3(16, 4, .2f));
+        camera.transform.position = center + Vector3.up * 1.4f - runDirection * 5f;
+        camera.transform.rotation = Quaternion.LookRotation(runDirection);
+        Teleport(center);
+        yield return Until(() => player.IsGrounded, "Grounded on movement fixture");
+        // The first horizontal Move after a teleport resolves the capsule's floor skin width.
+        SetControlKeys(Key.W);
+        yield return new WaitForSeconds(.2f);
+        SetControlKeys();
+        yield return new WaitForSeconds(.25f);
+        var input = player.GetComponent<GameplayInput>();
+
+        var keys = new[] { Key.W, Key.A, Key.S, Key.D };
+        var axes = new[] { Vector3.forward, Vector3.left, Vector3.back, Vector3.right };
+        foreach (float yaw in new[] { 0f, 90f, 180f, 270f })
+        foreach (float pitch in new[] { -25f, 65f })
+        {
+            var rotation = Quaternion.Euler(0, yaw + (host ? 0 : 180), 0);
+            camera.transform.rotation = Quaternion.Euler(pitch, rotation.eulerAngles.y, 0);
+            for (int i = 0; i < keys.Length; i++)
+            {
+                Vector3 start = player.transform.position;
+                SetControlKeys(keys[i]);
+                yield return new WaitForSeconds(.16f);
+                Vector3 delta = player.transform.position - start;
+                Vector3 horizontal = Vector3.ProjectOnPlane(delta, Vector3.up);
+                string label = $"yaw {rotation.eulerAngles.y:F0} pitch {pitch} {keys[i]} delta {delta:F3}, " +
+                    $"stick {input.Move.ReadValue<Vector2>()}, input {input.AcceptsInput}, grounded {player.IsGrounded}";
+                Check(horizontal.magnitude > .3f && Vector3.Dot(horizontal.normalized, rotation * axes[i]) > .999f &&
+                    Mathf.Abs(delta.y) < .02f, label);
+                SetControlKeys();
+                yield return null;
+            }
+        }
+
+        camera.transform.rotation = Quaternion.LookRotation(runDirection);
+        Teleport(center);
+        yield return Until(() => player.IsGrounded, "Grounded before distance samples");
+        yield return MeasureStride(3.5f, Key.W);
+        Check(own.AnimationState == "Walk" && Mathf.Approximately(own.animator.speed, 1f), "Walk animation and cadence");
+        SetControlKeys();
+        Teleport(center);
+        yield return ControlBarrier("sprint-start");
+        yield return Until(() => Vector3.Distance(remote.transform.position, center) > 100, "Remote movement station received");
+        Vector3 remoteStart = remote.transform.position;
+        SetControlKeys(Key.W, Key.LeftShift);
+        yield return Until(() => own.SprintAllowed, "Server sprint lease received");
+        float staminaAtStart = own.StaminaFraction;
+        float sprintStart = Time.time;
+        yield return MeasureStride(5.6f * 1.5f, Key.W, Key.LeftShift);
+        float drain = (staminaAtStart - own.StaminaFraction) * 100f / (Time.time - sprintStart);
+        Check(Mathf.Abs(drain - 2f) < .35f, $"Sprint stamina rate {drain:F2}/s");
+        Check(own.AnimationState == "Run" && Mathf.Approximately(own.animator.speed, 1.5f), "Run animation and cadence");
+        if (capture)
+        {
+            camera.transform.position = player.transform.position + Vector3.up * 1.15f - runDirection * 4f;
+            ScreenCapture.CaptureScreenshot(ControlPath("run", host, "png"));
+        }
+        yield return Until(() => remote.AnimationState == "Run" && Mathf.Approximately(remote.animator.speed, 1.5f) &&
+            Vector3.Dot(remote.transform.position - remoteStart, -runDirection) > 5f, "Remote run cadence and opposite travel replicated", 5);
+        yield return Until(() => Vector3.Dot(player.transform.position - center, runDirection) > 17f &&
+            player.Velocity.sqrMagnitude < .03f, "CharacterController stopped at sprint wall", 5);
+        yield return new WaitForSeconds(.25f);
+        Check(Vector3.Dot(player.transform.position - center, runDirection) < 17.95f && player.IsGrounded,
+            "Sprint did not penetrate wall or lose ground");
+        SetControlKeys();
+        yield return Until(() => own.StaminaFraction >= .999f && !own.SprintAllowed, "Stamina recovered after sprint", 5);
+        yield return ControlBarrier("sprint-end");
+        Vector3 settled = player.transform.position;
+        string settledPath = ControlPath("settled", host);
+        File.WriteAllText(settledPath + ".tmp", JsonUtility.ToJson(settled));
+        File.Move(settledPath + ".tmp", settledPath);
+        yield return Until(() => File.Exists(ControlPath("settled", !host)), "Peer reported settled position");
+        Vector3 remoteSettled = JsonUtility.FromJson<Vector3>(File.ReadAllText(ControlPath("settled", !host)));
+        yield return Until(() => Vector3.Distance(remote.transform.position, remoteSettled) < .08f,
+            "Remote settled position agrees with owner");
+        yield return ControlBarrier("position-verified");
+
+        float ground = player.transform.position.y;
+        float apex = ground;
+        SetControlKeys(Key.Space);
+        yield return Until(() => !player.IsGrounded, "Normal jump takes off");
+        SetControlKeys();
+        float jumpTimeout = Time.time + 2f;
+        while (!player.IsGrounded && Time.time < jumpTimeout)
+        {
+            apex = Mathf.Max(apex, player.transform.position.y);
+            yield return null;
+        }
+        Check(player.IsGrounded && apex - ground > 1.33f && apex - ground < 1.55f, $"Normal jump lands, rise {apex - ground:F3}m");
+        yield return RunPoleCameraControls(camera, capture);
+        camera.enabled = true;
+        yield return ControlBarrier("finished");
+        File.WriteAllText(evidence + (host ? "/host-pass.txt" : "/client-pass.txt"),
+            "PASS camera-relative WASD matrix, walk and sprint distance, stamina, jump, sprint collision, animation and peer position, pole pivot and orbit controls.");
+    }
+
+    IEnumerator MeasureStride(float expected, params Key[] keys)
+    {
+        SetControlKeys(keys);
+        yield return null;
+        Vector3 start = player.transform.position;
+        float began = Time.time;
+        yield return new WaitForSeconds(1f);
+        float distance = Vector3.ProjectOnPlane(player.transform.position - start, Vector3.up).magnitude;
+        float elapsed = Time.time - began;
+        Check(Mathf.Abs(distance / elapsed - expected) < .08f, $"Stride {distance:F3}m in {elapsed:F3}s = {distance / elapsed:F3}m/s (expected {expected:F1})");
+    }
+
+    IEnumerator RunPoleCameraControls(ThirdPersonCamera camera, bool capture)
+    {
+        var pole = CooperativePole.Current;
+        var home = pole.Snapshot;
+        Teleport(host ? home.a : home.b);
+        yield return ControlBarrier("pole-positioned");
+        if (host) pole.UseRpc(pole.Snapshot.revision);
+        else
+        {
+            yield return Until(() => pole.Snapshot.phase == PolePhase.OneAttached, "Host is first pole grip");
+            pole.UseRpc(pole.Snapshot.revision);
+        }
+        yield return Until(() => pole.Snapshot.Paired, "Pole pair replicated");
+        var start = pole.Snapshot;
+        camera.transform.rotation = Quaternion.Euler(host ? 65 : -25, host ? 90 : 270, 0);
+        yield return ControlBarrier("pole-paired");
+        yield return PoleKey(pole, "pivot W at yaw 90", host, Key.W,
+            () => pole.Snapshot.PivotPoint.x - start.PivotPoint.x > .15f);
+        var carried = pole.Snapshot;
+        Check(Mathf.Abs(carried.PivotPoint.y - start.PivotPoint.y) < .001f &&
+            Mathf.Abs(carried.PivotPoint.z - start.PivotPoint.z) < .01f, "Pivot travel is horizontal and camera-forward");
+        yield return PoleKey(pole, "orbit W raises at yaw 270", !host, Key.W,
+            () => pole.Snapshot.pitch > carried.pitch + 2f);
+        var raised = pole.Snapshot;
+        yield return PoleKey(pole, "orbit D at yaw 270 reverses world yaw", !host, Key.D,
+            () => pole.Snapshot.yaw < raised.yaw - 2f);
+        var turned = pole.Snapshot;
+        if (!host) camera.transform.rotation = Quaternion.Euler(65, 90, 0);
+        yield return ControlBarrier("orbit-camera-reversed");
+        yield return PoleKey(pole, "orbit D at yaw 90 increases world yaw", !host, Key.D,
+            () => pole.Snapshot.yaw > turned.yaw + 2f);
+        var returned = pole.Snapshot;
+        yield return PoleKey(pole, "orbit S lowers", !host, Key.S, () => pole.Snapshot.pitch < returned.pitch - 1f);
+        Check(Vector3.Distance(pole.Snapshot.PivotPoint, carried.PivotPoint) < .002f &&
+            Mathf.Abs(Vector3.Distance(pole.Snapshot.a, pole.Snapshot.b) - pole.length) < .002f,
+            "Orbit retains fixed pivot and rigid rod length");
+        if (capture)
+        {
+            camera.enabled = true;
+            camera.FaceSpawn(Quaternion.Euler(0, 30, 0));
+            yield return null;
+            ScreenCapture.CaptureScreenshot(ControlPath("pole-controls", host, "png"));
+            yield return null;
+        }
+        yield return ControlBarrier("pole-constrained");
+        if (host) pole.CancelRpc(pole.Snapshot.revision);
+        yield return Until(() => !pole.IsAttached(player.OwnerClientId) && player.GetComponent<CharacterController>().enabled,
+            "Leaving pole restores character controller");
+    }
+
+    IEnumerator PoleKey(CooperativePole pole, string label, bool drives, Key key, Func<bool> observed)
+    {
+        if (drives) SetControlKeys(key);
+        yield return Until(() => !pole.Snapshot.Paired || observed(), label, 4);
+        if (drives) SetControlKeys();
+        Check(pole.Snapshot.Paired, label + " kept both grips attached");
+        yield return new WaitForSeconds(.35f);
+        yield return ControlBarrier(label.Replace(' ', '-'));
+    }
+
+    IEnumerator ControlBarrier(string stage)
+    {
+        File.WriteAllText(ControlPath(stage, host), "ready");
+        yield return Until(() => File.Exists(ControlPath(stage, !host)), stage + " peer synchronization");
+    }
+
+    string ControlPath(string stage, bool forHost, string extension = "txt") =>
+        Path.Combine(evidence, $"{(forHost ? "host" : "client")}-{stage}.{extension}");
+
+    void SetControlKeys(params Key[] keys) => InputSystem.QueueStateEvent(keyboard, new KeyboardState(keys));
+
+    static void Box(string name, Vector3 center, Vector3 size)
+    {
+        var box = new GameObject(name).AddComponent<BoxCollider>();
+        box.transform.position = center;
+        box.size = size;
+    }
+}
+#endif

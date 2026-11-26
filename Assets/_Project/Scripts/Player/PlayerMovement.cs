@@ -5,6 +5,9 @@ using Unity.Netcode;
 [RequireComponent(typeof(CharacterController))]
 public sealed class PlayerMovement : NetworkBehaviour
 {
+    internal const float SprintSpeedScale = 1.5f;
+    private const float SprintMultiplier = 1.6f * SprintSpeedScale;
+
     [Header("Movement")]
     [SerializeField, Min(0f)] private float moveSpeed = 5f;
     [SerializeField, Min(0f)] private float rotationSpeed = 12f;
@@ -152,7 +155,7 @@ public sealed class PlayerMovement : NetworkBehaviour
 
         verticalSpeed -= gravity * Time.deltaTime;
         bool fastStride = sprint || sprintJump && wantsSprint && contest?.HasStamina == true;
-        float horizontalSpeed = bridgeJumpSpeed > 0 ? bridgeJumpSpeed : moveSpeed * (fastStride ? 1.6f : 1f);
+        float horizontalSpeed = bridgeJumpSpeed > 0 ? bridgeJumpSpeed : moveSpeed * (fastStride ? SprintMultiplier : 1f);
         Vector3 velocity = moveDirection * (horizontalSpeed * movementSpeedMultiplier.Value * (castle?.SpeedScale(this) ?? 1f) * undergroundSpeed * (contest?.ContestSpeed ?? 1f));
         velocity += externalVelocity;
         velocity.y = verticalSpeed + externalVelocity.y;
@@ -403,7 +406,7 @@ public sealed class PlayerMovement : NetworkBehaviour
         return Vector2.ClampMagnitude(new Vector2(horizontal, vertical), 1f);
     }
 
-    private Vector3 GetCameraRelativeDirection(Vector2 input)
+    internal Vector3 GetCameraRelativeDirection(Vector2 input)
     {
         GetMovementAxes(out var forward, out var right);
         Vector3 direction = forward * input.y + right * input.x;
