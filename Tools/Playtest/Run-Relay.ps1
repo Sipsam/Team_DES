@@ -30,7 +30,7 @@ try {
         '^cameraControls$' { $extra = @('-v3CameraControls'); $captureFlag = '-v3ControlScreenshots' }
         '^poleRecovery$' { $mode = 'poleSmoke'; $evidence = 'poleEvidence' }
         '^bridge' {
-            $mode = 'bridgeSmoke'; $evidence = 'bridgeEvidence'; $timeout = 420
+            $mode = 'bridgeSmoke'; $evidence = 'bridgeEvidence'; $timeout = 560; $captureFlag = '-bridgeScreenshots'
             if ($Case -eq 'bridgeContact') { $extra = @('-bridgeContactWithoutFall') }
             if ($Case -eq 'bridgeDisconnect') { $extra = @('-bridgeCarryDisconnect'); $marker = 'disconnect-pass' }
         }

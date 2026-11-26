@@ -13,7 +13,7 @@ namespace TwinEdge.Gameplay
 {
     public sealed class BridgeRelaySmoke : MonoBehaviour
     {
-        bool host, failed, carryDisconnect, contactWithoutFall;
+        bool host, failed, carryDisconnect, contactWithoutFall, capture;
         FullMatchRelayReplay fullMatch;
         string output, peer;
         BridgeGameplay bridge;
@@ -30,6 +30,7 @@ namespace TwinEdge.Gameplay
             if (mode < 0) return;
             var test = new GameObject("BridgeRelaySmoke").AddComponent<BridgeRelaySmoke>();
             test.host = args[mode + 1] == "host";
+            test.capture = Array.IndexOf(args, "-bridgeScreenshots") >= 0;
             test.carryDisconnect = Array.IndexOf(args, "-bridgeCarryDisconnect") >= 0;
             test.contactWithoutFall = Array.IndexOf(args, "-bridgeContactWithoutFall") >= 0;
             test.peer = test.host ? "host" : "client";
@@ -87,7 +88,7 @@ namespace TwinEdge.Gameplay
                 Check(game.AdvanceFoundation(FoundationPhase.Return), "Return test transition");
             }
             yield return ReturnCrossing(side);
-            File.WriteAllText(output + "/" + peer + "-pass.txt", "PASS outbound and independent Return crossings with one permanently collapsed plank.");
+            File.WriteAllText(output + "/" + peer + "-pass.txt", "PASS outbound and independent Return crossings with persistent proximity collapses.");
             yield return Barrier("finish");
             Application.Quit(0);
         }
@@ -124,7 +125,6 @@ namespace TwinEdge.Gameplay
 
         internal IEnumerator ReplayReturn()
         {
-            contactWithoutFall = true;
             var side = Vector3.right * (host ? -bridge.GripHalfWidth : bridge.GripHalfWidth);
             yield return ReturnCrossing(side);
         }
@@ -246,7 +246,7 @@ namespace TwinEdge.Gameplay
                     c.CheckpointName.Value.ToString() != "GameplayCheckpoint_Return / Canyon bridge approach"),
                     "Outbound crossing leaves the Return approach inactive");
             yield return Barrier("outbound");
-            if (host && fullMatch == null) SaveRender("outbound", bridge.EndPoint - Vector3.forward * 12, new Vector3(9, 6, 12));
+            if (capture && host && fullMatch == null) SaveRender("outbound", bridge.EndPoint - Vector3.forward * 12, new Vector3(9, 6, 12));
             File.WriteAllText(output + "/" + peer + "-outbound-pass.txt", "PASS real Relay, 13 deliveries, original support colliders and outbound crossing.");
         }
 
@@ -270,30 +270,37 @@ namespace TwinEdge.Gameplay
                     c.CheckpointName.Value.ToString() == approach) == 2, "Both canyon approach checkpoints replicated");
             yield return Barrier("hidden-hazards");
             var route = File.ReadAllText(output + "/route.txt").Select(value => value == '1').ToArray();
-            int hole = Enumerable.Range(16, planks.Length - 32).First(i =>
-                route[i] && !route[i + 1] && (!contactWithoutFall || !route[i - 1]));
-            if (host && !contactWithoutFall)
+            int hole = -1;
+            if (fullMatch == null)
             {
-                // Separate Canyon-facing fall station. Footstep and resulting fall use normal movement.
-                Teleport(planks[hole + 1].socket + side);
-                yield return new WaitForSeconds(.4f);
-                int before = character.RespawnCount.Value;
-                Steer(-bridge.Forward);
-                yield return Until(() => bridge.IsCollapsed(hole), "Real support contact collapsed plank");
-                yield return Until(() => player.transform.position.z < planks[hole].socket.z + .12f, "Enter missing support");
-                Steer(Vector3.zero);
-                yield return Until(() => character.RespawnCount.Value > before, "Gravity fall");
-                yield return Until(() => character.CheckpointName.Value.ToString() == approach &&
-                    Vector3.Distance(player.transform.position, bridge.EndPoint) < 6, "Canyon bridge approach respawn");
-                Check(bridge.IsCollapsed(hole), "Collapse persists after respawn");
-                SaveRender("collapsed", planks[hole].socket, new Vector3(8, 6, 7));
-                File.WriteAllText(output + "/host-fall-pass.txt", "PASS contact, gravity, canyon bridge approach, persistent collapse");
-                Teleport(bridge.EndPoint + side + Vector3.forward * 3);
+                var candidates = Enumerable.Range(16, planks.Length - 32).Where(i => route[i]).ToArray();
+                hole = candidates.Where(i => !route[i + 1] && !route[i + 3] && !route[i + 4])
+                    .OrderByDescending(i => route[i + 2]).First();
+                int second = candidates.First(i => Mathf.Abs(i - hole) >= 12 && !route[i - 2]);
+                int contact = candidates.First(i => Mathf.Abs(i - hole) >= 12 && Mathf.Abs(i - second) >= 12);
+                yield return ProbeProximity(side, hole, second, contact, route);
+                if (!contactWithoutFall)
+                {
+                    if (host)
+                    {
+                        // Only station placement is staged. Input, gravity and checkpoint recovery are production paths.
+                        Teleport(planks[hole + 1].socket + side);
+                        int before = character.RespawnCount.Value;
+                        Steer(-bridge.Forward);
+                        yield return Until(() => player.transform.position.z < planks[hole].socket.z + .12f, "Enter missing support");
+                        Steer(Vector3.zero);
+                        yield return Until(() => character.RespawnCount.Value > before, "Gravity fall");
+                        yield return Until(() => character.CheckpointName.Value.ToString() == approach &&
+                            Vector3.Distance(player.transform.position, bridge.EndPoint) < 6, "Canyon bridge approach respawn");
+                        Check(bridge.IsCollapsed(hole), "Collapse persists after respawn");
+                        if (capture) SaveRender("collapsed", planks[hole].socket, new Vector3(8, 6, 7));
+                        File.WriteAllText(output + "/host-fall-pass.txt", "PASS proximity, gravity, canyon bridge approach, persistent collapse");
+                    }
+                    yield return Until(() => bridge.IsCollapsed(hole) && File.Exists(output + "/host-fall-pass.txt"), "Collapse and respawn replicated");
+                }
+                CheckSupport(planks.Length);
+                yield return Barrier("return-crossing-start");
             }
-            if (!contactWithoutFall)
-                yield return Until(() => bridge.IsCollapsed(hole) && File.Exists(output + "/host-fall-pass.txt"), "Collapse and respawn replicated");
-            CheckSupport(planks.Length);
-            yield return Barrier("return-crossing-start");
             int respawns = character.RespawnCount.Value;
             int singles = 0, doubles = 0;
             for (int high = route.Length - 1; high > 0; high--)
@@ -304,19 +311,11 @@ namespace TwinEdge.Gameplay
                 bool sprint = high - low == 3;
                 var bounds = planks[high].GetComponent<Collider>().bounds;
                 var takeoff = planks[high].socket + side;
-                bool contact = contactWithoutFall && high == hole + 1;
                 takeoff.z = bounds.min.z + .17f;
                 yield return WalkTo(takeoff, true, .13f);
-                if (contact)
-                {
-                    if (host)
-                    {
-                        yield return TouchHazardEdge(hole, bounds.min.z);
-                        yield return WalkTo(takeoff, false, .08f);
-                    }
-                    yield return Until(() => bridge.IsCollapsed(hole), "Bridge contact collapsed a plank");
-                    fullMatch?.Capture("bridge-collapse");
-                }
+                yield return Until(() => bridge.IsCollapsed(high - 1) && (!sprint || bridge.IsCollapsed(high - 2)),
+                    "Approach collapsed the gap from a safe plank " + high);
+                if (singles + doubles == 0) fullMatch?.Capture("bridge-collapse");
                 yield return Until(() => player.IsGrounded, "Grounded takeoff " + high);
                 Steer(-bridge.Forward);
                 if (sprint) Keys(Key.Space, Key.LeftShift);
@@ -338,28 +337,52 @@ namespace TwinEdge.Gameplay
             }
             yield return WalkTo(bridge.StartPoint + side - Vector3.forward * 3, true);
             Check(player.transform.position.z < bridge.StartPoint.z && singles > 0 && doubles > 0 &&
-                character.RespawnCount.Value == respawns && bridge.IsCollapsed(hole), "Return crossing after permanent collapse");
+                character.RespawnCount.Value == respawns && (hole < 0 || bridge.IsCollapsed(hole)),
+                "Return crossing after permanent collapse");
+            CheckSupport(planks.Length);
+            Check(bridge.CollapseCountForTest == route.Count(value => value) &&
+                route.Select((hazard, index) => hazard == bridge.IsCollapsed(index)).All(value => value),
+                "Exactly one collapse per selected hazard, no ordinary deck loss");
             File.WriteAllText(output + "/" + peer + "-return-pass.txt", $"PASS {singles} walk jumps and {doubles} sprint jumps, no route teleport or respawn");
         }
 
-        IEnumerator TouchHazardEdge(int hazard, float safeEdge)
+        IEnumerator ProbeProximity(Vector3 side, int first, int second, int contact, bool[] route)
         {
-            // Keep the center in the seam and overlap both supports with the capsule.
-            // The same walk/jump motion is used after retreating to the sound plank.
-            float deadline = Time.realtimeSinceStartup + 3;
-            float target = safeEdge - .135f;
-            while (!bridge.IsCollapsed(hazard) && player.transform.position.z > target)
-            {
-                Check(Time.realtimeSinceStartup < deadline && player.transform.position.y >= bridge.StartPoint.y - .12f,
-                    "Approach collapse contact on the supported edge");
-                float amount = Mathf.Min(.23f, (player.transform.position.z - target) / .16f);
-                if (player.transform.position.z - target < .008f) break;
-                Steer(-bridge.Forward * amount);
-                yield return null;
-            }
-            Steer(Vector3.zero);
-            yield return new WaitForSeconds(.24f);
-            Check(bridge.IsCollapsed(hazard), "Real safe-edge contact collapsed the adjacent plank");
+            var near = planks[first + 3].socket;
+            Check(bridge.TryGetReturnSlot(near, out int nearSlot) && nearSlot == first + 3 &&
+                !bridge.TryGetReturnSlot(near + Vector3.down * .6f, out _) &&
+                !bridge.TryGetReturnSlot(near + Vector3.up * .6f, out _) &&
+                !bridge.TryGetReturnSlot(near + Vector3.right * (planks[first].dimensions.x * .5f + .1f), out _),
+                "Reject other heights and adjacent paths");
+            if (host) Teleport(planks[first + 4].socket + side);
+            yield return Barrier("four-slots");
+            yield return new WaitForSeconds(1.15f);
+            Check(!bridge.IsCollapsed(first) && !bridge.IsWarningForTest(first), "Four slots remain intact despite nearby collapses");
+            for (int i = 0; i < route.Length; i++)
+                Check(bridge.IsCollapsed(i) == (route[i] && i >= first + 1 && i <= first + 7),
+                    "Only the four-slot station's three-slot neighborhood changed at " + i);
+            yield return Barrier("four-verified");
+
+            // These sites have distinct neighborhoods and lie on opposite sides of their hazards.
+            int target = host ? first : second;
+            int slot = host ? first + 3 : second - 2;
+            Teleport(planks[slot].socket + side);
+            yield return Until(() => bridge.IsWarningForTest(target) && !bridge.IsCollapsed(target), "Replicated warning at " + (host ? "three" : "two") + " slots");
+            Check(planks[target].GetComponent<Collider>().enabled, "Warning keeps support");
+            if (capture && host) SaveRender("warning", planks[first].socket, new Vector3(7, 4, 7));
+            yield return Until(() => bridge.IsCollapsed(first) && bridge.IsCollapsed(second), "Both players trigger their own neighborhood");
+            yield return Barrier("separate-neighborhoods");
+
+            // Two owners stand on the same plank, then leave so we can test independence and count.
+            var finish = bridge.EndPoint + side + Vector3.forward * 3;
+            Teleport(planks[contact].socket + side);
+            yield return Until(() => bridge.IsWarningForTest(contact), "Direct contact still triggers warning");
+            Teleport(finish);
+            yield return Until(() => bridge.IsCollapsed(contact) && !bridge.IsWarningForTest(contact), "Both owners share one permanent collapse");
+            yield return new WaitForSeconds(.8f);
+            File.WriteAllText(output + "/" + peer + "-proximity-pass.txt",
+                $"PASS 4 untouched, host 3 / client 2 on opposite sides, direct overlap, off-axis/height rejection, no chain, checked {first}/{second}/{contact}.");
+            yield return Barrier("proximity-finished");
         }
 
         void Steer(Vector3 worldDirection)

@@ -199,6 +199,7 @@ namespace TwinEdge.Gameplay
             if (IsServer)
             {
                 hazard = null;
+                if (collapseAt != null) Array.Clear(collapseAt, 0, collapseAt.Length);
                 constructionReached = false;
                 ResetLoad();
                 NetworkManager.OnClientDisconnectCallback += OnBridgeDisconnect;

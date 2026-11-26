@@ -23,14 +23,6 @@ MonoBehaviour:
   cliffSlope: 0.8
   valleyWidth: 320
   silhouette: 16
-  descent:
-  - {x: 12, y: 190, z: 650}
-  - {x: 12, y: 184, z: 710}
-  - {x: 90, y: 160, z: 790}
-  - {x: -30, y: 130, z: 870}
-  - {x: -100, y: 100, z: 950}
-  - {x: 10, y: 70, z: 1030}
-  - {x: 32, y: 42, z: 1150}
   river:
   - {x: 0, y: 40, z: 1150}
   - {x: 65, y: 41.5, z: 1270}

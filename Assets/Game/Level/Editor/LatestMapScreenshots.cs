@@ -403,7 +403,7 @@ namespace TwinEdge.Levels.Editor
                     ("Mountain", markers["Mountain.V3.Start"], 20),
                     ("Summit", markers["Mountain.V3.Final"], 12),
                     ("Bridge", planks[planks.Length / 2].socket, 40),
-                    ("Canyon", terrain.descent[3], -120),
+                    ("Canyon", terrain.CanyonStairProfile((terrain.bridgeEnd.z + terrain.LowerStairLanding.z) * .5f), -120),
                     ("River", markers["Valley.V3.LowerCheckpoint"], 178),
                     ("Castle", terrain.castleEntry, -78),
                     ("UndergroundAccess", FortressGeneratorV3.Config().origin + FortressGeneratorV3.Config().start, 90)

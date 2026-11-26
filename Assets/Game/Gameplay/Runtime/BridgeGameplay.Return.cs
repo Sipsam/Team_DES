@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using TwinEdge.Levels;
 using Unity.Netcode;
@@ -18,13 +17,16 @@ namespace TwinEdge.Gameplay
         [SerializeField, Min(.1f)] float walkJumpSpeed = 3.05f;
         [SerializeField, Min(.1f)] float sprintJumpSpeed = 5.25f;
 
-        readonly Dictionary<Collider, int> supportIds = new();
+        const int TriggerReach = 3;
+        const float WarningSeconds = .65f;
+        static readonly int BaseColor = Shader.PropertyToID("_BaseColor");
+        MaterialPropertyBlock warningProperties;
+        NetworkList<int> warning;
+        float[] collapseAt;
         bool[] hazard;
         Pose summitRetry, dockRetry;
         Checkpoint returnApproach;
         bool retryPositionsReady;
-        int lastReportedPlank = -1;
-        float nextContactReport;
 
         public bool ReturnActive => IsSpawned && InstalledCount == PlankCount && PlankCount > 0 && levelScene.isLoaded &&
             game != null && game.FoundationPhaseLabel == nameof(FoundationPhase.Return);
@@ -47,10 +49,8 @@ namespace TwinEdge.Gameplay
 
         void BindReturn(Scene scene)
         {
-            supportIds.Clear();
-            for (int i = 0; i < plankSupports.Length; i++)
-                foreach (var support in plankSupports[i])
-                    if (!support.isTrigger) supportIds.Add(support, i);
+            hazard = null;
+            collapseAt = new float[PlankCount];
             retryPositionsReady = false;
             var markers = scene.GetRootGameObjects().SelectMany(root => root.GetComponentsInChildren<LevelMarker>());
             var summit = markers.Single(marker => marker.id == "Mountain.V3.Final");
@@ -72,6 +72,8 @@ namespace TwinEdge.Gameplay
             ReturnActive && InBridgeAirspace(feet) && Mathf.Abs(feet.y - StartPoint.y) < .3f;
 
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
+        internal bool IsWarningForTest(int index) => warning.Contains(index);
+        internal int CollapseCountForTest => collapsed.Count;
         internal bool[] ReadServerHazardsForTest() => IsServer && hazard != null ? (bool[])hazard.Clone() : null;
 #endif
 
@@ -96,54 +98,64 @@ namespace TwinEdge.Gameplay
             return choices;
         }
 
+        internal bool TryGetReturnSlot(Vector3 feet, out int slot)
+        {
+            slot = -1;
+            if (!InBridgeAirspace(feet) || Mathf.Abs(feet.y - StartPoint.y) > .3f) return false;
+            // Map even a seam or missing tread to its ordered deck slot.
+            slot = Mathf.Min(PlankCount - 1, Mathf.FloorToInt(Vector3.Dot(feet - StartPoint, Forward) / Pitch));
+            return true;
+        }
+
         void TickReturn()
         {
             if (!ReturnActive || !game.CanPlay) return;
             if (hazard == null) hazard = SelectHazards(PlankCount, safeEndPlanks, hazardFraction, Guid.NewGuid().GetHashCode());
+            float now = Time.time;
             foreach (var peer in NetworkManager.ConnectedClientsList)
             {
                 var player = peer.PlayerObject;
                 if (player == null) continue;
-                var feet = player.transform.position;
-                if (!InBridgeAirspace(feet) || Mathf.Abs(feet.y - StartPoint.y) > .15f) continue;
-                // The server also checks the replicated feet in case a contact event did not reach it.
-                if (Physics.Raycast(feet + Vector3.up * .12f, Vector3.down, out var hit, .28f, ~0, QueryTriggerInteraction.Ignore) &&
-                    supportIds.TryGetValue(hit.collider, out int index) && hazard[index])
-                    CollapseServer(index);
+                if (!TryGetReturnSlot(player.transform.position, out int slot)) continue;
+                int end = Mathf.Min(PlankCount - 1, slot + TriggerReach);
+                for (int index = Mathf.Max(0, slot - TriggerReach); index <= end; index++)
+                {
+                    if (!hazard[index] || removed[index] || collapseAt[index] != 0) continue;
+                    collapseAt[index] = now + WarningSeconds;
+                    warning.Add(index);
+                }
+            }
+
+            for (int i = warning.Count - 1; i >= 0; i--)
+            {
+                int index = warning[i];
+                if (now < collapseAt[index]) continue;
+                collapsed.Add(index);
+                warning.RemoveAt(i);
             }
         }
 
-        public void ReportSupport(PlayerMovement player, ControllerColliderHit hit)
+        void OnWarning(NetworkListEvent<int> change)
         {
-            if (!ReturnActive || !game.CanPlay || hit.normal.y < .75f || hit.moveDirection.y > 0 ||
-                !supportIds.TryGetValue(hit.collider, out int index) || IsCollapsed(index)) return;
-            if (lastReportedPlank == index && Time.unscaledTime < nextContactReport) return;
-            lastReportedPlank = index;
-            nextContactReport = Time.unscaledTime + .2f;
-            SupportContactRpc(index, player.transform.position);
+            if (planks == null || !levelScene.isLoaded) return;
+            if (change.Type == NetworkListEvent<int>.EventType.Add)
+                SetWarning(change.Value, true);
+            else if (change.Type == NetworkListEvent<int>.EventType.RemoveAt)
+                SetWarning(change.Value, false);
+            else RefreshDeck();
         }
 
-        [Rpc(SendTo.Server, InvokePermission = RpcInvokePermission.Everyone)]
-        void SupportContactRpc(int index, Vector3 feet, RpcParams rpc = default)
+        void SetWarning(int index, bool active)
         {
-            if (!ReturnActive || !game.CanPlay || hazard == null || index < 0 || index >= PlankCount ||
-                !hazard[index] || removed[index] || !float.IsFinite(feet.x) || !float.IsFinite(feet.y) || !float.IsFinite(feet.z))
-                return;
-            var player = Player(rpc.Receive.SenderClientId);
-            if (player == null || !InBridgeAirspace(feet, .45f) ||
-                (feet - player.transform.position).sqrMagnitude > 2.25f || Mathf.Abs(feet.y - StartPoint.y) > .2f)
-                return;
-
-            foreach (var support in plankSupports[index])
+            foreach (var renderer in plankRenderers[index])
             {
-                if (support.isTrigger || !support.enabled) continue;
-                var closest = support.ClosestPoint(feet);
-                if (Mathf.Abs(feet.y - closest.y) < .2f &&
-                    Vector3.ProjectOnPlane(closest - feet, Vector3.up).sqrMagnitude < .45f * .45f)
+                if (active)
                 {
-                    CollapseServer(index);
-                    break;
+                    renderer.GetPropertyBlock(warningProperties);
+                    warningProperties.SetColor(BaseColor, new Color(1f, .35f, .08f));
+                    renderer.SetPropertyBlock(warningProperties);
                 }
+                else renderer.SetPropertyBlock(null);
             }
         }
 

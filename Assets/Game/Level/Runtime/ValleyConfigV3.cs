@@ -10,7 +10,25 @@ namespace TwinEdge.Levels
         public float bridgeWidth=8, plankGap=.16f, canyonDepth=260, landingRadius=28;
         public int plankCount=198;
         public float walkWidth=12, cliffSlope=.8f, valleyWidth=320, silhouette=16;
-        public Vector3[] descent = {new Vector3(12,190,650),new Vector3(12,184,710),new Vector3(90,160,790),new Vector3(-30,130,870),new Vector3(-100,100,950),new Vector3(10,70,1030),new Vector3(32,42,1150)};
+        public const float StairWidth = 8f;
+        public const float MaxStairRise = .16f;
+        public Vector3 LowerStairLanding => river[0] + new Vector3(widths[0] * .5f + 10f, 2f, 0f);
+        public Vector3 UpperStairTread => CanyonStairAxis(bridgeEnd.z + 14f) + Vector3.up * bridgeEnd.y;
+        public Vector3 LowerStairTread => CanyonStairAxis(LowerStairLanding.z - 2f) + Vector3.up * LowerStairLanding.y;
+        public Vector3[] CanyonRoute => new[] { bridgeEnd, UpperStairTread, LowerStairTread, LowerStairLanding };
+
+        public Vector3 CanyonStairAxis(float z)
+        {
+            float t = Mathf.InverseLerp(bridgeEnd.z, LowerStairLanding.z, z);
+            return new Vector3(Mathf.Lerp(bridgeEnd.x, LowerStairLanding.x, t), 0f, z);
+        }
+
+        public Vector3 CanyonStairProfile(float z)
+        {
+            float t = Mathf.InverseLerp(UpperStairTread.z, LowerStairTread.z, z);
+            return CanyonStairAxis(z) + Vector3.up * Mathf.Lerp(bridgeEnd.y, LowerStairLanding.y, t);
+        }
+
         public Vector3[] river = {new Vector3(0,40,1150),new Vector3(65,41.5f,1270),new Vector3(80,43,1390),new Vector3(-80,45,1550),new Vector3(-65,47,1690),new Vector3(55,49,1830),new Vector3(50,50,1900)};
         public Vector3 downstreamEnd = new(-190, 37.6f, 970);
         [Tooltip("Upstream bend between the dock and the outlet, in world X/Z.")]

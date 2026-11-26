@@ -174,12 +174,6 @@ public sealed class PlayerMovement : NetworkBehaviour
         IsGrounded = characterController.isGrounded;
     }
 
-    private void OnControllerColliderHit(ControllerColliderHit hit)
-    {
-        if (IsSpawned && IsOwner && gameplayInput != null)
-            TwinEdge.Gameplay.BridgeGameplay.Current?.ReportSupport(this, hit);
-    }
-
     public override void OnNetworkSpawn()
     {
         gameStateManager = FindFirstObjectByType<GameStateManager>();

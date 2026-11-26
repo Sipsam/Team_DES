@@ -55,10 +55,10 @@ namespace TwinEdge.Levels.Editor
             var ceiling=cave.generated.transform.Find("CaveCeiling/Ceiling").GetComponent<MeshFilter>();
             lines.Add("Actual ceiling top worldY="+ceiling.GetComponent<Renderer>().bounds.max.y+" foundation bottom="+(c.origin.y+c.foundationBottom)+" minimum roof rock="+(c.origin.y+c.foundationBottom-ceiling.GetComponent<Renderer>().bounds.max.y));
             Boundary(lines,"Mountain final / bridge",m.config.bridgeAnchor+Vector3.forward*m.config.bridgeStubLength,v.bridgeStart);
-            Boundary(lines,"Bridge / descent",v.bridgeEnd,v.descent.First());
-            Boundary(lines,"Descent / lower dock water+2",v.descent.Last(),new Vector3(v.descent.Last().x,v.river.First().y+2,v.river.First().z));
+            Boundary(lines,"Bridge / stair approach",v.bridgeEnd,v.CanyonRoute.First());
+            Boundary(lines,"Stairs / lower dock water+2",v.CanyonRoute.Last(),new Vector3(v.CanyonRoute.Last().x,v.river.First().y+2,v.river.First().z));
             Boundary(lines,"Approach / castle deck",v.castleEntry,c.approach);
-            Probe(lines,"Canyon walking",v.descent);
+            Probe(lines,"Canyon stair landings",v.CanyonRoute);
             var approach=Enumerable.Range(0,171).Select(i=>{float u=Mathf.SmoothStep(0,1,i/170f);return new Vector3(Mathf.Lerp(v.river.Last().x+ValleyGeneratorV3.Width(v,1900)*.5f+10,v.castleEntry.x,u),Mathf.Lerp(v.river.Last().y+2,v.castleEntry.y,u),1900+i);}).Append(c.origin).ToArray();
             Probe(lines,"Castle approach curved walking",approach);
             bool direction=v.river.First().y<v.river.Last().y&&v.river.First().z<v.river.Last().z;

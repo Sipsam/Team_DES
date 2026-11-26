@@ -43,6 +43,8 @@ DeepGullies의 정상 림과 암반 기저 접합부를 좁은 범위에서 둥�
 
 생성 디렉터리는 새 GUID로 추가된다. 저장된 씬·프리팹·설정에서 사용 중인 생성 파일과 폴더 메타를 커밋한다. 저장하지 않은 상태와 Undo가 이전 생성물을 참조할 수 있다. 생성, 플레이 또는 Undo 세션을 끝내고 씬을 저장한 뒤 Unity를 정상 종료한다. `Tools/ProjectAudit/clean-generated.ps1`은 새 배치 세션에서 전체 비생성 에셋의 전이 의존성과 직렬화된 소유 경로를 검사한다. 형식과 출처를 확인할 수 있는 생성 폴더만 정리 대상으로 취급한다. 변경된 씬 및 새 메시와 함께 Git 삭제 목록을 검토한다.
 
+협곡의 석조 계단은 `ValleyConfigV3`의 다리 끝과 하류 부두 접근점을 직선으로 잇는다. 단차는 최대 0.16m이며 양쪽 난간을 따라 기반 암반에 연결된다. 계단과 난간은 각각 렌더러와 Collider가 같은 메시를 사용한다. 생성기는 협곡의 공유 경로와 계단 접합 지형을 함께 갱신한다. 기존 저장 씬에서 해당 구간만 다시 생성하려면 **Tools > Twin Edge > V3 Bridge River > Refresh Canyon Stairway**를 사용한다.
+
 ## V3 월드 재질
 
 팀 텍스처, 임포트 설정 및 GUID는 `Assets/Terrain1_Test/`부터 `Assets/Terrain4_Test/`까지 추적한다. 전달용 UnityPackage는 로컬에 보존하며 새 클론에서 패키지를 다시 가져올 필요는 없다. V3 렌더링 셰이더와 협곡·성채 벽·지하 돌벽 파생 재질은 `Assets/Game/Level/Data/V3WorldMaterials/`에 있다.

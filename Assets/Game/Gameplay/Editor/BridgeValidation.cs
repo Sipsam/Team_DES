@@ -104,14 +104,7 @@ namespace TwinEdge.Gameplay.Editor
             var obj = new GameObject("Standalone bridge CharacterController probe");
             try
             {
-                var controller = obj.AddComponent<CharacterController>();
-                controller.height = controllerTemplate.height;
-                controller.radius = controllerTemplate.radius;
-                controller.center = controllerTemplate.center;
-                controller.skinWidth = controllerTemplate.skinWidth;
-                controller.stepOffset = controllerTemplate.stepOffset;
-                controller.slopeLimit = controllerTemplate.slopeLimit;
-                controller.minMoveDistance = 0;
+                var controller = AddControllerProbe(obj, controllerTemplate);
                 for (int seed = 0; seed < 32; seed++)
                 {
                     var removed = BridgeGameplay.SelectHazards(deck.Length, safeEnds, hazardFraction, seed);
@@ -160,6 +153,115 @@ namespace TwinEdge.Gameplay.Editor
             }
             finally { UnityEngine.Object.DestroyImmediate(obj); }
             Debug.Log($"BRIDGE_COLLAPSE_GEOMETRY_PASS seeds=4096, CC seeds=32 singles={singles} doubles={doubles} movement={shortest:F2}..{longest:F2}m");
+        }
+
+        [MenuItem("Tools/Twin Edge/Gameplay/Validate Canyon Stairway")]
+        public static void ValidateCanyonStairway()
+        {
+            EditorSceneManager.OpenScene(TwinEdge.Levels.Editor.MountainGeneratorV3.ScenePath);
+            var valley = UnityEngine.Object.FindObjectsByType<ValleySectionV3>(FindObjectsSortMode.None);
+            var canyon = valley.Single(part => part.part == ValleyPartV3.CanyonDescent);
+            var river = valley.Single(part => part.part == ValleyPartV3.River);
+            var route = canyon.generated.GetComponentInChildren<LevelRoute>();
+            var layout = canyon.config;
+            Require(route.bidirectional && route.points.SequenceEqual(layout.CanyonRoute), "Saved stairs replace the former route");
+            var treads = canyon.generated.transform.Find("Canyon Stone Stairway");
+            var rails = canyon.generated.transform.Find("Canyon Stair Parapets");
+            foreach (var part in new[] { treads, rails })
+                Require(part.GetComponent<MeshFilter>().sharedMesh == part.GetComponent<MeshCollider>().sharedMesh,
+                    "Rendered mesh supplies collision for " + part.name);
+
+            Physics.SyncTransforms();
+            var dock = river.generated.transform.Find("LowerDock").GetComponent<Collider>().bounds;
+            Vector3 top = layout.bridgeEnd + Vector3.forward * 3;
+            Vector3 bottom = layout.LowerStairLanding;
+            Vector3 dockJoint = bottom + Vector3.forward * 2;
+            Vector3 board = new(dock.min.x + 2.2f, dock.max.y, dock.center.z);
+            for (float z = layout.UpperStairTread.z + 1; z < layout.LowerStairTread.z - .5f; z += 1.1f)
+            {
+                var axis = layout.CanyonStairProfile(z);
+                foreach (float side in new[] { -1f, 1f })
+                {
+                    var lane = axis + Vector3.right * side * 2.5f;
+                    Require(Physics.Raycast(lane + Vector3.up * .6f, Vector3.down, out var floor, .95f) &&
+                        floor.collider.transform == treads && floor.normal.y > .99f, $"Exposed stone tread at {lane:F3}");
+                    Require(Physics.Raycast(axis + Vector3.up * .7f, Vector3.right * side, out var guard, 4.2f) &&
+                        guard.collider.transform == rails, $"Continuous parapet at {axis:F3}");
+                }
+            }
+
+            // Sample the wet downstream ribbon on the bank next to the stair cut.
+            for (float z = 1100; z < layout.LowerStairLanding.z; z += 2)
+            {
+                var water = TwinEdge.Levels.Editor.ValleyGeneratorV3.RiverSample(layout, z);
+                float half = TwinEdge.Levels.Editor.ValleyGeneratorV3.Width(layout, z) * .5f;
+                water += Vector3.right * (half - 3f);
+                Require(Physics.Raycast(water + Vector3.up * 2f, Vector3.down, out var bed, 15f) &&
+                    bed.point.y < water.y - 1f && bed.collider.transform != treads && bed.collider.transform != rails,
+                    $"Clear wet downstream bank at {water:F3}");
+            }
+
+            var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(GameplayFoundationSetup.PlayerPath);
+            var motor = new SerializedObject(prefab.GetComponent<PlayerMovement>());
+            float gravity = motor.FindProperty("gravity").floatValue;
+            float downForce = motor.FindProperty("groundedDownForce").floatValue;
+            float moveSpeed = motor.FindProperty("moveSpeed").floatValue;
+            var probe = new GameObject("Canyon stair CharacterController");
+            try
+            {
+                var controller = AddControllerProbe(probe, prefab.GetComponent<CharacterController>());
+                foreach (bool returning in new[] { false, true })
+                foreach (bool sprint in new[] { false, true })
+                foreach (int fps in new[] { 30, 60, 120 })
+                {
+                    var side = Vector3.right * (returning ? 1.2f : -1.2f);
+                    var path = new[] { top + side, layout.UpperStairTread + side, bottom + side, dockJoint + side, board };
+                    if (returning) Array.Reverse(path);
+                    controller.enabled = false;
+                    probe.transform.position = path[0] + Vector3.up * .35f;
+                    controller.enabled = true;
+                    Physics.SyncTransforms();
+                    controller.Move(Vector3.down * .55f);
+                    Require(controller.isGrounded, $"Probe starts at {path[0]:F3}");
+
+                    float speed = moveSpeed * (sprint ? 1.6f * 1.5f : 1f);
+                    float dt = 1f / fps;
+                    float vertical = -downForce;
+                    float largestError = 0;
+                    foreach (var target in path.Skip(1))
+                    {
+                        float duration = Vector3.Distance(probe.transform.position, target) / speed + 5;
+                        Vector3 difference;
+                        while ((difference = Vector3.ProjectOnPlane(target - probe.transform.position, Vector3.up)).magnitude > .06f)
+                        {
+                            duration -= dt;
+                            Require(duration > 0, $"Stalled to {target:F3} from {probe.transform.position:F3} at {speed:F1}m/s {fps}fps");
+                            if (controller.isGrounded && vertical < 0) vertical = -downForce;
+                            vertical -= gravity * dt;
+                            controller.Move(Vector3.ClampMagnitude(difference, speed * dt) + Vector3.up * (vertical * dt));
+                            var feet = probe.transform.position;
+                            largestError = Mathf.Max(largestError, Mathf.Abs(feet.y - layout.CanyonStairProfile(feet.z).y));
+                        }
+                    }
+                    Require(largestError < .65f && Mathf.Abs(probe.transform.position.y - path[^1].y) < .2f,
+                        $"End joints returning={returning} speed={speed:F1} fps={fps} maxHeightError={largestError:F3}");
+                    Debug.Log($"STAIR_CC_PASS returning={returning} sprint={sprint} speed={speed:F2} fps={fps} maxHeightError={largestError:F3}");
+                }
+            }
+            finally { UnityEngine.Object.DestroyImmediate(probe); }
+        }
+
+        static CharacterController AddControllerProbe(GameObject obj, CharacterController template)
+        {
+            var controller = obj.AddComponent<CharacterController>();
+            controller.height = template.height;
+            controller.radius = template.radius;
+            controller.center = template.center;
+            controller.skinWidth = template.skinWidth;
+            controller.stepOffset = template.stepOffset;
+            controller.slopeLimit = template.slopeLimit;
+            controller.minMoveDistance = 0;
+            return controller;
         }
 
         static void Require(bool success, string label)

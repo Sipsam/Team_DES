@@ -9,7 +9,7 @@ using UnityEngine.Rendering;
 using Object=UnityEngine.Object;
 namespace TwinEdge.Levels.Editor
 {
-    public static class ValleyGeneratorV3
+    public static partial class ValleyGeneratorV3
     {
         public static MountainSectionV3 Mountain() => UnityEngine.SceneManagement.SceneManager.GetSceneByPath(MountainGeneratorV3.ScenePath).GetRootGameObjects().SelectMany(g=>g.GetComponentsInChildren<MountainSectionV3>()).Single();
         public const string Notes="Docs/Development/Level/V3";
@@ -108,21 +108,13 @@ namespace TwinEdge.Levels.Editor
                 float shoulder=Mathf.Max(0,distance-c.landingRadius);
                 y=Mathf.Lerp(floor+18*Mathf.Sin(x*.008f+z*.011f),c.bridgeEnd.y-Mathf.Min(200,shoulder*.58f),north);
                 y+=Smooth(0,1,Mathf.InverseLerp(c.landingRadius,100,distance))*c.silhouette*Mathf.Sin(x*.033f+z*.022f)*north;
-                if(z>650) {
-                    var hp=Sample(c.descent,z);float hd=Mathf.Abs(x-hp.x);
-                    float hy=hp.y+Mathf.Max(0,hd-c.walkWidth*.5f)*(x<hp.x?-.48f:c.cliffSlope)+c.silhouette*(2*Mathf.PerlinNoise(x*.008f+50,z*.006f)-1)*Smooth(8,75,hd);
-                    y=Mathf.Lerp(y,hy,Smooth(0,1,(z-650)/60));
-                }
-                var path=Sample(c.descent,z);
-                float blend=1-Smooth(c.walkWidth*1.5f,c.walkWidth*1.5f+32,Mathf.Abs(x-path.x));
-                y=Mathf.Lerp(y,path.y,blend*north);
+                var path = c.CanyonStairProfile(z);
+                float blend = 1 - Smooth(c.walkWidth * 1.5f, c.walkWidth * 1.5f + 32, Mathf.Abs(x - path.x));
+                y = Mathf.Lerp(y, path.y, blend * north);
+                y = Mathf.Lerp(y, CanyonShoulder(c, x, path), Smooth(c.bridgeEnd.z, 710, z));
             } else if(z<1150) {
-                var p=Sample(c.descent,z);float d=Mathf.Abs(x-p.x);
-                float side=Mathf.Sign(x-p.x);
-                y=p.y+Mathf.Max(0,d-c.walkWidth*.5f)*(side<0?-.48f:c.cliffSlope);
-                y+=c.silhouette*(2*Mathf.PerlinNoise(x*.008f+50,z*.006f)-1)*Smooth(8,75,d);
-                if(z>1090)y=Mathf.Lerp(y,RiverHeight(c,x,z),Smooth(1090,1150,z));
-                y=Mathf.Lerp(y,p.y,1-Smooth(c.walkWidth*1.5f,c.walkWidth*1.5f+12,d));
+                y = Mathf.Lerp(CanyonShoulder(c, x, c.CanyonStairProfile(z)), RiverHeight(c, x, z),
+                    Smooth(1090, 1150, z));
             } else if(z<=1900)y=RiverHeight(c,x,z);
             else {
                 float u=Smooth(0,1,Mathf.InverseLerp(1900,2070,z));
@@ -157,9 +149,30 @@ namespace TwinEdge.Levels.Editor
                     y = Mathf.Lerp(y, pathHeight, bank * approach * blend);
                 }
             }
+            if (z > c.bridgeEnd.z && z < c.LowerStairLanding.z)
+            {
+                var stair = c.CanyonStairProfile(z);
+                float width = 1 - Smooth(10, 21, Mathf.Abs(x - stair.x));
+                float cut = Smooth(c.bridgeEnd.z, c.bridgeEnd.z + 10, z) *
+                    (1 - Smooth(c.LowerStairLanding.z - 8, c.LowerStairLanding.z, z));
+                float riverHalfWidth = Width(c, z) * .5f;
+                float bank = Smooth(riverHalfWidth, riverHalfWidth + 5f, Mathf.Abs(x - RiverSample(c, z).x));
+                y = Mathf.Lerp(y, stair.y - 1.6f, width * cut * bank);
+            }
             float rim=Smooth(0,1,Mathf.InverseLerp(c.valleyWidth*.75f,c.valleyWidth*1.25f,Mathf.Abs(x)));
             return Mathf.Lerp(y,floor-20,rim);
         }
+        static float CanyonShoulder(ValleyConfigV3 c, float x, Vector3 stair)
+        {
+            float offset = x - stair.x;
+            float distance = Mathf.Abs(offset);
+            float outside = Mathf.Max(0, distance - ValleyConfigV3.StairWidth * .5f);
+            float slope = offset < 0 ? -.48f : c.cliffSlope;
+            return stair.y + outside * slope +
+                c.silhouette * (2 * Mathf.PerlinNoise(x * .008f + 50, stair.z * .006f) - 1) *
+                Smooth(8, 75, distance);
+        }
+
         static float RiverHeight(ValleyConfigV3 c,float x,float z) {
             var p=RiverSample(c,z);float d=Mathf.Abs(x-p.x);float half=Width(c,z)*.5f;
             // Broad overlapping erosion basins modulate entire cross-sections continuously.
@@ -189,13 +202,13 @@ namespace TwinEdge.Levels.Editor
             if(c.plankCount<4||c.plankCount>1000||c.bridgeWidth<1||c.bedDepth<1||c.walkWidth<2||c.widths.Length!=c.river.Length)throw new Exception("Invalid dimensions");
             if (!(c.downstreamEnd.z < c.river[0].z && c.river[^1].z < c.upstreamBend.y && c.upstreamBend.y < c.upstreamEnd.z))
                 throw new Exception("Extended river controls must increase Z outside the two dock anchors.");
-            foreach(var path in new[]{c.descent,c.river})for(int i=1;i<path.Length;i++)if(path[i].z<=path[i-1].z)throw new Exception("Control points must increase Z");
+            foreach(var path in new[]{c.CanyonRoute,c.river})for(int i=1;i<path.Length;i++)if(path[i].z<=path[i-1].z)throw new Exception("Control points must increase Z");
             for(int i=1;i<c.river.Length;i++)if(c.river[i].y<=c.river[i-1].y)throw new Exception("Outbound must climb from downstream Mountain dock to upstream Castle dock");
             if(c.widths.Any(w=>w<c.raftLaneReservation*2))throw new Exception("Two reserved raft lanes do not fit");
             if(c.plankGap<0||c.plankGap>=Vector3.Distance(c.bridgeStart,c.bridgeEnd)/c.plankCount)throw new Exception("Invalid plank gap");
             var m=Mountain();
             if(Vector3.Distance(c.bridgeStart,m.config.bridgeAnchor+Vector3.forward*m.config.bridgeStubLength)>.01f)throw new Exception("Bridge start must meet preserved Mountain stub");
-            if(c.bridgeEnd!=c.descent[0]||Mathf.Abs(c.descent.Last().y-c.river[0].y-2)>.01f)throw new Exception("Endpoint profiles disagree");
+            if (c.bridgeEnd.y <= c.LowerStairLanding.y) throw new Exception("The Canyon stairs must descend to the dock.");
         }
         public static void Generate(ValleySectionV3 owner) {
             if(EditorApplication.isPlayingOrWillChangePlaymode)throw new Exception("Edit mode required");
@@ -236,7 +249,7 @@ namespace TwinEdge.Levels.Editor
                     Mark(g.transform,"OppositeCliff",c.bridgeEnd,new Vector3(c.landingRadius*2,3,30),MarkerKind.BridgeAnchor);
                     Mark(g.transform,"TimberSupply",c.bridgeStart+new Vector3(12,0,-12),new Vector3(6,3,6),MarkerKind.PuzzlePlacement);
                 }
-                if(owner.part==ValleyPartV3.CanyonDescent)Route(g.transform,c.descent,RouteKind.Walk,"Ordinary descent; static samples only");
+                if (owner.part == ValleyPartV3.CanyonDescent) BuildCanyonStairs(g.transform, folder, c);
                 if(owner.part==ValleyPartV3.River) {
                     var wv=new List<Vector3>();var wt=new List<int>();
                     WaterGeometry(c, wv, wt);
@@ -251,7 +264,7 @@ namespace TwinEdge.Levels.Editor
                         for(int lane=-1;lane<=1;lane+=2)Mark(g.transform,name+"IndividualRaft"+lane,p+new Vector3(lane*c.raftLaneReservation*.5f,0,upper?-40:40),new Vector3(c.raftLaneReservation,3,12),MarkerKind.PlatformPlacement);
                     }
                     for(int bend=1;bend<c.river.Length-1;bend++)Mark(g.transform,"TurnReservation_"+bend,c.river[bend],new Vector3(c.turningReservation*2,3,c.turningReservation*2),MarkerKind.PlatformPlacement);
-                    Route(g.transform,c.river,RouteKind.Water,"Outbound +Z: LowerDock to UpperDock, upstream. Return/current -Z: UpperDock to LowerDock. Outbound raft respawn LowerCheckpoint; return raft respawn UpperCheckpoint; return bridge fall LowerCheckpoint. Metadata only, no raft physics.");
+                    Route(g.transform,c.river,RouteKind.Water,"Outbound +Z: LowerDock to UpperDock, upstream. Return/current -Z: UpperDock to LowerDock. Outbound raft respawn LowerCheckpoint; return raft respawn UpperCheckpoint; return bridge fall Canyon bridge approach. Metadata only, no raft physics.");
                 }
                 if(owner.part==ValleyPartV3.CastleApproach) {
                     Mark(g.transform,"CastleEntranceReservation",c.castleEntry,new Vector3(c.castleSite.x,4,c.castleSite.y),MarkerKind.SectionExit);
@@ -335,7 +348,7 @@ namespace TwinEdge.Levels.Editor
             // Keep the bridge air corridor open while spreading seam relief sideways.
             float air=(1-Smooth(c.bridgeWidth,45,Mathf.Abs(p.x-c.bridgeStart.x)))*Smooth(339,370,p.z)*(1-Smooth(620,650,p.z));
             y=Mathf.Lerp(y,Mathf.Min(y,c.bridgeStart.y-12),air);
-            var path=Sample(c.descent,p.z);
+            var path=c.CanyonStairProfile(p.z);
             float landing=(1-Smooth(c.walkWidth*1.5f,c.walkWidth*1.5f+20,Mathf.Abs(p.x-path.x)))*Smooth(615,645,p.z);
             return Mathf.Lerp(y,Height(c,p.x,p.z),landing);
         }

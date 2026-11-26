@@ -77,7 +77,7 @@ namespace TwinEdge.Levels.Editor
             {
                 var p = vertices[i];
                 bool canyon = part == ValleyPartV3.CanyonDescent;
-                var centre = canyon ? ValleyGeneratorV3.Sample(config.descent, p.z) : ValleyGeneratorV3.RiverSample(config, p.z);
+                var centre = canyon ? config.CanyonStairProfile(p.z) : ValleyGeneratorV3.RiverSample(config, p.z);
                 float protectedWidth = canyon ? config.walkWidth * 2.5f : ValleyGeneratorV3.Width(config, p.z) * .5f + 30;
                 float verge = Mathf.Abs(p.x - centre.x) - protectedWidth;
                 float seam = Ease(0, 32, Mathf.Min(p.z - minZ, maxZ - p.z));

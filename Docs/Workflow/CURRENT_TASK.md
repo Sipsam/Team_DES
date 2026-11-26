@@ -1,21 +1,19 @@
 # Current task
 
-**V3-FEEDBACK-05** · Player Appearance and PvP
+**V3-FEEDBACK-06** · Collapsing Bridge and Stairway
 
-**Checkpoint** `READY_TO_COMMIT` · **Base** `33b7fcda71c85e287d65f3ba5a8172c3cec166ad` · **Updated** 2026-11-26 KST
+**Checkpoint** `READY_TO_COMMIT` · **Base** `263d821b4eaf799ac6cd517ea194d87fd7110749` · **Updated** 2026-11-26 KST
 
-- **Scope** Feedback 8, 9, 10, 11 and 27. Remove the IdentityBand mesh, assign and restore distinct cape colors, synchronize attack/hit pose timing, restore ordinary carry stride and clear the owner camera. Raise the server's ordinary hit range from 2.650m to 3.445m.
-- **Validation** Saved Foundation passed. Unity 6000.3.27f1 Windows Development D3D11 Relay cases `contest`, `contestLifecycle` and `cameraControls` all passed 0/0. Both peers agreed on cape colors and hit/carry state. Reconnect preserved color under a new NGO ID. The 3.425m hit, 3.465m miss, rear and wall checks passed. The server landed 0.004s after the scheduled pose contact. Carrier strides measured 3.500 and 8.400m/s. Resistance, throw, exhaustion, gem and camera regressions passed.
-- **Evidence** Optional local `Docs/Development/PlayerAppearancePvP/V1/Verification.md`. Includes the initial compile and capture fixture corrections, replicated-capsule collision and carry-lag diagnosis, and final build/run hashes.
-- **Next** Review staged scope, verify live main, commit and push, then generate the official maps and both players' PvP gameplay images from the verified commit. Full integration and full match remain deferred.
+- **Scope** Feedback 2 and 25. Server-side Return plank proximity and the straight Canyon stairs between the existing bridge approach and Lower dock.
+- **Validation** Saved Foundation, bridge hazard geometry and 12 stairway CharacterController traversals passed. The saved wet bank and both stair joints passed. Unity 6000.3.27f1 Windows Development Player built. D3D11 bridge and Canyon Relay passed 0/0 each. Both players completed the bridge and stair crossings. Full-world, full E2E and full match deferred.
+- **Evidence** Optional local `Docs/Development/BridgeStairway/V1/Verification.md`. Raw Relay results are under ignored `Docs/Development/Gameplay/V1/RelayRuns/Feedback06-*/`.
+- **Next** Verify live main, commit and push the reviewed scope. Capture the official Editor maps and runtime bridge/stone stairway views from the verified source.
 
 | Work | Logical Worker and domain | State | Evidence |
 | --- | --- | --- | --- |
-| Appearance and session identity | Implement / Validate · Gameplay / Network | `COMPLETED` | Saved prefab, rendered color parity, respawn and rejoin. |
-| Attack and hit presentation | Implement / Validate · Gameplay | `COMPLETED` | Server contact timing, both rigs and D3D11 frames. |
-| Grab movement and camera | Implement / Validate · Gameplay | `COMPLETED` | Full carry strides, raised camera and wall, resistance and throw. |
-| Server attack range and rules | Implement / Validate · Gameplay / Network | `COMPLETED` | Range boundary, aim and obstruction guards, gem rules. |
-| Commit, push and captures | Review / Finalize | `IN_PROGRESS` | Isolated validation passed. Commit reviewed scope and publish from live main. |
+| Return proximity and persistence | Implement / Validate · Gameplay / Network | `COMPLETED` | Ordered reach, warning and collapse on both peers, jumps, fall and recovery, original timber deliveries. |
+| Straight stairway | Implement / Validate · Level / Rendering | `COMPLETED` | Saved meshes, end joints, walking and sprinting in both directions. |
+| Commit, push and captures | Review / Finalize | `IN_PROGRESS` | Verified live main and official D3D11 images. |
 
 ## State and handoff
 

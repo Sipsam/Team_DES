@@ -44,10 +44,11 @@ namespace TwinEdge.Levels.Editor
     }
     public static class ValleyReviewV3
     {
-        static bool TerrainHit(Vector3 p, out RaycastHit hit) {
+        static bool CanyonSupportHit(Vector3 p, out RaycastHit hit) {
             hit=default;bool found=false;float best=float.MaxValue;
-            foreach(var section in Object.FindObjectsByType<ValleySectionV3>(FindObjectsSortMode.None)) {
-                var col=section.generated.transform.Find("Terrain").GetComponent<MeshCollider>();
+            var supports = Object.FindObjectsByType<ValleySectionV3>(FindObjectsSortMode.None)
+                .SelectMany(section => section.generated.GetComponentsInChildren<MeshCollider>());
+            foreach (var col in supports) {
                 if(col.Raycast(new Ray(p+Vector3.up*50,Vector3.down),out var next,150)&&next.distance<best) {hit=next;best=next.distance;found=true;}
             }
             return found;
@@ -79,20 +80,20 @@ namespace TwinEdge.Levels.Editor
             }
             var config=ValleyGeneratorV3.Config();float maxSlope=0;int misses=0;float maxError=0;
             for(float z=config.bridgeEnd.z;z<=1150;z+=1) {
-                var p=ValleyGeneratorV3.Sample(config.descent,z);
-                if(TerrainHit(p,out var hit)) {
+                var p=config.CanyonStairProfile(z);
+                if(CanyonSupportHit(p,out var hit)) {
                     maxError=Mathf.Max(maxError,Mathf.Abs(hit.point.y-p.y));maxSlope=Mathf.Max(maxSlope,Vector3.Angle(hit.normal,Vector3.up));
                 }else misses++;
             }
-            report.Add((misses==0&&maxError<.35f&&maxSlope<45?"PASS":"FAIL")+": descent centerline raycasts misses="+misses+" heightError="+maxError+" maxSlope="+maxSlope+" (controller limit45 step.3 radius.45 height2; no play simulation)");
+            report.Add((misses==0&&maxError<.35f&&maxSlope<45?"PASS":"FAIL")+": stair centerline raycasts misses="+misses+" heightError="+maxError+" maxSlope="+maxSlope+" (controller limit45 step.3 radius.45 height2; no play simulation)");
             int widthMisses=0;float widthError=0,widthSlope=0;Vector3 widthWorst=Vector3.zero;
             for(float z=config.bridgeEnd.z;z<=1150;z+=2)foreach(float side in new[]{-.35f,0,.35f}) {
-                var p=ValleyGeneratorV3.Sample(config.descent,z)+Vector3.right*(config.walkWidth*side);
-                if(TerrainHit(p,out var hit)) {
+                var p=config.CanyonStairProfile(z)+Vector3.right*(ValleyConfigV3.StairWidth*side);
+                if(CanyonSupportHit(p,out var hit)) {
                     widthError=Mathf.Max(widthError,Mathf.Abs(hit.point.y-p.y));float angle=Vector3.Angle(hit.normal,Vector3.up);if(angle>widthSlope){widthSlope=angle;widthWorst=p;}
                 }else widthMisses++;
             }
-            report.Add((widthMisses==0&&widthError<.35f&&widthSlope<45?"PASS":"FAIL")+": descent central70percent width samples misses="+widthMisses+" heightError="+widthError+" maxSlope="+widthSlope+" worst="+widthWorst);
+            report.Add((widthMisses==0&&widthError<.35f&&widthSlope<45?"PASS":"FAIL")+": stair central70percent width samples misses="+widthMisses+" heightError="+widthError+" maxSlope="+widthSlope+" worst="+widthWorst);
             var sections=mountain.transform.parent.GetComponentsInChildren<ValleySectionV3>();
             foreach(float z in new[]{710f,1150f,1900f}) {
                 var profiles=sections.Select(o=>o.generated.transform.Find("Terrain").GetComponent<MeshFilter>().sharedMesh.vertices.Where(v=>Mathf.Abs(v.z-z)<.001f).Distinct().OrderBy(v=>v.x).ToArray()).Where(v=>v.Length>0).ToArray();

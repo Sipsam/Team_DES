@@ -11,8 +11,8 @@ Use this page for ordering and dependencies. [CURRENT_TASK](CURRENT_TASK.md) hol
 | V3-FEEDBACK-02 | Camera-relative Controls and Movement · Feedback 4, 5 | `COMPLETED` | Scoped D3D11 Relay controls and recovery passed. Official map and runtime views captured. | `c512ce7`. Full E2E Relay deferred. |
 | V3-FEEDBACK-03 | Cooperative Pole Traversal · Feedback 3, 6 | `COMPLETED` | Isolated D3D11 Relay, saved Collider routes and official map and runtime views passed. | `c2b464b`. Full integration deferred. |
 | V3-FEEDBACK-04 | Mountain Geometry and Launch Prediction · Feedback 7, 26 | `COMPLETED` | Saved summit supports, isolated Relay pole and Return routes and owner launch prediction passed. Official map and owner views captured. | `33b7fcd`. Full integration deferred. |
-| V3-FEEDBACK-05 | Player Appearance and PvP · Feedback 8, 9, 10, 11, 27 | See [CURRENT_TASK](CURRENT_TASK.md) | Verify cape identity, contest poses, grab movement and camera, hit range and gem behavior in isolated peers. | See active checkpoint. |
-| V3-FEEDBACK-06 | Collapsing Bridge and Stairway · Feedback 2, 25 | `PLANNED` | After V3-FEEDBACK-05, when authorized. | Pending. |
+| V3-FEEDBACK-05 | Player Appearance and PvP · Feedback 8, 9, 10, 11, 27 | `COMPLETED` | Isolated D3D11 Relay contest, lifecycle and controls passed. Official map and both players’ PvP images captured. | `263d821`. Full integration deferred. |
+| V3-FEEDBACK-06 | Collapsing Bridge and Stairway · Feedback 2, 25 | See [CURRENT_TASK](CURRENT_TASK.md) | Ordered proximity with persistent server collapse, shared straight stone stairway and isolated checks. | See active checkpoint. |
 | V3-FEEDBACK-07 | River and Raft Gameplay · Feedback 12, 13, 24 | `PLANNED` | After V3-FEEDBACK-06, when authorized. | Pending. |
 | V3-FEEDBACK-08 | Castle Environment and Puzzle UX · Feedback 14–19 | `PLANNED` | After V3-FEEDBACK-07, when authorized. | Pending. |
 | V3-FEEDBACK-09 | Dungeon and Sewer Puzzle · Feedback 20–23 | `PLANNED` | After V3-FEEDBACK-08, when authorized. | Pending. |

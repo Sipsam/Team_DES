@@ -324,9 +324,16 @@ namespace TwinEdge.Gameplay
             {
                 case "canyon":
                     var lower = river.Landing(false, slot).position;
-                    yield return Segment("isolated-canyon-descent", Canyon(false, lower));
+                    yield return Segment("isolated-canyon-descent", Canyon(false, lower, sprint: !Host));
                     Require(Mathf.Abs(Player.transform.position.y - lower.y) < .4f && Player.IsGrounded, "stood on lower dock");
-                    yield return Segment("isolated-canyon-ascent", Canyon(true, lower));
+                    yield return Barrier("stair-descent");
+                    if (Host)
+                    {
+                        Require(Game.AdvanceFoundation(FoundationPhase.SealPending), "stair fixture seal");
+                        Require(Game.AdvanceFoundation(FoundationPhase.Return), "stair fixture Return phase");
+                    }
+                    yield return Until(() => Game.Phase == FoundationPhase.Return, "stair Return phase");
+                    yield return Segment("isolated-canyon-ascent", Canyon(true, lower, sprint: Host));
                     Require(Mathf.Abs(Player.transform.position.y - bridge.EndPoint.y) < .4f && Player.IsGrounded,
                         "stood at canyon end of bridge");
                     break;
@@ -384,41 +391,59 @@ namespace TwinEdge.Gameplay
             yield return ReplayFinish(finish);
         }
 
-        IEnumerator Canyon(bool returning, Vector3 dock)
+        IEnumerator Canyon(bool returning, Vector3 dock, bool sprint = true)
         {
             Vector3 lane = Vector3.right * (Host ? -1.2f : 1.2f);
-            var start = BridgeGameplay.Current.EndPoint + Vector3.forward * 3 + lane;
-            // Approach the boarding spot across the deck from the east bank.
-            var bank = dock + Vector3.right * 9;
+            var start = valley.bridgeEnd + Vector3.forward * 3 + lane;
+            var top = valley.UpperStairTread + lane;
+            var bottom = valley.LowerStairLanding + lane;
+            var joint = valley.LowerStairLanding + Vector3.forward * 2 + lane;
+            var character = Player.GetComponent<GameplayCharacter>();
+            int respawns = character.RespawnCount.Value;
             if (returning)
             {
-                yield return Walk(dock);
-                yield return Walk(bank, sprint: false);
+                yield return Walk(dock, sprint: false);
+                yield return Walk(joint, sprint: false);
+                yield return Walk(bottom, sprint: false);
             }
-            // The saved path curves between its control points; follow its centre instead of cutting the banks.
-            var path = new List<Vector3>();
-            for (int i = 1; i < valley.descent.Length; i++)
+            else
+                yield return Walk(top, sprint: false);
+
+            float peak = 0;
+            float heightError = 0;
+            bool capturedStairs = false;
+            void Observe()
             {
-                Vector3 a = valley.descent[i - 1], b = valley.descent[i];
-                int samples = Mathf.CeilToInt(Vector3.Distance(a, b) / 12f);
-                for (int j = 1; j <= samples; j++)
+                Vector3 feet = Player.transform.position;
+                heightError = Mathf.Max(heightError, Mathf.Abs(feet.y - valley.CanyonStairProfile(feet.z).y));
+                peak = Mathf.Max(peak, Vector3.ProjectOnPlane(Player.Velocity, Vector3.up).magnitude);
+                Require(heightError < .7f && character.RespawnCount.Value == respawns, $"stair route at {feet:F2}");
+                if (!capturedStairs && isolatedLink == "canyon" && screenshots &&
+                    Mathf.Abs(feet.z - (top.z + bottom.z) * .5f) < 2)
                 {
-                    float t = j / (float)samples;
-                    var point = Vector3.Lerp(a, b, Mathf.SmoothStep(0, 1, t));
-                    point.z = Mathf.Lerp(a.z, b.z, t);
-                    if (point.z > start.z) path.Add(point);
+                    Capture(returning ? "stairs-up" : "stairs-down");
+                    capturedStairs = true;
                 }
             }
-            if (returning) path.Reverse();
-            foreach (var point in path) yield return Walk(point + lane, .55f);
-            if (returning)
+            Vector3 target = returning ? top : bottom;
+            yield return Walk(target, .2f, sprint, () =>
             {
-                yield return Walk(start);
-                yield break;
+                Observe();
+                return Vector3.ProjectOnPlane(target - Player.transform.position, Vector3.up).magnitude <= .2f;
+            });
+            if (isolatedLink == "canyon")
+                Require(peak >= Player.GroundMoveSpeed(sprint) * .9f &&
+                    peak <= Player.GroundMoveSpeed(sprint) * 1.15f, $"stair speed {peak:F2}");
+            Debug.Log($"CANYON_STAIRS_PASS returning={returning} sprint={sprint} peak={peak:F2} maxHeightError={heightError:F3}");
+            if (returning)
+                yield return Walk(start, sprint: false);
+            else
+            {
+                yield return Walk(joint, sprint: false);
+                yield return Walk(dock, sprint: false);
+                Require(Player.IsGrounded && Mathf.Abs(Player.transform.position.y - dock.y) < .4f, "stood on lower dock");
             }
-            yield return Walk(bank, sprint: false);
-            yield return Walk(dock, sprint: false);
-            Require(Player.IsGrounded && Mathf.Abs(Player.transform.position.y - dock.y) < .4f, "stood on lower dock");
+            Require(character.RespawnCount.Value == respawns, "stair joints with no respawn");
         }
 
         IEnumerator CastleApproach(Vector3 dock, CastleGameplay castle, bool returning)

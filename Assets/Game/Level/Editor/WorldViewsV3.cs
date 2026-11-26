@@ -22,7 +22,7 @@ namespace TwinEdge.Levels.Editor
             EditorGUILayout.HelpBox("Cyan solid: walking hypothesis. Amber dotted: pole, bridge, raft or platform mechanism reservation. Heights use current V3 settings; this diagram is not a traversability result.",MessageType.Info);
             if(index!=4)return;
             var m=ValleyGeneratorV3.Mountain().config;var v=ValleyGeneratorV3.Config();var c=FortressGeneratorV3.Config();
-            var pts=new[]{new Vector3(m.start.position.x,m.start.height,m.start.position.y),new Vector3(m.destination.position.x,m.destination.height,m.destination.position.y),v.bridgeStart,v.bridgeEnd}.Concat(v.descent).Concat(v.river).Append(v.castleEntry).Append(c.origin).Concat(c.stairs.Select(p=>p+c.origin)).Append(c.start+c.origin).Append(c.seal+c.origin).ToArray();
+            var pts=new[]{new Vector3(m.start.position.x,m.start.height,m.start.position.y),new Vector3(m.destination.position.x,m.destination.height,m.destination.position.y),v.bridgeStart,v.bridgeEnd}.Concat(v.CanyonRoute).Concat(v.river).Append(v.castleEntry).Append(c.origin).Concat(c.stairs.Select(p=>p+c.origin)).Append(c.start+c.origin).Append(c.seal+c.origin).ToArray();
             Rect rect=GUILayoutUtility.GetRect(200,300);if(Event.current.type!=EventType.Repaint)return;
             float lo=pts.Min(p=>p.y)-10,hi=pts.Max(p=>p.y)+10;float length=0;var distances=new float[pts.Length];
             for(int i=1;i<pts.Length;i++){length+=Vector3.Distance(pts[i-1],pts[i]);distances[i]=length;}
@@ -30,7 +30,7 @@ namespace TwinEdge.Levels.Editor
             for(int i=1;i<pts.Length;i++) {
                 Vector3 a=new Vector3(rect.x+rect.width*distances[i-1]/length,rect.yMax-rect.height*(pts[i-1].y-lo)/(hi-lo));
                 Vector3 b=new Vector3(rect.x+rect.width*distances[i]/length,rect.yMax-rect.height*(pts[i].y-lo)/(hi-lo));
-                bool mechanism=i==1||i==3||(i>=v.descent.Length+4&&i<v.descent.Length+4+v.river.Length)||i==pts.Length-1;
+                bool mechanism=i==1||i==3||(i>=v.CanyonRoute.Length+4&&i<v.CanyonRoute.Length+4+v.river.Length)||i==pts.Length-1;
                 Handles.color=mechanism?new Color(1,.55f,.1f):Color.cyan;
                 if(mechanism)Handles.DrawDottedLine(a,b,5);else Handles.DrawLine(a,b);
             }

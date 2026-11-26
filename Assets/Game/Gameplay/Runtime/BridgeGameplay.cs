@@ -35,7 +35,12 @@ namespace TwinEdge.Gameplay
         public float Pitch => Length / PlankCount;
         internal int Frontier(int count) => PlankCount * count / deliveryCount;
 
-        void Awake() => collapsed = new NetworkList<int>();
+        void Awake()
+        {
+            collapsed = new NetworkList<int>();
+            warning = new NetworkList<int>();
+            warningProperties = new MaterialPropertyBlock();
+        }
 
         public void Bind(Scene scene)
         {
@@ -68,9 +73,11 @@ namespace TwinEdge.Gameplay
             {
                 deliveries.Value = 0;
                 collapsed.Clear();
+                warning.Clear();
             }
             deliveries.OnValueChanged += OnDelivery;
             collapsed.OnListChanged += OnCollapse;
+            warning.OnListChanged += OnWarning;
             RefreshDeck();
             StartBridgeSession();
         }
@@ -80,6 +87,7 @@ namespace TwinEdge.Gameplay
             EndBridgeSession();
             deliveries.OnValueChanged -= OnDelivery;
             collapsed.OnListChanged -= OnCollapse;
+            warning.OnListChanged -= OnWarning;
             if (Current == this) Current = null;
             if (planks != null)
                 for (int i = 0; i < PlankCount; i++) SetSupport(i, false);
@@ -108,7 +116,11 @@ namespace TwinEdge.Gameplay
             Array.Clear(removed, 0, removed.Length);
             if (collapsed != null)
                 foreach (int index in collapsed) removed[index] = true;
-            for (int i = 0; i < PlankCount; i++) SetSupport(i, i < InstalledCount && !removed[i]);
+            for (int i = 0; i < PlankCount; i++)
+            {
+                SetSupport(i, i < InstalledCount && !removed[i]);
+                SetWarning(i, warning != null && warning.Contains(i));
+            }
         }
 
         void SetSupport(int index, bool enabled)
@@ -121,13 +133,6 @@ namespace TwinEdge.Gameplay
         {
             if (!IsServer || deliveries.Value >= deliveryCount) return false;
             deliveries.Value++;
-            return true;
-        }
-
-        internal bool CollapseServer(int index)
-        {
-            if (!IsServer || index < 0 || index >= InstalledCount || removed[index]) return false;
-            collapsed.Add(index);
             return true;
         }
 

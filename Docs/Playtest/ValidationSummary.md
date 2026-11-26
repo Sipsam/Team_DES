@@ -112,6 +112,13 @@ Run16 왕로 산악은 약 905초와 Host 누적 GC 707.67 MiB를 기록했다. 
 - 별도 `cameraControls` 회귀에서 카메라 기준 이동, 스태미나 달리기, 점프, 막대 보행·달리기, 공중 회전 담당을 둔 이동과 양쪽 위치 복제를 확인했다. 최종 `contest`, `contestLifecycle`, `cameraControls`의 종료 코드는 각각 0/0이었다.
 - 같은 PC에서 실행한 자동 피어와 스테이션 배치에 한정된다. 최종 Development Player의 `Assembly-CSharp.dll` SHA-256은 `3F577FFECFFEBF38066457B5671E119FFD274FEDCA14B5969F492CF86879CC41`다. 선택적 로컬 기록은 `Docs/Development/PlayerAppearancePvP/V1/Verification.md`에 있다.
 
+## V3 플레이테스트 피드백 2·25 · 붕괴 다리와 직선 계단
+
+- Unity 6000.3.27f1 Windows D3D11 Development Player의 `bridge`와 `canyon` 격리 Relay를 같은 PC의 두 피어로 실행했다. 두 회차 모두 종료 코드 0/0이다. 검증한 `Assembly-CSharp.dll` SHA-256은 `CFCFB0380F76016ADD46859BCF34697BC62F89A7531406C8A9DE00FE7AAE25D0`다.
+- 다리에서 4칸 대기, Host 3칸과 Client 반대 방향 2칸, 직접 접촉을 검증했다. 전조 중 지지가 남고 이후 두 피어의 렌더러와 Collider가 제거됐다. 범위 밖 높이와 옆길은 판정에서 제외됐다. 두 피어의 제거 개수와 판자 목록이 서버의 선택과 일치했다. 붕괴 후 추락은 협곡 쪽 다리 진입 체크포인트에서 복구했고 제거 상태가 유지됐다. 두 피어는 목재 13회 설치와 왕로 횡단, 복로의 일반 점프 28회와 달리기 점프 6회를 각각 완료했다.
+- 저장 씬의 계단 및 난간 렌더·Collider 공유, 하류 수로 표본과 다리·부두 접합부를 확인했다. 30·60·120fps의 CharacterController 재생에서 3.5m/s 보행과 8.4m/s 달리기로 양방향을 통과했다. 격리 Relay에서 Host는 왕로 하강을 보행, 복로 상승을 달리기로 완료했고 Client는 반대로 완료했다. 계단에는 점프 입력을 사용하지 않았다.
+- 격리 회차는 초기 위치와 단계 전환을 테스트에서 설정했다. 전체 월드와 전체 경기는 최종 통합으로 보류했다. 선택적 로컬 기록은 `Docs/Development/BridgeStairway/V1/Verification.md`에 있다.
+
 ## 남은 확인
 
 최신 소스의 전체 월드 회귀, 전체 자동 경기 및 E2E Relay, DeepGullies와 FinalPolish를 함께 패킹한 Windows Player, 최종 배포 빌드는 사용자가 시작하는 최종 통합 단계로 보류했다. 이전 전체 경기의 결과는 해당 후보 빌드의 기록이다.
