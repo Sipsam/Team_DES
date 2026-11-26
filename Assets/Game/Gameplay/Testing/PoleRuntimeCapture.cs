@@ -13,12 +13,20 @@ namespace TwinEdge.Gameplay {
    var s=pole.Snapshot;var middle=(s.a+s.b)*.5f+Vector3.up;
    var side=Vector3.Cross(Vector3.up,s.b-s.a).normalized;
    cam.transform.position=middle+side*42+Vector3.up*26;cam.transform.LookAt(middle);
-   var rt=new RenderTexture(1280,720,24);var previous=RenderTexture.active;Texture2D texture=null;
+   try { Render(cam,path); }
+   finally { Object.Destroy(go); }
+  }
+  public static void SaveOwnerView(string path) {
+   if (SystemInfo.graphicsDeviceType == UnityEngine.Rendering.GraphicsDeviceType.Null) return;
+   Render(V3GameplayBootstrap.Current.standbyCamera,path);
+  }
+  static void Render(Camera cam,string path) {
+   var rt=new RenderTexture(1280,720,24);var previous=RenderTexture.active;var priorTarget=cam.targetTexture;Texture2D texture=null;
    try {
     cam.targetTexture=rt;cam.Render();RenderTexture.active=rt;
     texture=new Texture2D(1280,720,TextureFormat.RGB24,false);texture.ReadPixels(new Rect(0,0,1280,720),0,0);texture.Apply();
     File.WriteAllBytes(path,texture.EncodeToPNG());
-   } finally {RenderTexture.active=previous;cam.targetTexture=null;rt.Release();Object.Destroy(rt);if(texture)Object.Destroy(texture);Object.Destroy(go);}
+   } finally {RenderTexture.active=previous;cam.targetTexture=priorTarget;rt.Release();Object.Destroy(rt);if(texture)Object.Destroy(texture);}
   }
  }
 }

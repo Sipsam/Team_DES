@@ -117,11 +117,18 @@ namespace TwinEdge.Gameplay
         [Rpc(SendTo.Server, Delivery = RpcDelivery.Unreliable)]
         void SprintRpc(int life, RpcParams rpc = default)
         {
-            if (ValidAction(life, rpc) && CanSprintServer()) sprintIntentUntil = Now + .25;
+            if (ValidAction(life, rpc) && !Attached && CanSprintServer()) sprintIntentUntil = Now + .25;
         }
 
         bool CanUseMovementAction => !BlocksServerInteraction && !SpecialMovement && !Attached;
-        bool CanSprintServer() => CanUseMovementAction && CastleGameplay.Current?.SprintBlocked(contestMovement) != true;
+        bool CanSprintServer() => !BlocksServerInteraction && !SpecialMovement &&
+            (!Attached || CooperativePole.Current.IsPairedPivot(OwnerClientId)) &&
+            CastleGameplay.Current?.SprintBlocked(contestMovement) != true;
+
+        internal void SetPoleSprintIntentServer(bool wantsSprint)
+        {
+            sprintIntentUntil = wantsSprint && CanSprintServer() ? Now + .25 : 0;
+        }
 
         internal bool RequestJump(bool sprint, out bool fast)
         {

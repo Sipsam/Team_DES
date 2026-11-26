@@ -42,6 +42,14 @@ public sealed class PlayerMovement : NetworkBehaviour
     public bool IsGrounded { get; private set; }
     public Pose InitialSpawnPose => initialSpawnPose;
 
+    internal float GroundMoveSpeed(bool sprint) => moveSpeed * (sprint ? SprintMultiplier : 1f);
+
+    internal float GroundSpeedScale => movementSpeedMultiplier.Value * (contest?.ContestSpeed ?? 1f) *
+        (IsSpawned
+            ? (TwinEdge.Gameplay.CastleGameplay.Current?.SpeedScale(this) ?? 1f) *
+              (TwinEdge.Gameplay.UndergroundGameplay.Current?.SpeedScale(this) ?? 1f)
+            : 1f);
+
     private void Awake()
     {
         characterController = GetComponent<CharacterController>();
@@ -108,7 +116,6 @@ public sealed class PlayerMovement : NetworkBehaviour
 
         var bridge = TwinEdge.Gameplay.BridgeGameplay.Current;
         var castle = IsSpawned ? TwinEdge.Gameplay.CastleGameplay.Current : null;
-        float undergroundSpeed = IsSpawned ? TwinEdge.Gameplay.UndergroundGameplay.Current?.SpeedScale(this) ?? 1f : 1f;
         bool wantsSprint = canReadInput && gameplayInput?.Sprint?.IsPressed() == true && castle?.SprintBlocked(this) != true;
         bool sprint = wantsSprint && (IsSpawned && contest != null
             ? contest.ReadSprint(input.sqrMagnitude > .001f) : true);
@@ -155,8 +162,8 @@ public sealed class PlayerMovement : NetworkBehaviour
 
         verticalSpeed -= gravity * Time.deltaTime;
         bool fastStride = sprint || sprintJump && wantsSprint && contest?.HasStamina == true;
-        float horizontalSpeed = bridgeJumpSpeed > 0 ? bridgeJumpSpeed : moveSpeed * (fastStride ? SprintMultiplier : 1f);
-        Vector3 velocity = moveDirection * (horizontalSpeed * movementSpeedMultiplier.Value * (castle?.SpeedScale(this) ?? 1f) * undergroundSpeed * (contest?.ContestSpeed ?? 1f));
+        float horizontalSpeed = bridgeJumpSpeed > 0 ? bridgeJumpSpeed : GroundMoveSpeed(fastStride);
+        Vector3 velocity = moveDirection * (horizontalSpeed * GroundSpeedScale);
         velocity += externalVelocity;
         velocity.y = verticalSpeed + externalVelocity.y;
         characterController.Move(velocity * Time.deltaTime + undergroundSupportDelta);

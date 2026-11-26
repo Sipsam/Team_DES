@@ -147,12 +147,26 @@ public sealed partial class V3GameplaySmoke
         yield return ControlBarrier("pole-paired");
         yield return PoleKey(pole, "pivot W at yaw 90", host, Key.W,
             () => pole.Snapshot.PivotPoint.x - start.PivotPoint.x > .15f);
+        yield return MeasurePoleStride(pole, Key.W, Vector3.right, false);
+        yield return MeasurePoleStride(pole, Key.S, Vector3.left, true);
+        var sidestep = pole.Snapshot;
+        yield return PoleKey(pole, "pivot A at yaw 90", host, Key.A,
+            () => pole.Snapshot.PivotPoint.z - sidestep.PivotPoint.z > .15f);
+        sidestep = pole.Snapshot;
+        yield return PoleKey(pole, "pivot D at yaw 90", host, Key.D,
+            () => sidestep.PivotPoint.z - pole.Snapshot.PivotPoint.z > .15f);
         var carried = pole.Snapshot;
         Check(Mathf.Abs(carried.PivotPoint.y - start.PivotPoint.y) < .001f &&
-            Mathf.Abs(carried.PivotPoint.z - start.PivotPoint.z) < .01f, "Pivot travel is horizontal and camera-forward");
+            pole.SafeLanding(carried.PivotPoint, out var startSummit) && startSummit == "Start", "Pivot stays supported on Start");
         yield return PoleKey(pole, "orbit W raises at yaw 270", !host, Key.W,
             () => pole.Snapshot.pitch > carried.pitch + 2f);
         var raised = pole.Snapshot;
+        Check(!pole.SafeLanding(raised.OrbitPoint, out _), "Orbit is airborne before pivot translation");
+        yield return PoleKey(pole, "pivot moves while orbit is airborne", host, Key.W,
+            () => pole.Snapshot.PivotPoint.x - raised.PivotPoint.x > .15f);
+        var translated = pole.Snapshot;
+        Check(Vector3.Distance(translated.OrbitPoint - raised.OrbitPoint, translated.PivotPoint - raised.PivotPoint) < .002f,
+            "Airborne orbit follows the rigid span");
         yield return PoleKey(pole, "orbit D at yaw 270 reverses world yaw", !host, Key.D,
             () => pole.Snapshot.yaw < raised.yaw - 2f);
         var turned = pole.Snapshot;
@@ -162,9 +176,15 @@ public sealed partial class V3GameplaySmoke
             () => pole.Snapshot.yaw > turned.yaw + 2f);
         var returned = pole.Snapshot;
         yield return PoleKey(pole, "orbit S lowers", !host, Key.S, () => pole.Snapshot.pitch < returned.pitch - 1f);
-        Check(Vector3.Distance(pole.Snapshot.PivotPoint, carried.PivotPoint) < .002f &&
+        Check(Vector3.Distance(pole.Snapshot.PivotPoint, translated.PivotPoint) < .002f &&
             Mathf.Abs(Vector3.Distance(pole.Snapshot.a, pole.Snapshot.b) - pole.length) < .002f,
             "Orbit retains fixed pivot and rigid rod length");
+        foreach (var peer in FindObjectsByType<GameplayCharacter>(FindObjectsSortMode.None))
+        {
+            var pose = pole.Snapshot;
+            Check(Vector3.Distance(peer.transform.position, peer.OwnerClientId == pose.left ? pose.a : pose.b) < .02f,
+                "Both pole motor positions agree with the replicated snapshot");
+        }
         if (capture)
         {
             camera.enabled = true;
@@ -177,6 +197,29 @@ public sealed partial class V3GameplaySmoke
         if (host) pole.CancelRpc(pole.Snapshot.revision);
         yield return Until(() => !pole.IsAttached(player.OwnerClientId) && player.GetComponent<CharacterController>().enabled,
             "Leaving pole restores character controller");
+    }
+
+    IEnumerator MeasurePoleStride(CooperativePole pole, Key key, Vector3 direction, bool sprint)
+    {
+        var own = player.GetComponent<GameplayCharacter>();
+        if (host)
+        {
+            var start = pole.Snapshot.PivotPoint;
+            SetControlKeys(sprint ? new[] { key, Key.LeftShift } : new[] { key });
+            yield return Until(() => Vector3.Dot(pole.Snapshot.PivotPoint - start, direction) > .14f &&
+                (!sprint || own.SprintAllowed), "Pole stride starts");
+            yield return new WaitForFixedUpdate();
+            var before = pole.Snapshot.PivotPoint;
+            float started = Time.fixedTime;
+            float stamina = own.StaminaFraction;
+            while (Time.fixedTime - started < .3f) yield return new WaitForFixedUpdate();
+            float speed = Vector3.Dot(pole.Snapshot.PivotPoint - before, direction) / (Time.fixedTime - started);
+            Check(Mathf.Abs(speed - (sprint ? 8.4f : 3.5f)) < .05f, $"Pole stride {speed:F3}m/s");
+            if (sprint) Check(own.StaminaFraction < stamina, "Pole sprint spends stamina");
+            SetControlKeys();
+            yield return new WaitForSeconds(.35f);
+        }
+        yield return ControlBarrier(sprint ? "pole-sprint-measured" : "pole-walk-measured");
     }
 
     IEnumerator PoleKey(CooperativePole pole, string label, bool drives, Key key, Func<bool> observed)

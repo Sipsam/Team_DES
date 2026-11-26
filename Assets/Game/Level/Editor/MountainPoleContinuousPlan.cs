@@ -10,7 +10,7 @@ namespace TwinEdge.Levels.Editor {
   static readonly string[] Primary =
    "Start Peak_02 Peak_05 Peak_08 Peak_11 Peak_14 Peak_17 Peak_20 Peak_23 Final".Split(' ');
   static readonly string[] Western =
-   "Start Peak_01 Peak_04 Peak_07 Peak_10 Peak_13 Peak_17 Peak_16 Peak_19 Peak_22 Final".Split(' ');
+   "Start Peak_01 Peak_04 Peak_25 Peak_07 Peak_10 Peak_13 Peak_16 Peak_19 Peak_22 Final".Split(' ');
   static readonly string[] Eastern =
    "Start Peak_03 Peak_06 Peak_09 Peak_12 Peak_15 Peak_18 Peak_21 Peak_24 Final".Split(' ');
 
@@ -91,16 +91,18 @@ namespace TwinEdge.Levels.Editor {
   static Vector2 Angles(Vector3 d)=>new Vector2(Mathf.Atan2(d.x,d.z)*Mathf.Rad2Deg,Mathf.Asin(d.normalized.y)*Mathf.Rad2Deg);
   static void Rotate(float yaw,float pitch) {
    var a=Angles(orbit-pivot);float dy=Mathf.DeltaAngle(a.x,yaw);int count=Mathf.Max(1,Mathf.CeilToInt((Mathf.Abs(dy)+Mathf.Abs(pitch-a.y))*Mathf.Deg2Rad*pole.length/.1f));
-   for(int i=1;i<=count;i++) {Vector3 next=PoleGeometry.Endpoint(pivot,pole.length,a.x+dy*i/count,Mathf.Lerp(a.y,pitch,(float)i/count));if(!MountainPoleReachability.StepClear(orbit,next)||!MountainPoleReachability.RodClear(pivot,next))throw new Exception("Continuous rotation collision at "+next);orbit=next;}
+   for(int i=1;i<=count;i++) {Vector3 next=PoleGeometry.Endpoint(pivot,pole.length,a.x+dy*i/count,Mathf.Lerp(a.y,pitch,(float)i/count));if(!MountainPoleReachability.StepClear(orbit,next))throw new Exception("Continuous capsule collision at "+next);orbit=next;}
    plan.actions.Add(new MountainPoleAction{kind="Rotate",pivot=pivot,yaw=yaw,pitch=pitch});
   }
   static void ArcTo(Vector3 end) {var a=Angles(orbit-pivot);var b=Angles(end-pivot);Rotate(a.x,pole.maxPitch);Rotate(b.x,pole.maxPitch);Rotate(b.x,b.y);}
   static void Carry(Vector3 delta) {
-   delta.y=0;var a=pivot;var b=orbit;int steps=Mathf.Max(1,Mathf.CeilToInt(delta.magnitude/.04f));
-   for(int i=1;i<=steps;i++) {Vector3 da=a+delta*i/steps,db=b+delta*i/steps;
-    if(!pole.SafeLanding(da,out var sa)||!pole.SafeLanding(db,out var sb)||sa!=sb||!MountainPoleReachability.StepClear(pivot,da)||!MountainPoleReachability.StepClear(orbit,db)||!MountainPoleReachability.RodClear(da,db))throw new Exception("Continuous same-summit carry blocked at "+da+" / "+db+" supported="+pole.SafeLanding(da,out _)+"/"+pole.SafeLanding(db,out _)+" capsule="+MountainPoleReachability.StepClear(pivot,da)+"/"+MountainPoleReachability.StepClear(orbit,db)+" rod="+MountainPoleReachability.RodClear(da,db));
-    pivot=da;orbit=db;
-   }
+   delta.y=0;int steps=Mathf.Max(1,Mathf.CeilToInt(delta.magnitude/.04f));
+   var pose=new PoleSnapshot{a=pivot,b=orbit};
+   if(!pole.SafeLanding(pivot,out var summit))throw new Exception("Unsupported carry start at "+pivot);
+   for(int i=0;i<steps;i++)
+    if(!MountainPoleReachability.CarryStep(ref pose,delta/steps,summit))
+     throw new Exception("Continuous carry blocked from "+pose.PivotPoint+" / "+pose.OrbitPoint+" by step "+delta/steps);
+   pivot=pose.PivotPoint;orbit=pose.OrbitPoint;
    plan.actions.Add(new MountainPoleAction{kind="Carry",pivot=pivot});
   }
   static void Build(MountainPoleReachability.Report r, string reportPrefix = "Continuous") {
@@ -132,7 +134,6 @@ namespace TwinEdge.Levels.Editor {
       float yaw=current.x+yawDelta*turn/turns;Vector3 d=PoleGeometry.Endpoint(Vector3.zero,pole.length,yaw,0);
       Carry(midpoint-d*.5f-pivot);Rotate(yaw,0);
      }
-     // Keep actual arrival height: carry never changes Y. Flat landing terraces make this coherent.
      Carry(edge.pivot-pivot);
      var aim=Angles(edge.end-pivot);var end=PoleGeometry.Endpoint(pivot,pole.length,aim.x,aim.y);
      if(!pole.SafeLanding(end,out var landed)||landed!=r.nodes[target].id)throw new Exception("Arrival radius/height mismatch");
@@ -148,7 +149,7 @@ namespace TwinEdge.Levels.Editor {
     }
     if(!bothFinal)throw new Exception("Final pivot reached, but partner cannot join Final");
     File.WriteAllText(MountainPoleReachability.Output+"/"+reportPrefix+"Plan.json",JsonUtility.ToJson(plan,true));
-    File.WriteAllText(MountainPoleReachability.Output+"/"+reportPrefix+"Result.txt","PASS continuous production capsule/rod queries, supported carry, rigid arcs and distinct-summit exchange candidates. Relay replay is separate.\n"+
+    File.WriteAllText(MountainPoleReachability.Output+"/"+reportPrefix+"Result.txt","PASS continuous production capsule queries, supported pivot carry, rigid arcs and distinct-summit exchange candidates. Relay replay is separate.\n"+
      string.Join(" -> ",r.route.Select(i=>r.nodes[i].id))+"; actions="+plan.actions.Count);
     Debug.Log("MOUNTAIN_CONTINUOUS "+reportPrefix+" "+string.Join(" -> ",r.route.Select(i=>r.nodes[i].id)));
    } catch(Exception ex) {

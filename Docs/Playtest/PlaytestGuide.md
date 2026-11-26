@@ -21,8 +21,8 @@ Use this command to reproduce the windowed Direct3D 11 setup used for the Window
 | Input | Use |
 | --- | --- |
 | Mouse | Orbit the local character after capture. Direction also aims mountain launches. |
-| WASD | Move relative to your camera's horizontal view. On the pole, the pivot carries the pair on the same summit. The orbit player uses A/D to turn left or right relative to their view and W/S to raise or lower the pole. |
-| Left Shift | Sprint using stamina. Hold with W/S on either raft for a stronger stroke. |
+| WASD | Move relative to your camera's horizontal view. The pivot can walk on supported ground while the partner is airborne or on another summit. The orbit player uses A/D to turn relative to their view and W/S to raise or lower the pole. |
+| Left Shift | Sprint using stamina, including as the grounded pole pivot. Hold with W/S on either raft for a stronger stroke. |
 | Space | Jump. |
 | E | Use the displayed target. Grab or swap pole roles, collect and install timber, board or leave a docked raft, operate glyphs and switches, use the keypad, channel the seal or pick up the available gem. |
 | Left click | Attack in the direction the character faces. The same button operates UI when the mouse is released. |
@@ -35,7 +35,7 @@ Use this command to reproduce the windowed Direct3D 11 setup used for the Window
 
 | Section | Player objective |
 | --- | --- |
-| Outbound mountain | Approach opposite pole ends and press E. Use the slope and width of nearby shelves to choose a landing, then move together, swing the orbit player onto that shelf and exchange roles once stable. Reassess the next landing after each exchange. At Big summit, release the pole and follow the ramp. |
+| Outbound mountain | Approach opposite pole ends and press E. Follow the thin ochre boundary on the rock to read the edge of usable footing. Swing the orbit player onto another shelf and exchange roles once stable. The shaft can pass through rock while both players still need clearance. At Big summit, release the pole and follow the ramp. |
 | Outbound bridge and canyon | Use E at the crate, take one timber grip each, carry to the socket and both approve with E. Install all 13 deliveries, cross, then follow the canyon down to the lower dock. |
 | Outbound river | Board the linked raft with E. Both players row with W/S and coordinate their strokes. Use the stamina display to pace stronger strokes. Disembark at the upper dock and walk to the castle. |
 | Outbound castle | Follow your assigned A or B lane. Read the glyph clue and send it via the shared wall. Enter the three glyphs in order in each stage. Use your four-digit number at your keypad and both cross the basement door. |
@@ -143,7 +143,9 @@ $build = 'Builds/V3Development/V3Gameplay.exe'
 
 Foundation exercises spawn, owner camera, remote movement, interaction range and respawn. Use the same runner with contestLifecycle for stale requests and pickup/reconnect races, bridgeDisconnect for carry recovery, riverRecovery for dock and raft recovery, castleReconnect for slot restoration, and castleUnderground for normal castle passage, the seal and pickup. Use foundationImpaired for the Unity Transport delay/jitter/loss fixture. Tests may use an initial station placement and expect real Relay. Use a run name that identifies the active validation or issue. Keep failure evidence while investigating. After a passing run, preview eligible raw logs with `Tools/ProjectAudit/clean-development.ps1 -CompletedRun <name>` and add `-Apply` to remove them. The script retains pass files, exit status and result summaries. Diagnostic commands are available via Get-Help and the script parameter list.
 
-Use `-Case cameraControls` for the two-peer WASD yaw/pitch matrix, walking and sprinting distance, sprint stamina, jump, a sprint into a thin wall, Run playback and final position replication. The case uses a local flat fixture for movement samples and the saved summit for pole carry and orbit using injected WASD on both owners. Add `-Screenshots` for each peer's Run frame and pole HUD.
+Use `-Case cameraControls` for the two-peer WASD yaw/pitch matrix, walking and sprinting distance, sprint stamina, jump, a sprint into a thin wall, Run playback and final position replication. The case uses a local flat fixture for ordinary movement and the saved Start summit for camera-relative pole carry, walk and sprint pace, orbital control and carry while the orbit endpoint is airborne. Add `-Screenshots` for each peer's Run frame and pole HUD.
+
+Use `-Case poleRecovery` for rod-only obstruction, character collision, cancel and disconnect recovery. Use `-Case mountain -PolePlan <plan>` to replay an isolated mountain route from the grips. At the first landing, both peers verify a supported pivot step with the orbit player on another summit at a different elevation, then finish the exchange and route. The replay saves owner-camera and offscreen views of the first landing.
 
 Use `-Case bridge` to verify all 13 timber deliveries, the outbound crossing, collapse and Lower dock recovery, and both players' Return crossings. Use `-Case bridgeContact` to verify collapse from the edge of an adjacent plank and complete Return from the Canyon landing in the same run. The fixture steers along the deck through the owner's camera-relative input. Repeat with distinct run names to cover different server-selected hazards and check both peers' Return pass files and exit codes.
 

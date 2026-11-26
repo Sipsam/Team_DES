@@ -79,6 +79,13 @@ namespace TwinEdge.Gameplay
             Check(Vector3.Distance(player.transform.position,host?s.a:s.b)<.05f,"Local endpoint matches snapshot");
             File.WriteAllText(evidence+"/"+prefix+"-paired.txt","ready");
             yield return Until(()=>File.Exists(evidence+"/host-paired.txt") && File.Exists(evidence+"/client-paired.txt"),"Pair barrier");
+            // A rigid obstruction clips only the middle of the shaft. Keep it clear of
+            // both player capsules and their footprint probes throughout this rotation.
+            var rock = new GameObject("Midspan rock fixture").AddComponent<BoxCollider>();
+            rock.transform.position = (s.a + s.b) * .5f + Vector3.up * .9f;
+            rock.size = new Vector3(2, 1.8f, 6);
+            Physics.SyncTransforms();
+            Check(LegacyRodIntersects(s, rock), "Old rod cast rejects an otherwise clear grip pose");
             if (!host)
             {
                 // Stale and non-finite input must be rejected before a valid rotation.
@@ -94,6 +101,8 @@ namespace TwinEdge.Gameplay
             yield return Until(()=>Mathf.Abs(pole.Snapshot.yaw-s.yaw)>2,"Orbit rotation replicated");
             Check(Mathf.Abs(Vector3.Distance(pole.Snapshot.a,pole.Snapshot.b)-pole.length)<.002f,"Rigid endpoint distance");
             Check(Vector3.Distance(s.PivotPoint,pole.Snapshot.PivotPoint)<.001f,"Pivot remains fixed");
+            Check(LegacyRodIntersects(pole.Snapshot, rock), "Orbit rotated while the shaft still intersected the obstruction");
+            Destroy(rock.gameObject);
             PoleRuntimeCapture.Save(pole,evidence+"/"+prefix+"-pole-rotation.png");
             ScreenCapture.CaptureScreenshot(evidence+"/"+prefix+"-owner-camera.png");
             File.WriteAllText(evidence+"/"+prefix+"-rotation.txt",JsonUtility.ToJson(pole.Snapshot));
@@ -122,7 +131,7 @@ namespace TwinEdge.Gameplay
             else Check(player.GetComponent<GameplayCharacter>().RespawnCount.Value==respawns,"Pivot not forced to respawn");
             yield return Until(()=>!player.GetComponent<PoleMotor>().Attached && cc.enabled,"Recovery unlocks controller");
             yield return AttachAgain("disconnect");
-            File.WriteAllText(evidence+"/"+prefix+"-pass.txt","PASS real Relay: pair/grips/roles/rotation/rigid distance/fixed pivot/rejection/cancel/collider failure/individual respawn. NO inter-summit landing, role switch, route completion or human play claim. Disconnect result is logged separately.");
+            File.WriteAllText(evidence+"/"+prefix+"-pass.txt","PASS real Relay: pair/grips/roles/rotation through midspan obstruction/rigid distance/fixed pivot/rejection/cancel/character collision/individual respawn. Disconnect result is logged separately.");
             if (!host)
             {
                 yield return Until(()=>File.Exists(evidence+"/host-pass.txt"),"Host completed");
@@ -141,6 +150,12 @@ namespace TwinEdge.Gameplay
                 File.WriteAllText(evidence+"/disconnect-pass.txt","PASS client disconnected during actual server-observed orbital motion; server pole idle, survivor movement restored.");
             }
             Application.Quit(0);
+        }
+        internal static bool LegacyRodIntersects(PoleSnapshot pose, Collider obstruction)
+        {
+            Vector3 span = pose.b - pose.a;
+            return Physics.CapsuleCastAll(pose.a + Vector3.up * 1.1f, pose.a + Vector3.up * 1.11f,
+                .08f, span.normalized, span.magnitude, ~0, QueryTriggerInteraction.Ignore).Any(hit => hit.collider == obstruction);
         }
         IEnumerator AttachAgain(string stage)
         {

@@ -99,6 +99,14 @@ namespace TwinEdge.Gameplay
             var colliders = FindObjectsByType<MeshCollider>(FindObjectsSortMode.None);
             respawns.ConfigureFallRecovery(colliders.Min(c => c.bounds.min.y) - 15f);
             ready = true;
+            var section = FindFirstObjectByType<MountainSectionV3>();
+            if (section != null)
+            {
+                var boundaries = new GameObject("Mountain Landing Boundaries");
+                boundaries.transform.SetParent(transform, false);
+                yield return boundaries.AddComponent<SummitBoundaries>()
+                    .Build(cooperativePole, section, manager.NetworkConfig.PlayerPrefab.GetComponent<NetworkObject>());
+            }
         }
         internal bool ReadyForNetworkPlay => ready && state.IsSpawned && cooperativePole.IsSpawned &&
             state.GetComponent<BridgeGameplay>().IsSpawned && state.GetComponent<RiverGameplay>().IsSpawned &&

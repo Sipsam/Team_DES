@@ -10,7 +10,7 @@ using UnityEngine;
 using Object = UnityEngine.Object;
 namespace TwinEdge.Levels.Editor
 {
-    // Uses the production landing and swept capsule/rod queries, without changing physics layers.
+    // Uses the production landing and character capsule queries.
     [InitializeOnLoad]
     public static class MountainPoleReachability
     {
@@ -31,10 +31,7 @@ namespace TwinEdge.Levels.Editor
         }
         static CooperativePole pole;
         static Unity.Netcode.NetworkObject character;
-        static MethodInfo sweep = typeof(CooperativePole).GetMethod("ClearPath", BindingFlags.Instance | BindingFlags.NonPublic);
-        static MethodInfo rod = typeof(CooperativePole).GetMethod("ClearRod", BindingFlags.Instance | BindingFlags.NonPublic);
-        static bool Clear(Vector3 a, Vector3 b) => (bool)sweep.Invoke(pole, new object[] {a,b,character});
-        static bool Rod(Vector3 a, Vector3 b) => (bool)rod.Invoke(pole, new object[] {a,b});
+        static bool Clear(Vector3 a, Vector3 b) => pole.ClearPath(a, b, character);
         public static Vector3 Ground(Vector3 p) {
             var hits = Physics.RaycastAll(p + Vector3.up * 100, Vector3.down, 200, ~0, QueryTriggerInteraction.Ignore)
                 .Where(h=>!h.collider.GetComponentInParent<PlayerMovement>() && !h.collider.transform.IsChildOf(pole.transform)).OrderBy(h=>h.distance).ToArray();
@@ -54,14 +51,15 @@ namespace TwinEdge.Levels.Editor
                     Vector2 angle=Vector2.Lerp(waypoints[k-1],waypoints[k],(float)i/steps);
                     Vector3 p=PoleGeometry.Endpoint(pivot,pole.length,angle.x,angle.y);
                     collision=p;
-                    if(!Clear(last,p)||!Rod(pivot,p)) return false;
+                    if(!Clear(last,p)) return false;
                     last=p;
                 }
             }
             return true;
         }
         public static bool StepClear(Vector3 a,Vector3 b)=>Clear(a,b);
-        public static bool RodClear(Vector3 a,Vector3 b)=>Rod(a,b);
+        public static bool CarryStep(ref PoleSnapshot pose, Vector3 step, string summit)
+            => pole.TryCarry(ref pose, step, summit, character, character);
         public static void WithQueries(Action action) {
             pole=Object.FindFirstObjectByType<CooperativePole>();
             var probe=AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Game/Gameplay/Prefabs/V3NetworkPlayer.prefab");
@@ -81,7 +79,7 @@ namespace TwinEdge.Levels.Editor
                 var lines=new List<string>{"Captured carry goal="+goal+" a="+s.a+" b="+s.b+" step="+step};
                 lines.Add("Before support: a="+pole.SafeLanding(s.a,out var ai)+" "+ai+" b="+pole.SafeLanding(s.b,out var bi)+" "+bi);
                 lines.Add("After support: a="+pole.SafeLanding(s.a+step,out ai)+" "+ai+" b="+pole.SafeLanding(s.b+step,out bi)+" "+bi);
-                lines.Add("Sweep a="+Clear(s.a,s.a+step)+" b="+Clear(s.b,s.b+step)+" rod="+Rod(s.a+step,s.b+step));
+                lines.Add("Sweep a="+Clear(s.a,s.a+step)+" b="+Clear(s.b,s.b+step));
                 foreach(var point in new[]{s.a,s.b})foreach(var offset in new[]{Vector3.zero,Vector3.right*.45f,Vector3.left*.45f,Vector3.forward*.45f,Vector3.back*.45f}){
                     var hits=Physics.RaycastAll(point+offset+Vector3.up*.35f,Vector3.down,.65f,~0,QueryTriggerInteraction.Ignore).Where(h=>h.collider!=pole.supportCollider&&!h.collider.transform.IsChildOf(pole.transform)&&h.collider.GetComponentInParent<PlayerMovement>()==null).OrderBy(h=>h.distance).ToArray();
                     lines.Add("Ray "+point+" + "+offset+" => "+(hits.Length==0?"none":hits[0].point+" normal="+hits[0].normal+" collider="+hits[0].collider.name));
@@ -93,11 +91,11 @@ namespace TwinEdge.Levels.Editor
             Load();
             var trace=JsonUtility.FromJson<MountainPoleCollision>(File.ReadAllLines(Output+"/RelayRun6/server-collisions.jsonl")[0]);
             WithQueries(()=> {
-                bool blocked=!Clear(trace.from,trace.to), rodClear=Rod(trace.pivot,trace.to);
+                bool blocked=!Clear(trace.from,trace.to);
                 bool support=pole.SafeLanding(trace.from,out var id);
                 bool contact=(bool)typeof(CooperativePole).GetMethod("LandingContact",BindingFlags.Instance|BindingFlags.NonPublic).Invoke(pole,new object[]{trace.from,trace.to,character});
-                if(!blocked||!rodClear||!support||id!="Peak_04"||!contact)throw new Exception("Captured landing regression failed");
-                File.WriteAllText(Output+"/CapturedLandingRegression.txt",$"PASS actual RelayRun6 rejected coordinates: capsule blocked={blocked}, rod clear={rodClear}, five-point support={support} on {id}, production walkable landing contact={contact}. Previous authoritative pose retained; radius error={Mathf.Abs(Vector3.Distance(trace.pivot,trace.from)-pole.length)}m. No collision mask or radius changed.");
+                if(!blocked||!support||id!="Peak_04"||!contact)throw new Exception("Captured landing regression failed");
+                File.WriteAllText(Output+"/CapturedLandingRegression.txt",$"PASS actual RelayRun6 rejected coordinates: capsule blocked={blocked}, five-point support={support} on {id}, production walkable landing contact={contact}. Previous authoritative pose retained; radius error={Mathf.Abs(Vector3.Distance(trace.pivot,trace.from)-pole.length)}m.");
             });
         }
         [MenuItem("Tools/Twin Edge/V3 Mountain/Analyze Pole Reachability")]
@@ -150,7 +148,7 @@ namespace TwinEdge.Levels.Editor
                                 var angle = Angles(candidate-pivot);
                                 if (r.nodes[i].terrace) angle.y = 0;
                                 var point = PoleGeometry.Endpoint(pivot,pole.length,angle.x,angle.y);
-                                if (!pole.SafeLanding(point,out var sid) || sid!=r.nodes[i].id || !Rod(pivot,point) ||
+                                if (!pole.SafeLanding(point,out var sid) || sid!=r.nodes[i].id ||
                                     !Clear(point,point) || !Arc(pivot,point,PoleGeometry.Endpoint(pivot,pole.length,angle.x,pole.maxPitch),out _))
                                     continue;
                                 starts.Add(point);
@@ -168,7 +166,6 @@ namespace TwinEdge.Levels.Editor
                             if(Mathf.Abs(angles.y)>pole.maxPitch){e.reason="Pitch limit";continue;}
                             if(!pole.SafeLanding(end,out var id)||id!=r.nodes[j].id){e.reason="Target five-point support / summit gate";continue;}
                             if(!Clear(end,end)){e.reason="Target capsule overlap";continue;}
-                            if(!Rod(pivot,end)){e.reason="Rod intersects terrain at landing pose";continue;}
                             if(r.nodes[j].terrace) {
                                 float arrivalRadius=Vector2.Distance(new Vector2(end.x,end.z),new Vector2(r.nodes[j].center.x,r.nodes[j].center.z));
                                 // A central arrival strands the pivot: a full second endpoint cannot fit on this summit.
@@ -177,14 +174,14 @@ namespace TwinEdge.Levels.Editor
                                 if(clearance<.10f||clearance>.16f)continue;
                             }
                             e.pivot=pivot;e.end=end;e.pitch=angles.y;e.heightDelta=end.y-pivot.y;
-                            if(!Arc(pivot,PoleGeometry.Endpoint(pivot,pole.length,angles.x,pole.maxPitch),end,out e.collision)){e.reason="Arrival capsule / rod collision";continue;}
+                            if(!Arc(pivot,PoleGeometry.Endpoint(pivot,pole.length,angles.x,pole.maxPitch),end,out e.collision)){e.reason="Arrival capsule collision";continue;}
                             e.reason="No supported source endpoint / clear departure arc";
                             // Source endpoint must itself have real support. Edge candidates do not assume an airborne start.
                             foreach(var from in starts) {
                                 var s=Angles(from-pivot);
                                 e.start=from;e.yaw=Mathf.DeltaAngle(s.x,angles.x);
                                 if(Arc(pivot,from,end,out e.collision)) {e.clear=true;e.reason="Collider-tested isolated arc; chained arrival not proven";break;}
-                                e.reason="Capsule or rod collision along sphere";
+                                e.reason="Capsule collision along sphere";
                             }
                             if(e.clear)break;
                         }

@@ -26,6 +26,7 @@ namespace TwinEdge.Gameplay
         Vector2 intent;
         Vector2 pivotIntent;
         double pivotInputAt;
+        bool pivotSprint;
         double inputAt, attachedAt;
         float stable;
         bool orbitAirborne;
@@ -35,6 +36,7 @@ namespace TwinEdge.Gameplay
         float nextSend;
         public bool CanInteract => IsSpawned && snapshot.Value.phase != PolePhase.Failed;
         public bool IsAttached(ulong id) => IsSpawned && snapshot.Value.Has(id);
+        internal bool IsPairedPivot(ulong id) => snapshot.Value.Paired && snapshot.Value.Pivot == id;
         bool Outbound
         {
             get
@@ -83,18 +85,21 @@ namespace TwinEdge.Gameplay
             if (player.GetComponent<GameplayCharacter>()?.BlocksServerInteraction == true) return;
             if (s.Has(sender))
             {
-                if (s.phase != PolePhase.Landed || sender != s.Orbit || !SafeLanding(s.OrbitPoint, out var landed) || landed == pivotSummit) return;
+                if (s.phase != PolePhase.Landed || sender != s.Orbit || !SafeLanding(s.OrbitPoint, out var landed) ||
+                    landed == pivotSummit || !ClearPath(s.OrbitPoint, s.OrbitPoint, player)) return;
+                Player(s.Pivot)?.GetComponent<GameplayCharacter>()?.SetPoleSprintIntentServer(false);
                 s.pivotRight = !s.pivotRight;
                 orbitAirborne = false;
                 pivotSummit = landed; s.surface = landed; s.phase = PolePhase.Ready;
-                SetAngles(ref s); s.revision++; snapshot.Value = s; intent = Vector2.zero; pivotIntent = Vector2.zero; stable = 0;
+                SetAngles(ref s); s.revision++; snapshot.Value = s; intent = Vector2.zero; pivotIntent = Vector2.zero;
+                pivotSprint = false; stable = 0; candidate = null;
                 return;
             }
             if (s.Paired || s.phase == PolePhase.Failed) return;
             bool takeRight = s.left != ulong.MaxValue || (s.right == ulong.MaxValue && Vector3.Distance(player.transform.position, s.b) < Vector3.Distance(player.transform.position, s.a));
             if ((takeRight ? s.right : s.left) != ulong.MaxValue) return;
             var grip = takeRight ? s.b : s.a;
-            if (Vector3.Distance(player.transform.position, grip) > grabRange || !SafeLanding(player.transform.position, out _) || !SafeLanding(grip, out _) || !ClearPath(player.transform.position, grip, player) || !ClearRod(s.a,s.b)) return;
+            if (Vector3.Distance(player.transform.position, grip) > grabRange || !SafeLanding(player.transform.position, out _) || !SafeLanding(grip, out _) || !ClearPath(player.transform.position, grip, player)) return;
             if (takeRight) s.right = sender; else s.left = sender;
             if (s.phase == PolePhase.Idle) { s.pivotRight = takeRight; attachedAt = NetworkManager.ServerTime.Time; }
             s.phase = s.Paired ? PolePhase.Ready : PolePhase.OneAttached;
@@ -109,11 +114,20 @@ namespace TwinEdge.Gameplay
             s.pitch = Mathf.Asin(Mathf.Clamp(d.y, -1, 1)) * Mathf.Rad2Deg;
         }
         [Rpc(SendTo.Server, InvokePermission = RpcInvokePermission.Everyone)]
-        public void SteerRpc(uint revision, Vector2 value, RpcParams rpc = default)
+        public void SteerRpc(uint revision, Vector2 value, bool sprint = false, RpcParams rpc = default)
         {
             var s = snapshot.Value;
             if (!Outbound || revision != s.revision || !s.Paired || !s.Has(rpc.Receive.SenderClientId) || s.phase == PolePhase.Failed || !float.IsFinite(value.x) || !float.IsFinite(value.y)) return;
-            if (s.Pivot == rpc.Receive.SenderClientId) { pivotIntent = Vector2.ClampMagnitude(value, 1); pivotInputAt = NetworkManager.ServerTime.Time; return; }
+            var character = Player(rpc.Receive.SenderClientId)?.GetComponent<GameplayCharacter>();
+            if (character == null || character.BlocksServerInteraction) return;
+            if (s.Pivot == rpc.Receive.SenderClientId)
+            {
+                pivotIntent = Vector2.ClampMagnitude(value, 1);
+                pivotSprint = sprint && pivotIntent.sqrMagnitude > .001f;
+                pivotInputAt = NetworkManager.ServerTime.Time;
+                character.SetPoleSprintIntentServer(pivotSprint);
+                return;
+            }
             intent = Vector2.ClampMagnitude(value, 1); inputAt = NetworkManager.ServerTime.Time;
         }
         [Rpc(SendTo.Server, InvokePermission = RpcInvokePermission.Everyone)]
@@ -132,10 +146,16 @@ namespace TwinEdge.Gameplay
         {
             var s = snapshot.Value;
             var falling = Player(failedPlayer == ulong.MaxValue ? s.Orbit : failedPlayer);
-            foreach (ulong id in new[] { s.left, s.right }) Player(id)?.GetComponent<GameplayCharacter>()?.SetCarryingServer(false);
+            foreach (ulong id in new[] { s.left, s.right })
+            {
+                var character = Player(id)?.GetComponent<GameplayCharacter>();
+                character?.SetCarryingServer(false);
+                character?.SetPoleSprintIntentServer(false);
+            }
             s.failure = reason;
             // Release atomically before calling respawn so the hook cannot recurse.
-            snapshot.Value = Home(s); orbitAirborne = false; intent = Vector2.zero; pivotIntent = Vector2.zero; stable = 0; candidate = null;
+            snapshot.Value = Home(s); orbitAirborne = false; intent = Vector2.zero; pivotIntent = Vector2.zero;
+            pivotSprint = false; stable = 0; candidate = null;
             if (respawnOrbit && falling != null) FindFirstObjectByType<RespawnManager>()?.RespawnPlayer(falling.GetComponent<PlayerMovement>());
         }
         void Update()
@@ -157,7 +177,8 @@ namespace TwinEdge.Gameplay
                     nextSend = Time.unscaledTime + .05f;
                     var movement = local.GetComponent<PlayerMovement>();
                     Vector2 move = input.AcceptsInput ? input.Move.ReadValue<Vector2>() : Vector2.zero;
-                    SteerRpc(s.revision, CameraSteering(s, local.OwnerClientId, movement, move));
+                    SteerRpc(s.revision, CameraSteering(s, local.OwnerClientId, movement, move),
+                        input.AcceptsInput && input.Sprint.IsPressed());
                 }
             }
         }
@@ -182,20 +203,26 @@ namespace TwinEdge.Gameplay
             var s = snapshot.Value;
             if (s.phase == PolePhase.Idle) return;
             if (!Outbound) { Fail("Phase changed", false); return; }
-            if (Player(s.Pivot) == null || (s.Paired && Player(s.Orbit) == null)) { Fail("Missing participant", false); return; }
+            var pivot = Player(s.Pivot);
+            var orbit = Player(s.Orbit);
+            if (pivot == null || (s.Paired && orbit == null)) { Fail("Missing participant", false); return; }
             if (!SafeLanding(s.PivotPoint, out _)) { Fail("Pivot lost terrain support", true, s.Pivot); return; }
             if (!s.Paired) { if (NetworkManager.ServerTime.Time - attachedAt > maxIdleSeconds) Fail("Waiting timeout", false); return; }
-            if (!SafeLanding(s.OrbitPoint, out _)) orbitAirborne = true;
             bool stoppedOnLanding = false;
-            Vector2 control = NetworkManager.ServerTime.Time - inputAt < .25 ? intent : Vector2.zero;
-            // On the same summit, the pivot may carry the rigid pair toward a departure edge.
-            // Both real feet must stay supported; once the orbit leaves terrain the pivot is locked.
-            if (control.sqrMagnitude < .001f && NetworkManager.ServerTime.Time - pivotInputAt < .25 && pivotIntent.sqrMagnitude > .001f && SafeLanding(s.OrbitPoint, out var carriedSummit) && carriedSummit == pivotSummit)
+            double now = NetworkManager.ServerTime.Time;
+            var pivotCharacter = pivot.GetComponent<GameplayCharacter>();
+            var orbitCharacter = orbit.GetComponent<GameplayCharacter>();
+            Vector2 control = now - inputAt < .25 && !orbitCharacter.BlocksServerInteraction ? intent : Vector2.zero;
+            if (now - pivotInputAt < .25 && pivotIntent.sqrMagnitude > .001f && !pivotCharacter.BlocksServerInteraction)
             {
-                Vector3 delta = new Vector3(pivotIntent.x, 0, pivotIntent.y) * (2 * Time.fixedDeltaTime);
-                if (SafeLanding(s.a + delta, out _) && SafeLanding(s.b + delta, out _) && ClearPath(s.a, s.a+delta, Player(s.left)) && ClearPath(s.b, s.b+delta, Player(s.right)) && ClearRod(s.a+delta,s.b+delta))
-                { s.a += delta; s.b += delta; snapshot.Value = s; return; }
+                var movement = pivot.GetComponent<PlayerMovement>();
+                float speed = movement.GroundMoveSpeed(pivotSprint && pivotCharacter.SprintAllowed) * movement.GroundSpeedScale;
+                Vector3 delta = new Vector3(pivotIntent.x, 0, pivotIntent.y) * (speed * Time.fixedDeltaTime);
+                int steps = Mathf.Max(1, Mathf.CeilToInt(delta.magnitude / .08f));
+                for (int i = 0; i < steps; i++)
+                    if (!TryCarry(ref s, delta / steps, pivotSummit, pivot, orbit)) break;
             }
+            if (!SafeLanding(s.OrbitPoint, out _)) orbitAirborne = true;
             Vector3 before = s.OrbitPoint;
             float yaw = s.yaw + control.x * angularSpeed * Time.fixedDeltaTime;
             float pitch = Mathf.Clamp(s.pitch + control.y * pitchSpeed * Time.fixedDeltaTime, -maxPitch, maxPitch);
@@ -204,16 +231,14 @@ namespace TwinEdge.Gameplay
             {
                 // Subdivide the arc so each capsule sweep is <= 15 cm, including low frame rates.
                 int steps = Mathf.Max(1, Mathf.CeilToInt(Vector3.Distance(before, after) / .15f));
-                var orbit = Player(s.Orbit);
                 Vector3 last = before;
                 for (int i = 1; i <= steps; i++)
                 {
                     Vector3 point = PoleGeometry.Endpoint(s.PivotPoint, length, Mathf.Lerp(s.yaw, yaw, (float)i / steps), Mathf.Lerp(s.pitch, pitch, (float)i / steps));
-                    bool clearBody = ClearPath(last, point, orbit), clearRod = ClearRod(s.PivotPoint, point);
-                    if (!clearBody || !clearRod) {
+                    if (!ClearPath(last, point, orbit)) {
                         // A real walkable contact after flight stops at the previous authoritative sphere pose.
                         // No endpoint is projected/snapped onto terrain, and no rejected pose is applied.
-                        if (!clearBody && clearRod && orbitAirborne && LandingContact(before, point, orbit)) { stoppedOnLanding = true; break; }
+                        if (orbitAirborne && LandingContact(before, point, orbit)) { stoppedOnLanding = true; break; }
                         try { CollisionRejected?.Invoke(s.PivotPoint,last,point); } catch (System.Exception ex) { Debug.LogWarning("Pole collision trace failed: "+ex.Message); }
                         Fail("Terrain / capsule collision", true); return;
                     }
@@ -229,18 +254,53 @@ namespace TwinEdge.Gameplay
             stable = landed && candidate == id ? stable + Time.fixedDeltaTime : 0;
             candidate = landed ? id : null;
             if (stable >= landingDwell) { s.phase = PolePhase.Landed; s.surface = id; }
-            else if (s.phase == PolePhase.Landed) s.phase = PolePhase.Ready;
+            else if (s.phase == PolePhase.Landed) { s.phase = PolePhase.Ready; s.surface = default; }
             snapshot.Value = s;
         }
+        // Translate the rigid span from a supported pivot. The orbit foot may be airborne,
+        // but both capsules must clear the step, including any small change in pivot ground height.
+        public bool TryCarry(ref PoleSnapshot pose, Vector3 delta, string summit, NetworkObject pivot, NetworkObject orbit)
+        {
+            Vector3 from = pose.PivotPoint;
+            Vector3 to = from + delta;
+            if (!SafeLanding(to, out var id) || id != summit || !ClearPath(from, to, pivot))
+            {
+                if (!TryGround(from, .35f, landingTolerance, out var oldGround) ||
+                    !TryGround(to, .35f, landingTolerance, out var newGround)) return false;
+                to.y += newGround.point.y - oldGround.point.y;
+                if (!SafeLanding(to, out id) || id != summit || !ClearPath(from, to, pivot)) return false;
+            }
+            Vector3 step = to - from;
+            if (!ClearPath(pose.OrbitPoint, pose.OrbitPoint + step, orbit)) return false;
+            pose.a += step;
+            pose.b += step;
+            return true;
+        }
+
         bool Environment(Collider c) => c != supportCollider && !c.transform.IsChildOf(transform) && c.GetComponentInParent<PlayerMovement>() == null;
+        static readonly Vector3[] Footprint = { Vector3.zero, Vector3.right * .45f, Vector3.left * .45f, Vector3.forward * .45f, Vector3.back * .45f };
+
+        bool TryGround(Vector3 feet, float rise, float drop, out RaycastHit closest)
+        {
+            closest = default;
+            float distance = float.PositiveInfinity;
+            foreach (var hit in Physics.RaycastAll(feet + Vector3.up * rise, Vector3.down, rise + drop, ~0, QueryTriggerInteraction.Ignore))
+            {
+                if (hit.distance >= distance || !Environment(hit.collider)) continue;
+                closest = hit;
+                distance = hit.distance;
+            }
+            return distance < float.PositiveInfinity;
+        }
+
         public bool SafeLanding(Vector3 feet, out string id)
         {
             id = PoleGeometry.Summit(feet, mountain, .9f);
             if (id == null) return false;
-            foreach (Vector3 offset in new[] { Vector3.zero, Vector3.right * .45f, Vector3.left * .45f, Vector3.forward * .45f, Vector3.back * .45f })
+            foreach (Vector3 offset in Footprint)
             {
-                var hits = Physics.RaycastAll(feet + offset + Vector3.up * .35f, Vector3.down, .35f + landingTolerance, ~0, QueryTriggerInteraction.Ignore).Where(h => Environment(h.collider)).OrderBy(h => h.distance).ToArray();
-                if (hits.Length == 0 || hits[0].normal.y < .85f || Mathf.Abs(hits[0].point.y - feet.y) > landingTolerance) return false;
+                if (!TryGround(feet + offset, .35f, landingTolerance, out var hit) ||
+                    hit.normal.y < .85f || Mathf.Abs(hit.point.y - feet.y) > landingTolerance) return false;
             }
             return true;
         }
@@ -256,7 +316,7 @@ namespace TwinEdge.Gameplay
             return hits.Length > 0 && hits.All(h => h.normal.y >= .85f);
         }
 
-        bool ClearPath(Vector3 from, Vector3 to, NetworkObject player)
+        public bool ClearPath(Vector3 from, Vector3 to, NetworkObject player)
         {
             var cc = player.GetComponent<CharacterController>();
             Vector3 center = cc.center;
@@ -265,10 +325,9 @@ namespace TwinEdge.Gameplay
             Vector3 low = from + center - Vector3.up * half + Vector3.up * .04f;
             Vector3 high = from + center + Vector3.up * half;
             Vector3 delta = to - from;
-            if (Physics.CapsuleCastAll(low, high, radius, delta.normalized, delta.magnitude, ~0, QueryTriggerInteraction.Ignore).Any(h => Environment(h.collider))) return false;
+            if (delta.sqrMagnitude > 0 && Physics.CapsuleCastAll(low, high, radius, delta.normalized, delta.magnitude, ~0, QueryTriggerInteraction.Ignore).Any(h => Environment(h.collider))) return false;
             return !Physics.OverlapCapsule(to + center - Vector3.up * half + Vector3.up * .04f, to + center + Vector3.up * half, radius, ~0, QueryTriggerInteraction.Ignore).Any(Environment);
         }
-        bool ClearRod(Vector3 a, Vector3 b) => !Physics.CapsuleCastAll(a + Vector3.up * 1.1f, a + Vector3.up * 1.11f, .08f, (b-a).normalized, Vector3.Distance(a,b), ~0, QueryTriggerInteraction.Ignore).Any(h => Environment(h.collider));
         void LateUpdate() { if (IsSpawned) Render(snapshot.Value); }
         void Render(PoleSnapshot s)
         {
@@ -298,7 +357,7 @@ namespace TwinEdge.Gameplay
             else
             {
                 GUILayout.Label(s.Pivot == local.OwnerClientId
-                    ? "Pivot: WASD to carry relative to camera on the same summit"
+                    ? "Pivot: WASD to move on the summit | Shift to sprint"
                     : "Orbit: A/D turn relative to camera, W/S raise or lower the pole");
                 GUILayout.Label("Land on the next summit, then E to swap roles | Esc to release");
             }
