@@ -56,6 +56,7 @@ namespace TwinEdge.Gameplay
             keyboard = InputSystem.AddDevice<Keyboard>();
             movementPad = InputSystem.AddDevice<Gamepad>();
             manager = FindFirstObjectByType<NetworkManager>();
+            if (host) manager.OnClientDisconnectCallback += RecordPeerDisconnect;
             game = FindFirstObjectByType<GameStateManager>();
             castle = game.GetComponent<CastleGameplay>();
             sessions = FindFirstObjectByType<MultiplayerSessionManager>();
@@ -172,12 +173,32 @@ namespace TwinEdge.Gameplay
                 Capture($"stage-{stage + 1}-signal");
                 if (stage == 0) fullMatch?.Capture("castle-wall-signal");
 
+                if (stage < 2 && fullMatch == null)
+                {
+                    var room = Station(CastleGameplay.Action.Pad, slot, stage).transform.parent;
+                    var labels = room.GetComponentsInChildren<TextMesh>();
+                    string guide = slot == stage % 2 ? "WALL TRANSMITTER" : "WALL RECEIVER";
+                    Require(labels.Any(label => label.text.StartsWith(guide)) &&
+                        labels.Any(label => label.text == "Solve both sides to record") && castle.SolvedCode(stage) == 0,
+                        "wall guidance is present without revealing the unsolved sequence");
+                    yield return CaptureHeading($"wall-guidance-{stage + 1}", slot == 0 ? 270 : 90);
+                }
                 if (stage == 0 && fullMatch == null)
                 {
-                    var wrong = Station(CastleGameplay.Action.Pad, slot, stage, (code & 3) % 3);
-                    yield return Use(wrong);
+                    var first = Station(CastleGameplay.Action.Pad, slot, stage, (code & 3) - 1);
+                    yield return UseAndConfirm(first, () => castle.Progress(slot).Steps == 1, "first pad accepted before reset");
+                    yield return Rendezvous("castle-first-pads");
+                    yield return Wait(() => Enumerable.Range(0, 2).All(lane =>
+                        PadIsPressed(Station(CastleGameplay.Action.Pad, lane, stage, first.Value))),
+                        "both peers' accepted cap positions are rendered");
+                    yield return CaptureDoorPad("door-pad-pressed", first);
+                    yield return Rendezvous("castle-first-pads-seen");
+                    // Enter the same glyph again: every sequence uses each glyph once.
+                    yield return Use(first);
                     yield return Wait(() => castle.Progress(slot).Feedback == -1 && castle.Progress(slot).Steps == 0,
                         "wrong symbol resets only this player's attempt");
+                    yield return Wait(() => !PadIsPressed(first), "wrong input raises the previously accepted cap");
+                    yield return CaptureDoorPad("door-pad-reset", first);
                 }
 
                 for (int i = 0; i < 3; i++)
@@ -190,6 +211,7 @@ namespace TwinEdge.Gameplay
                         $"accepted symbol {i + 1} of stage {stage + 1}");
                     if (i == 0 && stage == 0 && fullMatch == null)
                     {
+                        yield return Wait(() => PadIsPressed(pad), "server-approved glyph lowers the rendered cap");
                         int revision = castle.Progress(slot).Revision;
                         castle.UseRpc(pad.Id, stage, oldRevision);
                         yield return new WaitForSeconds(.25f);
@@ -197,6 +219,20 @@ namespace TwinEdge.Gameplay
                     }
                 }
                 yield return Wait(() => castle.Stage > stage, $"both solved stage {stage + 1}", 35);
+                if (fullMatch == null)
+                {
+                    var room = Station(CastleGameplay.Action.Pad, slot, stage).transform.parent;
+                    string recorded = string.Join("  ", sewerAnswer.Skip(stage * 3).Take(3).Select(glyph => CastleGameplay.Glyphs[glyph]));
+                    yield return Wait(() => castle.SolvedCode(stage) == code &&
+                        room.Find("Sewer record").GetComponentsInChildren<TextMesh>().Any(label => label.text == recorded) &&
+                        Enumerable.Range(0, 3).All(glyph => !PadIsPressed(Station(CastleGameplay.Action.Pad, slot, stage, glyph))),
+                        "stage advance raises all caps and records the actual sewer glyphs");
+                    if (stage == 0 && screenshots)
+                    {
+                        yield return Walk(slot == 0 ? 4 : -4, plan.yMax - 3.1f);
+                        yield return CaptureHeading("sewer-record", slot == 0 ? 270 : 90);
+                    }
+                }
                 yield return Walk(exit, plan.yMax - 2);
                 yield return Walk(exit, plan.yMax + 3);
                 Require(player.IsGrounded, $"grounded beyond puzzle door {stage + 1}");
@@ -320,6 +356,7 @@ namespace TwinEdge.Gameplay
             {
                 yield return Walk(x, z);
                 Require(player.IsGrounded, $"grounded at gate waypoint ({x:F1}, {z:F1}), feet={player.transform.position:F2}");
+                if (!returning && z == 30 && fullMatch == null) Capture("courtyard-floor");
             }
         }
 
@@ -340,15 +377,15 @@ namespace TwinEdge.Gameplay
                 yield return Use(Station(CastleGameplay.Action.Signal, slot, 1));
                 yield return Wait(() => CastleGameplay.SignalLength(castle.Signal) == 1, "message in progress before disconnect");
                 int message = castle.Signal;
-                var leave = sessions.LeaveRoomAsync();
-                yield return Wait(() => leave.IsCompleted && !manager.IsListening, "outbound client disconnected", 60);
-                yield return new WaitForSeconds(1);
+                yield return LeaveAndWaitForHost("outbound");
                 yield return Join();
                 yield return BindPlayer();
                 yield return Wait(() => player != null && Vector3.Distance(player.transform.position, castle.OutboundSpawn(slot)) < 1.5f,
                     "outbound reconnect resumes at upper dock");
                 Require(castle.Stage == 1 && castle.AllEarlierDoorsOpen() && castle.Signal == message,
                     "outbound reconnect restores doors, stage and partial wall message");
+                Require(castle.SolvedCode(0) != 0 && castle.Progress(slot).PressedGlyphs == 0,
+                    "outbound reconnect restores the solved record and raised pads");
                 File.WriteAllText(done, "PASS");
             }
             File.WriteAllText(Path.Combine(output, role + "-pass.txt"), "PASS: outbound death or reconnect and persistence");
@@ -463,13 +500,27 @@ namespace TwinEdge.Gameplay
 
         IEnumerator Reconnect(string label)
         {
-            var leave = sessions.LeaveRoomAsync();
-            yield return Wait(() => leave.IsCompleted && !manager.IsListening, "client disconnect " + label, 60);
-            yield return new WaitForSeconds(1);
+            yield return LeaveAndWaitForHost(label);
             yield return Join();
             yield return BindPlayer();
             yield return Wait(() => Vector3.Distance(player.transform.position, castle.World(-2.3f, .15f, 249)) < 1,
                 "return reconnect resumes near the basement door");
+        }
+
+        IEnumerator LeaveAndWaitForHost(string label)
+        {
+            ulong departing = manager.LocalClientId;
+            var leave = sessions.LeaveRoomAsync();
+            yield return Wait(() => leave.IsCompleted && !manager.IsListening, "client disconnect " + label, 60);
+            // Relay shutdown can finish locally before the host frees the old two-player slot.
+            yield return Wait(() => File.Exists(DisconnectMarker(departing)), "host released the disconnected slot", 65);
+        }
+
+        string DisconnectMarker(ulong clientId) => Path.Combine(output, $"host-disconnected-{clientId}.ready");
+
+        void RecordPeerDisconnect(ulong clientId)
+        {
+            if (clientId != NetworkManager.ServerClientId) File.WriteAllText(DisconnectMarker(clientId), "");
         }
 
         IEnumerator EnterSewer(int[] glyphs)
@@ -484,6 +535,8 @@ namespace TwinEdge.Gameplay
 
         CastleStation Station(CastleGameplay.Action kind, int path, int stage, int value = 0) =>
             castle.stations.Single(s => s.Kind == kind && s.Slot == path && s.Stage == stage && s.Value == value);
+
+        static bool PadIsPressed(CastleStation pad) => pad.transform.Find("Door pad cap").localPosition.y < .2f;
 
         IEnumerator UseAndConfirm(CastleStation station, Func<bool> confirmed, string label)
         {
@@ -586,6 +639,26 @@ namespace TwinEdge.Gameplay
             CaptureView(label, view.position, view.position + view.forward);
         }
 
+        IEnumerator CaptureHeading(string label, float yaw)
+        {
+            if (!screenshots) yield break;
+            var orbit = Camera.main.GetComponent<ThirdPersonCamera>();
+            float previous = orbit.transform.eulerAngles.y;
+            orbit.FaceSpawn(Quaternion.Euler(0, yaw, 0));
+            yield return null;
+            yield return new WaitForEndOfFrame();
+            Capture(label);
+            orbit.FaceSpawn(Quaternion.Euler(0, previous, 0));
+        }
+
+        IEnumerator CaptureDoorPad(string label, CastleStation pad)
+        {
+            if (!screenshots) yield break;
+            Vector3 position = pad.transform.position - castle.World(0, 0, 0);
+            yield return Walk(position.x + 1.2f, position.z - 2.7f);
+            yield return CaptureHeading(label, 0);
+        }
+
         void CaptureView(string label, Vector3 position, Vector3 lookAt)
         {
             if (!screenshots) return;
@@ -645,7 +718,11 @@ namespace TwinEdge.Gameplay
             Application.Quit(1);
         }
 
-        void OnDestroy() => Application.logMessageReceived -= WatchLogs;
+        void OnDestroy()
+        {
+            Application.logMessageReceived -= WatchLogs;
+            if (host && manager != null) manager.OnClientDisconnectCallback -= RecordPeerDisconnect;
+        }
     }
 
     public sealed partial class CastleGameplay

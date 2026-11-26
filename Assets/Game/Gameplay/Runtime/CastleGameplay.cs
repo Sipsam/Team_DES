@@ -14,6 +14,7 @@ namespace TwinEdge.Gameplay
         internal struct PlayerProgress : INetworkSerializable, IEquatable<PlayerProgress>
         {
             public int Revision, Steps, SewerLength, Feedback;
+            public byte PressedGlyphs;
             public bool Injured;
             public double RetryAt;
 
@@ -21,6 +22,7 @@ namespace TwinEdge.Gameplay
             {
                 serializer.SerializeValue(ref Revision);
                 serializer.SerializeValue(ref Steps);
+                serializer.SerializeValue(ref PressedGlyphs);
                 serializer.SerializeValue(ref SewerLength);
                 serializer.SerializeValue(ref Feedback);
                 serializer.SerializeValue(ref Injured);
@@ -28,6 +30,7 @@ namespace TwinEdge.Gameplay
             }
 
             public bool Equals(PlayerProgress other) => Revision == other.Revision && Steps == other.Steps &&
+                PressedGlyphs == other.PressedGlyphs &&
                 SewerLength == other.SewerLength && Feedback == other.Feedback && Injured == other.Injured && RetryAt == other.RetryAt;
         }
 
@@ -41,6 +44,7 @@ namespace TwinEdge.Gameplay
         [SerializeField] bool clearInjuryOnRespawn = true, clearInjuryOnExit = true;
 
         readonly NetworkVariable<int> stage = new(), signal = new(), collected = new(), accepted = new(), crossed = new();
+        readonly NetworkVariable<int> solvedGlyphs = new();
         readonly NetworkVariable<bool> sewerOpen = new();
         readonly NetworkVariable<double> returnStart = new();
         readonly NetworkVariable<ulong> clientA = new(ulong.MaxValue), clientB = new(ulong.MaxValue);
@@ -79,6 +83,7 @@ namespace TwinEdge.Gameplay
         internal bool IsReady => ready;
         internal int Crossed => crossed.Value;
         internal int Signal => signal.Value;
+        internal int SolvedCode(int index) => (solvedGlyphs.Value >> (index * 6)) & 63;
         internal Vector3 World(float x, float y, float z) => config.origin + new Vector3(x, y, z);
         internal double Now => NetworkManager.ServerTime.Time;
         internal int Slot(ulong client) => client == clientA.Value ? 0 : client == clientB.Value ? 1 : -1;
@@ -110,6 +115,7 @@ namespace TwinEdge.Gameplay
             if (!IsServer) return;
             spawns = NetworkManager.GetComponent<NetworkSpawnCoordinator>();
             stage.Value = signal.Value = collected.Value = accepted.Value = crossed.Value = 0;
+            solvedGlyphs.Value = 0;
             returnStart.Value = 0;
             sewerOpen.Value = false;
             clientA.Value = clientB.Value = ulong.MaxValue;
@@ -318,6 +324,7 @@ namespace TwinEdge.Gameplay
                 case Action.Pad:
                     bool correct = station.Value == answer[Stage * 3 + p.Steps];
                     p.Steps = correct ? p.Steps + 1 : 0;
+                    p.PressedGlyphs = correct ? (byte)(p.PressedGlyphs | (1 << station.Value)) : (byte)0;
                     p.Feedback = correct ? 1 : -1;
                     break;
                 case Action.ReadHint:
@@ -366,11 +373,13 @@ namespace TwinEdge.Gameplay
             progress[slot] = p;
             if (Stage < Stages && progress[0].Steps == 3 && progress[1].Steps == 3)
             {
+                solvedGlyphs.Value |= CodeForStage(Stage) << (Stage * 6);
                 signal.Value = 0;
                 for (int i = 0; i < 2; i++)
                 {
                     var next = progress[i];
                     next.Steps = next.Feedback = 0;
+                    next.PressedGlyphs = 0;
                     next.Revision++;
                     progress[i] = next;
                 }

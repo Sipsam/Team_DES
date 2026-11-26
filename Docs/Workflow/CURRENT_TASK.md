@@ -1,20 +1,20 @@
 # Current task
 
-**V3-FEEDBACK-07** · River and Raft Gameplay
+**V3-FEEDBACK-08** ? Castle Environment and Puzzle UX
 
-**Checkpoint** `READY_TO_COMMIT` · **Base** `510972478c9afe7dc4750b69cf7b6d5d0132f20d` · **Updated** 2026-11-26 KST
+**Checkpoint** `READY_TO_COMMIT` ? **Base** `009fe65ae54d22e8aabea5bbb263040832a5a0c0` ? **Updated** 2026-11-27 KST
 
-- **Scope** Feedback 12, 13 and 24. Server-authorized raft hit presentation, 10 to 15 shared course hazards in each phase, and verification of downstream physics and water scroll.
-- **Open changes** River runtime, raft HUD, isolated river replay and editor validation, and shared documentation. The saved river, docks and Canyon stairs retain their inputs.
-- **Validation** Saved river and Canyon approach passed. Unity 6000.3.27f1 Windows Development D3D11 Relay passed both crossings and damage/recovery, 0/0 per case. Full-world, full E2E and full match remain deferred.
-- **Evidence** Optional local `Docs/Development/RiverRaft/V1/Verification.md`. Raw evidence `Feedback07-CrossingSteering` and `Feedback07-RecoveryVerified` under ignored `Docs/Development/Gameplay/V1/RelayRuns/`.
-- **Next** Verify live main, commit and push the scoped changes, and capture the official D3D11 map and runtime images. Record publication against the verified hash in local evidence.
+- **Scope** Feedback 14?19. Castle stone floor, stair render seams and enclosure, wall guidance, sewer records and authoritative door pad presentation.
+- **Open changes** Fortress generator, derived stair masonry and saved level, castle layout and progress, castle validator and replay, and shared documentation.
+- **Validation** Final saved scene and five D3D11 Editor views passed. Isolated Windows D3D11 Relay ran the four castle stages, basement checkpoints, stair descent and ascent, seal, Return trap and sewer routes, and two reconnects with exits 0/0. The final saved scene extends the gallery ceiling and trims the cavern entry render seam. Existing walking Colliders and puzzle rules match the passing Relay inputs. Full-world, full E2E and full match are deferred.
+- **Evidence** Optional local `Docs/Development/CastlePuzzle/V1/Verification.md` and `Docs/Development/Gameplay/V1/RelayRuns/Feedback08-CastleVerified/`.
+- **Next** Verify actual remote main, commit and push the scoped files, then publish official D3D11 maps and owner-camera images from the verified source.
 
 | Work | Logical Worker and domain | State | Evidence |
 | --- | --- | --- | --- |
-| Damage flash and rider HUD | Implement / Validate · Gameplay / Network / UI | `COMPLETED` | Both-peer hull and HUD assertions, cooldown contact, 5/3-hit recovery and reconnect. |
-| Course density and downstream flow | Implement / Validate · Gameplay / Level / Rendering | `COMPLETED` | 15 hazards per phase, ribbon UVs, dock and stair access, upstream and downstream crossings. |
-| Commit, push and captures | Review / Finalize · Workflow | `IN_PROGRESS` | Verify live main and capture official D3D11 images. |
+| Saved flooring and stair enclosure | Implement / Validate ? Level / Rendering | `COMPLETED` | Saved scene validator, retained Collider records, D3D11 chamber and descent views. |
+| Wall guidance, pads and sewer record | Validate ? Gameplay / Network / UI | `COMPLETED` | Both peers confirmed accepted caps, wrong input and stage reset, solved records and sewer entry. |
+| Commit, push and captures | Review / Finalize ? Workflow | `IN_PROGRESS` | Verify live main and capture the clean pushed source. |
 
 ## State and handoff
 

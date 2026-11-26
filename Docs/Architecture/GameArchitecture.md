@@ -55,4 +55,6 @@ DeepGullies의 정상 림과 암반 기저 접합부를 좁은 범위에서 둥�
 
 `V3 Geological Context`는 다리 아래 협곡, 외곽 능선, 강 끝 암벽과 성채 기단을 렌더링한다. 협곡과 강의 `TerrainSurface`는 기존 Collider 메시에서 생성한 별도 렌더 메시다. 보행로, 수로, 접합부의 정점은 충돌 메시와 일치한다. 성채 지붕·바닥과 동굴 용암은 원본 텍스처와 노멀을 공유하는 V3 파생 재질을 사용한다.
 
+성채의 평평한 안뜰과 지하문 뒤 연결부에는 기단의 석재 바닥을 사용한다. 지하 계단의 수평 데크는 같은 높이에서 겹치는 면을 잘라 한 번씩 렌더링한다. 기존 계단과 안뜰 Collider는 저장 씬에 그대로 있고, 계단탑 남쪽 벽과 안쪽 천장·바닥은 지하 입구를 남기고 외부를 가린다. 계단탑과 내부에서 보이는 북동쪽 성벽은 기존 벽 텍스처를 트라이플래너 방식으로 투영한다.
+
 **Tools > Twin Edge > Audit project dependencies (read only)**는 Unity 의존성, GUID 및 미리보기 씬 로드를 검사한다. 내부 결과는 무시된 `Docs/Development/Architecture/V1/Audit/`에 생성된다. V1/V2 씬과 프로토타입은 Git에서 열 수 있다. [과거 프로젝트 복원 절차](../Archive/Prototype_v1.md)

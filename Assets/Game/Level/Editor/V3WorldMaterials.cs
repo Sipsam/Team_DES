@@ -24,6 +24,7 @@ namespace TwinEdge.Levels.Editor
         internal static Material Roof => FindSurface("CastleRoof", RoofSource);
         internal static Material Floor => FindSurface("CastleFloor", FloorSource);
         internal static Material Wall => LoadDerived("Wall");
+        internal static Material StairMasonry => LoadDerived("StairMasonry");
         internal static Material UndergroundStone => LoadDerived("UndergroundStone");
         internal static Material Lava => FindSurface("CavernLava", LavaSource);
 

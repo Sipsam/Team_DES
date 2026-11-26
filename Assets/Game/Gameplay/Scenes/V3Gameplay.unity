@@ -827,7 +827,6 @@ MonoBehaviour:
   windowModel: {fileID: 302724855108180122, guid: 102d74480024cb54196d6035aed20f9b, type: 3}
   hintModel: {fileID: 1890265731772884112, guid: e6b3353f23667ae4ca9aeeaf7071283b, type: 3}
   numberModel: {fileID: 9014088147980079938, guid: 50a76cf587a96a64cb60d6277d8fb652, type: 3}
-  sequenceModel: {fileID: 3455263899554984052, guid: 65071302f78d8a34fb0422412989206c, type: 3}
   stoneMaterial: {fileID: 2100000, guid: d49ef10df78c4fa1b3e00346dd2222bd, type: 2}
   undergroundWallMaterial: {fileID: 2100000, guid: 6956842579a343a094dd96944f246228, type: 2}
   darkMaterial: {fileID: 2100000, guid: c7ab7d1ad0ef2eb478560d79dba640b2, type: 2}

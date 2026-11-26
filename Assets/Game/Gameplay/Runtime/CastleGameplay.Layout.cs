@@ -13,19 +13,23 @@ namespace TwinEdge.Gameplay
     {
         [Header("Castle presentation")]
         [SerializeField] GameObject[] symbolModels, trapModels;
-        [SerializeField] GameObject doorModel, wallModel, transferModel, windowModel, hintModel, numberModel, sequenceModel;
+        [SerializeField] GameObject doorModel, wallModel, transferModel, windowModel, hintModel, numberModel;
         [SerializeField] Material stoneMaterial, darkMaterial, accentMaterial;
         [SerializeField] Material undergroundWallMaterial;
         [SerializeField] Shader labelShader;
 
         Material labelMaterial;
         Font labelFont;
+        const string PendingSewerRecord = "Solve both sides to record";
 
         internal readonly List<CastleStation> stations = new();
         readonly CastleStation[] keypads = new CastleStation[2];
         readonly GameObject[] unlockedGroups = new GameObject[Stages];
         readonly GameObject[] sewerDoors = new GameObject[2];
         readonly Transform[,,,] stones = new Transform[Stages, 2, 3, 3];
+        readonly Transform[,,] padCaps = new Transform[Stages, 2, 3];
+        readonly TextMesh[,] sewerRecords = new TextMesh[Stages, 2];
+        readonly int[] displayedSewerRecords = new int[Stages];
         readonly TextMesh[] hintText = new TextMesh[Stages];
         readonly GameObject[] digits = new GameObject[2];
         readonly List<GameObject> reservations = new();
@@ -75,6 +79,7 @@ namespace TwinEdge.Gameplay
             if (layout != null) Destroy(layout.gameObject);
             stations.Clear();
             reservations.Clear();
+            Array.Clear(displayedSewerRecords, 0, displayedSewerRecords.Length);
             layout = Group(transform, "CastleGameplayLayout");
             layout.position = config.origin;
             chambers = Group(layout, "Cooperation");
@@ -181,22 +186,39 @@ namespace TwinEdge.Gameplay
             var root = Group(chambers, room.id);
             float side = Side(lane);
             float x = room.plan.center.x;
-            var panel = Group(root, "Sequence panel");
-            panel.localPosition = new Vector3(x, .2f, room.plan.yMax - 9);
-            Model(panel, sequenceModel, new Vector3(4.5f, .6f, 1.15f), fitAxes: true);
             Label(root, room.id, new Vector3(x, 2.6f, room.plan.yMin + 2), 180, .25f);
             for (int glyph = 0; glyph < Glyphs.Length; glyph++)
             {
                 var pad = Station(root, Action.Pad, lane, index, glyph,
-                    new Vector3(x + (glyph - 1) * 4.8f, .24f, room.plan.yMax - 5), "E: input " + Glyphs[glyph]);
-                Symbol(pad.transform, glyph, 1.45f);
-                Label(pad.transform, Glyphs[glyph], Vector3.up * .86f, 180, .13f);
+                    new Vector3(x + (glyph - 1) * 4.8f, .24f, room.plan.yMax - 5), "E: enter " + Glyphs[glyph] + " for the door");
+                Block(pad.transform, "Door pad base", Vector3.down * .12f, new Vector3(2.6f, .24f, 2.15f), darkMaterial, false);
+                var cap = Group(pad.transform, "Door pad cap");
+                cap.localPosition = Vector3.up * .38f;
+                Block(cap, "Plunger", Vector3.down * .26f, new Vector3(.9f, .4f, .85f), darkMaterial, false);
+                Block(cap, "Press plate", Vector3.down * .07f, new Vector3(2.26f, .16f, 1.81f), accentMaterial, false);
+                Symbol(cap, glyph, 1.15f);
+                padCaps[index, lane, glyph] = cap;
+                Label(pad.transform, Glyphs[glyph], new Vector3(0, .54f, -1.02f), 180, .10f);
             }
+
+            var record = Group(root, "Sewer record");
+            record.localPosition = new Vector3(config.sharedWallX + side * .69f, 2.85f, room.plan.yMax - 3.1f);
+            record.localRotation = Quaternion.Euler(0, side * 90, 0);
+            Block(record, "Plaque", Vector3.zero, new Vector3(5.4f, 1.2f, .14f), darkMaterial, false);
+            Label(record, $"SEWER RECORD {index + 1}", new Vector3(0, .23f, .081f), 0, .11f);
+            sewerRecords[index, lane] = Label(record, PendingSewerRecord, new Vector3(0, -.23f, .081f), 0, .095f);
 
             var wall = Group(root, "Shared wall message");
             wall.localPosition = new Vector3(config.sharedWallX + side * .95f, 1.65f, signalZ);
             wall.localRotation = Quaternion.Euler(0, side * 90, 0);
             Model(wall, room.hint ? wallModel : windowModel, new Vector3(7.4f, 2.1f, .45f), fitAxes: true);
+            var guide = Group(wall, "Wall instructions");
+            guide.localPosition = new Vector3(0, 2.62f, -.23f);
+            Block(guide, "Plaque", Vector3.zero, new Vector3(6.5f, 2f, .16f), darkMaterial, false);
+            Label(guide, room.hint ? "WALL TRANSMITTER" : "WALL RECEIVER", new Vector3(0, .64f, .09f), 0, .11f);
+            Label(guide, room.hint ? "Read your hint stone.\nPress E on the glyphs in order\nto send them to your partner."
+                : "Ask your partner to send the order.\nUse the door pads in that order.",
+                new Vector3(0, -.27f, .09f), 0, .08f);
             for (int column = 0; column < 3; column++)
             {
                 var socket = Group(wall, $"Message socket {column + 1}");
@@ -225,12 +247,16 @@ namespace TwinEdge.Gameplay
             for (int glyph = 0; glyph < 3; glyph++)
             {
                 var sender = Station(root, Action.Signal, lane, index, glyph,
-                    new Vector3(side * 2.2f, .32f, signalZ + (glyph - 1) * 2.2f), "E: send " + Glyphs[glyph]);
-                Symbol(sender.transform, glyph, .95f);
+                    new Vector3(side * 2.2f, .7f, signalZ + (glyph - 1) * 2.2f), "E: send " + Glyphs[glyph] + " to your partner");
+                var button = Group(sender.transform, "Wall button");
+                button.localRotation = Quaternion.Euler(90, side * 90, 0);
+                Block(sender.transform, "Button bracket", new Vector3(-side * .55f, 0, 0),
+                    new Vector3(1.06f, .7f, 1.15f), darkMaterial, false);
+                Symbol(button, glyph, .64f);
             }
             var clear = Station(root, Action.ClearSignal, lane, index, 0,
                 new Vector3(side * 2.2f, .45f, signalZ + 4.8f), "E: clear the message stones");
-            Label(clear.transform, "CLEAR", Vector3.up * .7f, side * 90);
+            Label(clear.transform, "CLEAR", Vector3.up * .7f, side * 90, .095f);
         }
 
         CastleStation Station(Transform parent, Action kind, int slot, int index, int value, Vector3 position, string prompt)
@@ -349,6 +375,22 @@ namespace TwinEdge.Gameplay
                 SetActive(unlockedGroups[i], Stage <= i);
                 string nextHint = i == Stage && i == hintStage ? ReadGlyphs(hintCode) : "HINT";
                 if (hintText[i].text != nextHint) hintText[i].text = nextHint;
+                int completed = i < Stage ? SolvedCode(i) : 0;
+                if (completed != displayedSewerRecords[i])
+                {
+                    displayedSewerRecords[i] = completed;
+                    string entry = completed == 0 ? PendingSewerRecord : ReadGlyphs(completed);
+                    for (int lane = 0; lane < 2; lane++) sewerRecords[i, lane].text = entry;
+                }
+                for (int lane = 0; lane < 2; lane++)
+                {
+                    int pressed = i == Stage ? Progress(lane).PressedGlyphs : 0;
+                    for (int glyph = 0; glyph < Glyphs.Length; glyph++)
+                    {
+                        var cap = padCaps[i, lane, glyph];
+                        cap.localPosition = Vector3.up * ((pressed & (1 << glyph)) != 0 ? .09f : .38f);
+                    }
+                }
                 for (int lane = 0; lane < 2; lane++)
                 for (int column = 0; column < 3; column++)
                 for (int glyph = 0; glyph < 3; glyph++)

@@ -12,6 +12,7 @@ namespace TwinEdge.Levels.Editor
     {
         public const string Notes="Docs/Development/Level/V3/";
         const string Data="Assets/Game/Level/Data/";
+        const float EntryLandingWidth = 16, EntryLandingLength = 14;
         static FortressConfigV3 c;
         static string folder;
         static Material stone, rock, roof, floor, cyan, amber, lava;
@@ -148,7 +149,8 @@ namespace TwinEdge.Levels.Editor
                     Wall(p,"GateFlankRight",gate+dir*c.gateWidth*.5f,b,0,c.wallHeight,c.wallThickness,stone);
                     Wall(p,"GateLintel",gate-dir*c.gateWidth*.5f,gate+dir*c.gateWidth*.5f,c.gateHeight,c.wallHeight,c.wallThickness,stone);
                 }
-                else Wall(p,"Curtain_"+i,a,b,-3,c.wallHeight,c.wallThickness,stone);
+                // The diagonal northeast curtain is also seen from inside the stair tower.
+                else Wall(p,"Curtain_"+i,a,b,-3,c.wallHeight,c.wallThickness,i==6?V3WorldMaterials.StairMasonry:stone);
                 var inward=(new Vector2(12,145)-(a+b)*.5f).normalized;
                 Wall(p,"CurtainWalk_"+i,a+inward*1.5f,b+inward*1.5f,c.wallHeight-1,c.wallHeight,4,stone);
                 int count=Mathf.CeilToInt(Vector2.Distance(a,b)/5);
@@ -161,6 +163,7 @@ namespace TwinEdge.Levels.Editor
             var start=c.approach-c.origin;
             Beam(p,"ApproachConnection",start-new Vector3(0,.3f,0),new Vector3(0,-.3f,3),12,.6f,floor);
             Box(p,"Courtyard",new Vector3(c.courtyard.center.x,-.15f,c.courtyard.center.y),new Vector3(c.courtyard.width,.3f,c.courtyard.height),floor);
+            ApplyExteriorFloor(p, floor);
         }
         static void Interior(Transform p) {
             Rect k=c.keep;var permanent=Group(p,"PermanentStructure");
@@ -226,6 +229,7 @@ namespace TwinEdge.Levels.Editor
             var h=c.undergroundDoor;
             Box(p,"H_TwoFourDigitInputReservation",h+new Vector3(-5,2,0),new Vector3(2,4,2),cyan);
             Beam(p,"HallToStairDoor",h-new Vector3(0,.2f,0),new Vector3(20,-.2f,248),6,.4f,floor);
+            p.Find("HallToStairDoor").GetComponent<Renderer>().enabled = false;
         }
         static void Access(Transform p) {
             var shaft=c.stairVoid;
@@ -245,8 +249,119 @@ namespace TwinEdge.Levels.Editor
                 // Open 4m at both ends keeps switchback landings clear of crossing parapets.
                 if(Vector3.Distance(a,b)>12)foreach(float sign in new[]{-1f,1f})Beam(p,"RampParapet",Vector3.MoveTowards(a,b,4)+side*sign+Vector3.up*.6f,Vector3.MoveTowards(b,a,4)+side*sign+Vector3.up*.6f,.5f,1.2f,stone);
             }
-            var end=c.stairs.Last();Box(p,"U0Landing",c.start-Vector3.up*.5f,new Vector3(16,1,14),floor);
+            var end=c.stairs.Last();Box(p,"U0Landing",c.start-Vector3.up*.5f,new Vector3(EntryLandingWidth,1,EntryLandingLength),floor);
             Beam(p,"StairToU0",end-Vector3.up*.3f,c.start-Vector3.up*.3f,7,.6f,floor);
+            ApplyStairPresentation(p, c, floor, V3WorldMaterials.StairMasonry);
+        }
+
+        internal static void ApplyExteriorFloor(Transform root, Material floorMaterial)
+        {
+            // At floor height the courtyard and keep share the foundation surface.
+            root.Find("Foundation").GetComponent<Renderer>().sharedMaterial = floorMaterial;
+            root.Find("Courtyard").GetComponent<Renderer>().enabled = false;
+        }
+
+        internal static void ApplyStairPresentation(Transform root, FortressConfigV3 config, Material floorMaterial, Material wallMaterial)
+        {
+            foreach (var renderer in root.GetComponentsInChildren<MeshRenderer>())
+                if (renderer.name.StartsWith("StairTower", StringComparison.Ordinal) || renderer.name == "RampParapet")
+                    renderer.sharedMaterial = wallMaterial;
+
+            var decks = Group(root, "Stair deck surfaces");
+            var occupied = new Dictionary<float, List<Rect>>();
+            var shaft = config.stairVoid;
+            // Slab uses 4 m cells, cut when their centers are in the padded shaft.
+            const float slabCell = 4;
+            float gridStart = Mathf.Floor(config.curtain.Min(point => point.y) / 2) * 2;
+            float foundationEdge = gridStart + Mathf.Ceil((shaft.yMin - 2 - gridStart - slabCell / 2) / slabCell) * slabCell;
+            occupied[0] = new List<Rect> { Rect.MinMaxRect(shaft.xMin, gridStart, shaft.xMax, foundationEdge) };
+            occupied[config.start.y] = new List<Rect> { DeckPlan(root.Find("U0Landing").GetComponent<Renderer>()) };
+
+            for (int i = 0; i < config.stairs.Length - 1; i++)
+                AddStairDeck(root.Find("Landing_" + i), config.stairs[i].y, decks, occupied, floorMaterial);
+            for (int i = 0; i < config.stairs.Length - 1; i++)
+                if (config.stairs[i].y == config.stairs[i + 1].y)
+                    AddStairDeck(root.Find("WalkableRamp_" + i), config.stairs[i].y, decks, occupied, floorMaterial);
+            AddStairDeck(root.Find("StairToU0"), config.start.y, decks, occupied, floorMaterial);
+
+            // The south wall wraps around the upper approach, and opens at the lower
+            // cavern landing. Its returns meet the existing tower outside the stair deck.
+            var lining = Group(root, "Stair tower lining");
+            float south = config.stairs.Last().z - 2;
+            float west = shaft.xMin - 1, east = shaft.xMax + 1;
+            float bottom = config.start.y - 2, ceiling = config.stairs[0].y + 10;
+            float openingWest = config.start.x - 8.5f, openingEast = config.start.x + 8.5f;
+            float thickness = 1.2f;
+            float joint = shaft.yMin - .02f;
+            float innerSouth = south + thickness * .5f;
+            LiningBox(lining, "South wall west of cavern", west, openingWest, bottom, ceiling, south - thickness * .5f, innerSouth, wallMaterial);
+            LiningBox(lining, "South wall east of cavern", openingEast, east, bottom, ceiling, south - thickness * .5f, innerSouth, wallMaterial);
+            LiningBox(lining, "South lintel", openingWest, openingEast, config.start.y + 8, ceiling, south - thickness * .5f, innerSouth, wallMaterial);
+            LiningBox(lining, "East return", east - 2, east, bottom, ceiling, innerSouth, joint, wallMaterial);
+            LiningBox(lining, "West return below entrance", west, west + 2, bottom, config.stairs[0].y - .25f, innerSouth, joint, wallMaterial);
+            LiningBox(lining, "Ceiling", west, east, ceiling, ceiling + .8f, south, shaft.yMax, wallMaterial);
+            LiningBox(lining, "Under-stair lining", west, east, bottom - .8f, bottom, innerSouth, shaft.yMax, wallMaterial);
+            // The gate corridor meets the tower below the open upper keep volume.
+            float galleryCeiling = config.stairs[0].y + 7.5f;
+            float gallerySouth = config.undergroundDoor.z - 14;
+            LiningBox(lining, "Basement gallery ceiling", config.keep.xMin, west, galleryCeiling,
+                galleryCeiling + .7f, gallerySouth, config.keep.yMax, wallMaterial);
+            LiningBox(lining, "Basement hall ceiling return", west, config.keep.xMax, galleryCeiling,
+                galleryCeiling + .7f, gallerySouth, south, wallMaterial);
+            LiningBox(lining, "Gallery ceiling joint", west - .45f, west, galleryCeiling + .7f,
+                ceiling, south, config.keep.yMax, wallMaterial);
+        }
+
+        static void LiningBox(Transform root, string name, float left, float right, float bottom, float top,
+            float south, float north, Material material)
+        {
+            Box(root, name, new Vector3((left + right) / 2, (bottom + top) / 2, (south + north) / 2),
+                new Vector3(right - left, top - bottom, north - south), material);
+        }
+
+        static Rect DeckPlan(Renderer renderer)
+        {
+            var bounds = renderer.bounds;
+            var min = renderer.transform.parent.InverseTransformPoint(bounds.min);
+            var max = renderer.transform.parent.InverseTransformPoint(bounds.max);
+            return Rect.MinMaxRect(min.x, min.z, max.x, max.z);
+        }
+
+        static void AddStairDeck(Transform original, float height, Transform decks,
+            Dictionary<float, List<Rect>> occupied, Material material, float thickness = .6f)
+        {
+            var renderer = original.GetComponent<Renderer>();
+            var plan = DeckPlan(renderer);
+            renderer.enabled = false;
+            if (!occupied.TryGetValue(height, out var covered))
+                occupied.Add(height, covered = new List<Rect>());
+
+            var exposed = new List<Rect> { plan };
+            foreach (var rect in covered)
+                exposed = exposed.SelectMany(piece => SubtractDeck(piece, rect)).ToList();
+            covered.Add(plan);
+            foreach (var piece in exposed)
+            {
+                var visual = Box(decks, original.name, new Vector3(piece.center.x, height - thickness / 2, piece.center.y),
+                    new Vector3(piece.width, thickness, piece.height), material);
+                Object.DestroyImmediate(visual.GetComponent<BoxCollider>());
+            }
+        }
+
+        static IEnumerable<Rect> SubtractDeck(Rect deck, Rect covered)
+        {
+            if (!deck.Overlaps(covered))
+            {
+                yield return deck;
+                yield break;
+            }
+
+            float left = Mathf.Max(deck.xMin, covered.xMin), right = Mathf.Min(deck.xMax, covered.xMax);
+            float south = Mathf.Max(deck.yMin, covered.yMin), north = Mathf.Min(deck.yMax, covered.yMax);
+            if (deck.xMin < left) yield return Rect.MinMaxRect(deck.xMin, deck.yMin, left, deck.yMax);
+            if (right < deck.xMax) yield return Rect.MinMaxRect(right, deck.yMin, deck.xMax, deck.yMax);
+            if (deck.yMin < south) yield return Rect.MinMaxRect(left, deck.yMin, right, south);
+            if (north < deck.yMax) yield return Rect.MinMaxRect(left, north, right, deck.yMax);
         }
         static void Cavern(Transform p) {
             Slab(p,"CavernFloor",c.cave,c.caveFloor-3,c.caveFloor,rock,false);
@@ -289,6 +404,16 @@ namespace TwinEdge.Levels.Editor
                 Beam(p,"U0Split_"+side,c.start-Vector3.up*.4f,corner-Vector3.up*.4f,7,.8f,stone);
                 Beam(p,"StartShelf_"+side,corner-Vector3.up*.4f,first.position-Vector3.up*.4f,7,.8f,stone);
             }
+            var entry = Group(p, "Cavern entry deck surfaces");
+            var entryPlan = new Rect(c.start.x - EntryLandingWidth / 2, c.start.z - EntryLandingLength / 2,
+                EntryLandingWidth, EntryLandingLength);
+            var covered = new List<Rect> { entryPlan };
+            foreach (string side in new[] { "A", "B" })
+                if (c.platforms.First(platform => platform.id == side + "0").position.y == c.start.y)
+                    covered.Add(DeckPlan(p.Find("StartShelf_" + side).GetComponent<Renderer>()));
+            var entryDecks = new Dictionary<float, List<Rect>> { [c.start.y] = covered };
+            foreach (string side in new[] { "A", "B" })
+                AddStairDeck(p.Find("U0Split_" + side), c.start.y, entry, entryDecks, floor, .8f);
             Box(p,"JointSealLanding",c.seal-Vector3.up*.5f,new Vector3(24,1,22),stone);
             Box(p,"SealInteractionA",c.seal+new Vector3(-4,1.2f,0),new Vector3(1.5f,2.4f,1.5f),cyan);
             Box(p,"SealInteractionB",c.seal+new Vector3(4,1.2f,0),new Vector3(1.5f,2.4f,1.5f),amber);

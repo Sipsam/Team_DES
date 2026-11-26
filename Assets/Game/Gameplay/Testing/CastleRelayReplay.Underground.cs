@@ -90,9 +90,22 @@ namespace TwinEdge.Gameplay
             if (!isolated)
             {
                 yield return Walk(0, 247.5f);
+                if (fullMatch == null && screenshots)
+                {
+                    yield return Walk(host ? 5 : 9, host ? 246.6f : 249);
+                    yield return CaptureHeading("stair-entry", 90);
+                }
                 yield return Walk(20, 248);
-                foreach (var point in cave.Stairs)
+                for (int i = 0; i < cave.Stairs.Length; i++)
+                {
+                    var point = cave.Stairs[i];
                     yield return Walk(point.x, point.z, sprint: true);
+                    if (fullMatch == null && i is 1 or 5 or 11)
+                    {
+                        yield return CaptureHeading($"stair-descent-{i}-south", 180);
+                        yield return CaptureHeading($"stair-descent-{i}-east", 90);
+                    }
+                }
                 yield return Walk(40, 240);
             }
             Require(Mathf.Abs(player.transform.position.y - cave.Entry.y) < 1, "physical descent reaches the lava start");
@@ -259,7 +272,14 @@ namespace TwinEdge.Gameplay
             Capture("cavern-return");
             var stairs = cave.Stairs;
             for (int i = stairs.Length - 1; i >= 0; i--)
+            {
                 yield return Walk(stairs[i].x, stairs[i].z, sprint: true);
+                if (fullMatch == null && !isolated && i is 3 or 9)
+                {
+                    yield return CaptureHeading($"stair-ascent-{i}-west", 270);
+                    yield return CaptureHeading($"stair-ascent-{i}-north", 0);
+                }
+            }
             yield return Walk(fullMatch == null && !isolated ? (host ? 1.3f : -1.3f) : 0, 247.5f);
             Require(Mathf.Abs(player.transform.position.y - castle.World(0, 0, 0).y) < 1, "physical return ascends to the castle door");
             if (fullMatch == null && !isolated)
