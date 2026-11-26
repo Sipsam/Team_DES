@@ -1,14 +1,14 @@
 # Current task
 
-**V3-PLAYTEST-02** · Second Human Playtest Build
+**V3-PRESENTATION-AUDIT** · Presentation and Polish Gap Audit
 
-**Checkpoint** `READY_TO_COMMIT` · **Base** `2079709428e58847bd08e9d582e288eef0dc3833` · **Updated** 2026-11-27 KST
+**Checkpoint** `READY_TO_COMMIT` · **Base** `7f17e6c1505af8fb4c3386c22c995dea6faa8468` · **Updated** 2026-11-27 KST
 
-- **Scope** Build and smoke-test the normal Windows x64 Player from clean, remote-verified main. Prepare two-player instructions and checklist. Full integration is deferred.
-- **Open changes** Shared workflow and playtest documentation. The previous Feedback 09 checkpoint is reconciled with pushed source `2079709`.
-- **Evidence** Optional local `Docs/Development/SecondHumanPlaytest/V1/`. The original November 22 Player is in `Builds/V3Playtest/`. Its pre-build hashes are recorded. The new build targets `Builds/V3Playtest-20261127-2079709/`.
-- **Validation** Unity Windows x64 normal build succeeded. Packed scenes, approved mountain assets, sprint tuning and exclusion of Development diagnostics verified. Same-PC D3D11 Relay room creation, join, spawn and automatic match start passed. Package fully verified, and all 208 original build files matched their pre-build hashes.
-- **Next** Commit and verify push of the shared documentation. Then await the two testers on separate PCs using the packaged build and checklist. Final integration remains deferred.
+- **Scope** Standard · Explore, Review, Finalize · UI, Gameplay, Rendering. Audit the active V3 Player paths and propose presentation work for user review. Documentation only.
+- **Open changes** [Audit](../GameDesign/PresentationAudit.md), [ROADMAP](ROADMAP.md) and this checkpoint.
+- **Evidence** Live main matched the clean base. The previous V3-PLAYTEST-02 documentation was published at `7f17e6c`. The audit references the approved PDF, active scene/prefab bindings, prior general Player smoke and existing official views. Optional local L0 record and command are in `Docs/Development/PresentationAudit/V1/`.
+- **Validation** PASS L0 links/anchors, enabled scenes, player/controller/clip and fire prefab references, audio inventory, documentation-only scope and diff. No new Unity, Player, Relay or screenshot runs. The second human playtest awaits two testers. Final integration stays deferred.
+- **Next** Commit and verify push. Then await second human playtest results and user decisions on Presentation candidates.
 
 ## State and handoff
 
