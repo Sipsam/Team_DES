@@ -2,13 +2,13 @@
 
 **V3-PRES-01** · uGUI Foundation and Design System
 
-**Checkpoint** `READY_TO_COMMIT` · **Base** `a6d1e15cc04887b7bf7ca56b3cebc5867114857d` · **Updated** 2026-11-27 KST
+**Checkpoint** `READY_TO_COMMIT` · **Base** `caef441f2d2e33e4aa0865cb57afc6ac0df9ab2c` · **Updated** 2026-11-27 KST
 
 - **Scope** Standard · Explore, Implement, Validate, Review, Finalize · UI and Gameplay input boundary. Approved design and roadmap, common uGUI controls and Editor Showcase.
-- **Open changes** `Assets/Game/UI/`, V3 bootstrap, gameplay input and camera gates, design and shared workflow links. The untracked team UI PDF is a local input and remains outside the task diff.
-- **Evidence** Local UI design PDF §3 and approved A–G compared with legacy V3 bindings. Optional ignored receipts and render targets in `Docs/Development/Presentation/V1/`. No Player rebuild.
-- **Validation** D3D11 `check-04.log` passed after the initial virtual pointer focus failure was corrected in the Editor test setup. Four layout sizes, glyphs, controls, modality, fade, idle legacy path and direct input regression passed. [Shared results](../Playtest/ValidationSummary.md#v3-pres-01--ugui-공통-ui). No Player or Relay run. Second human playtest still awaits two testers and final integration is deferred.
-- **Next** Verify exact staged scope and live main, commit and push. Capture UI first from the pushed checkout, then run the official map procedure in the same checkout. Resume V3-PRES-02 from the approved design and the root API on user request.
+- **Open changes** The foundation is pushed at `caef441`. Final visual review found the wordmark absent at 2560×1440. Increase its line space and check both bounds and rendered pixels. The untracked team UI PDF remains outside the task diff.
+- **Evidence** Local UI design PDF §3 and approved A–G compared with legacy V3 bindings. Optional ignored receipts and render targets in `Docs/Development/Presentation/V1/`. The first pushed UI images are retained in `FirstPushed/`. No Player rebuild.
+- **Validation** D3D11 `check-05.log` passed the input, glyph, modality, fade, idle legacy path and four-size layout checks, including the new wordmark bounds and raster assertions. The corrected four layouts passed visual review. [Shared results](../Playtest/ValidationSummary.md#v3-pres-01--ugui-공통-ui). No Player or Relay run. Second human playtest still awaits two testers and final integration is deferred.
+- **Next** Recheck the four D3D11 sizes and wordmark raster coverage, then push and publish from the corrected source. Resume V3-PRES-02 from the approved design and the root API on user request.
 
 ## State and handoff
 

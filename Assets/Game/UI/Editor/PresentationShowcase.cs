@@ -16,7 +16,7 @@ namespace TwinEdge.Presentation.Editor
         internal readonly GameObject Sample, Alternate, Dialog;
         internal readonly UiButton DialogButton, FadeButton, DisabledButton, CloseButton;
         internal readonly UiTextField Nickname, RoomCode;
-        internal readonly Text LongError;
+        internal readonly Text LongError, Wordmark;
         internal readonly Image Stamina;
 
         static PresentationShowcase current;
@@ -53,7 +53,7 @@ namespace TwinEdge.Presentation.Editor
             var left = kit.Panel(sample, PresentationTheme.Accent);
             Anchor((RectTransform)left.parent, .05f, .29f, .445f, .91f);
             UiKit.Stack(left, 12);
-            kit.Brand(left);
+            Wordmark = kit.Brand(left).GetComponentInChildren<Text>(true);
             kit.Text(left, "공통 요소 미리보기", PresentationTheme.TitleSize, PresentationTheme.PrimaryText,
                 style: FontStyle.Bold);
             kit.Text(left, "방과 경기 화면에 쓰일 조작과 안내를 확인합니다.", PresentationTheme.CaptionSize,

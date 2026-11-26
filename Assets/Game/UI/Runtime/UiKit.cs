@@ -90,7 +90,7 @@ namespace TwinEdge.Presentation
         public RectTransform Brand(Transform parent)
         {
             var lockup = Rect(parent, "TWIN EDGE");
-            Measure(lockup, 92);
+            Measure(lockup, 108);
             var mark = Surface(lockup, "Crossed blades and gem", Color.white);
             mark.sprite = emblem;
             mark.preserveAspect = true;

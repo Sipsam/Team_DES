@@ -150,7 +150,8 @@ Run16 왕로 산악은 약 905초와 Host 누적 GC 707.67 MiB를 기록했다. 
 - Unity 6000.3.27f1 Windows Editor D3D11에서 C# 컴파일과 저장된 V3Gameplay·LevelBlockoutV3 씬 로드를 통과했다. 비어 있는 공통 Root에서는 기존 방 메뉴가 표시되며 Canvas와 Raycaster는 꺼져 있었다. Preview가 활성화되면 Input System EventSystem 하나를 재사용하고 AudioListener 수는 같았다.
 - 모의 마우스로 버튼의 호버·누름과 모달 열기를 통과했다. 모달의 포커스 및 복귀, 닉네임의 한글 확정 문자 입력, 방 코드 필드, 비활성 버튼, 게임 입력·커서 가드, 같은 프레임 클릭 전달 차단, 280ms 페이드 및 레거시 화면 복귀를 확인했다. 미접속 세션과 Phase는 동일했다. Windows IME 조합 키 입력과 새 Player는 검증하지 않았다.
 - Noto Sans KR 동적 아틀라스의 한글·브랜드명·숫자·기호와 현대 한글 음절 11,172개의 글리프 범위를 확인했다. Showcase는 1280×720, 1600×900, 1920×1080, 2560×1440에서 패널 레이아웃과 긴 오류 문구 잘림 검사를 통과했다. 진행바에 같은 값을 120회 적용해도 그래픽이 다시 생성 대상으로 표시되지 않았다.
-- 재현 명령은 [Presentation UI check](PlaytestGuide.md#presentation-ui-check)에 있다. 선택적 로컬 결과는 `Docs/Development/Presentation/V1/check-04.log`와 `Review/`에 있다. 기존 Player 208개 파일과 2차 플레이테스트 배포 ZIP의 SHA-256이 일치했다. 두 사람의 2차 플레이테스트와 최종 통합 대기 상태는 유지한다.
+- 첫 푸시 이미지에서 2560×1440 워드마크 잘림을 발견했다. 브랜드 줄 높이를 늘리고 네 해상도에서 배치와 워드마크 렌더 픽셀을 검사해 통과했다. 재현 명령은 [Presentation UI check](PlaytestGuide.md#presentation-ui-check)에 있고 선택적 로컬 결과는 `Docs/Development/Presentation/V1/check-05.log`와 `WordmarkReview/`에 있다.
+- 기존 Player 208개 파일과 2차 플레이테스트 배포 ZIP의 SHA-256이 일치했다. 두 사람의 2차 플레이테스트와 최종 통합 대기 상태는 유지한다.
 
 ## 남은 확인
 

@@ -239,7 +239,7 @@ namespace TwinEdge.Presentation.Editor
                 Require(Mathf.Abs(root.Canvas.scaleFactor - width / 1920f) < .005f,
                     $"canvas scale for {width}x{height}, got {root.Canvas.scaleFactor:F3}");
                 CheckLayout(showcase);
-                target.Capture(Path.Combine(directory, $"UI_Showcase_{width}x{height}_v3_{suffix}.png"));
+                target.Capture(Path.Combine(directory, $"UI_Showcase_{width}x{height}_v3_{suffix}.png"), showcase.Wordmark);
                 if (width == 1920)
                 {
                     showcase.OpenDialog();
@@ -270,6 +270,9 @@ namespace TwinEdge.Presentation.Editor
             var error = showcase.LongError;
             Require(error.preferredHeight <= error.rectTransform.rect.height + 1,
                 $"long Korean error unclipped, text height {error.preferredHeight:F1}, rect {error.rectTransform.rect.height:F1}");
+            var wordmark = showcase.Wordmark;
+            Require(wordmark.preferredHeight <= wordmark.rectTransform.rect.height + 1,
+                $"brand text fits, line {wordmark.preferredHeight:F1}, rect {wordmark.rectTransform.rect.height:F1}");
             foreach (Transform panel in showcase.Sample.transform)
             {
                 var content = (RectTransform)panel.Find("Content");
@@ -306,7 +309,7 @@ namespace TwinEdge.Presentation.Editor
                 camera.targetTexture = target;
             }
 
-            internal void Capture(string path)
+            internal void Capture(string path, Text wordmark = null)
             {
                 var active = RenderTexture.active;
                 try
@@ -315,9 +318,25 @@ namespace TwinEdge.Presentation.Editor
                     RenderTexture.active = target;
                     pixels.ReadPixels(new Rect(0, 0, pixels.width, pixels.height), 0, 0);
                     pixels.Apply();
+                    if (wordmark) RequireWordmarkPixels(wordmark.rectTransform);
                     File.WriteAllBytes(path, pixels.EncodeToPNG());
                 }
                 finally { RenderTexture.active = active; }
+            }
+
+            void RequireWordmarkPixels(RectTransform wordmark)
+            {
+                var corners = new Vector3[4];
+                wordmark.GetWorldCorners(corners);
+                var lower = camera.WorldToScreenPoint(corners[0]);
+                var upper = camera.WorldToScreenPoint(corners[2]);
+                int bright = 0;
+                for (int y = Mathf.CeilToInt(lower.y); y < (int)upper.y; y += 3)
+                for (int x = Mathf.CeilToInt(lower.x); x < (int)upper.x; x += 3)
+                {
+                    if (pixels.GetPixel(x, y).grayscale > .6f && ++bright == 48) return;
+                }
+                throw new InvalidOperationException($"The wordmark did not render at {pixels.width}x{pixels.height}.");
             }
 
             public void Dispose()
