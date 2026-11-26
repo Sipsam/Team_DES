@@ -113,6 +113,14 @@ Use the levels relevant to the change. Select direct regressions and record unus
 
 Record each relevant result as `PASS`, `FAIL`, `BLOCKED`, `NOT_RUN` or `DEFERRED`, with its target and reason. Reuse prior results and Players only after comparing relevant code, saved mesh/scene, config, dependencies and build provenance. Distinguish static checks, recorded Collider playback and live Relay. Distinguish Editor and Windows Player rendering. Record commands, environment, version, scope, and optional local evidence as needed. Investigate the first failure and rerun the affected checks after a fix. Keep fixture placement and state overrides separate from production rules.
 
+## Presentation UI check
+
+Open the saved V3Gameplay scene in Play mode, before joining a room, and use **Tools > Twin Edge > Presentation > Toggle UI Component Showcase** to inspect the controls over the live level. The menu item and Showcase exist in the Editor only.
+
+For the scoped check, close Unity and launch Unity 6000.3.27f1 from the repository root with `-batchmode -force-d3d11 -projectPath <root> -executeMethod TwinEdge.Presentation.Editor.PresentationCheck.Validate -logFile <ignored-log-path>`. Omit `-quit` so the Editor can enter Play mode and exit with the check result. The command checks Overlay Canvas input, then captures four resolutions using the standby camera and fixed-size render targets. Create the ignored log parent first.
+
+Working images go to `Docs/Development/Presentation/V1/Review/`. For official UI views, run from the verified pushed checkout and add `-twinPresentationOutput Screenshots -twinPresentationSuffix <seven-character-commit>`. Inspect the UI images and record the full commit, Editor graphics API and capture mode alongside the map set.
+
 ## Development build and automated Relay checks
 
 Run from the repository root with Unity closed. The two build methods explicitly include V3Gameplay and LevelBlockoutV3 in that order. The Playtest build uses StandaloneWindows64 with BuildOptions.None. The Development build uses BuildOptions.Development and includes the opt-in replay drivers.

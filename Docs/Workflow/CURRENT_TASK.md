@@ -1,14 +1,14 @@
 # Current task
 
-**V3-PRESENTATION-AUDIT** · Presentation and Polish Gap Audit
+**V3-PRES-01** · uGUI Foundation and Design System
 
-**Checkpoint** `READY_TO_COMMIT` · **Base** `7f17e6c1505af8fb4c3386c22c995dea6faa8468` · **Updated** 2026-11-27 KST
+**Checkpoint** `READY_TO_COMMIT` · **Base** `a6d1e15cc04887b7bf7ca56b3cebc5867114857d` · **Updated** 2026-11-27 KST
 
-- **Scope** Standard · Explore, Review, Finalize · UI, Gameplay, Rendering. Audit the active V3 Player paths and propose presentation work for user review. Documentation only.
-- **Open changes** [Audit](../GameDesign/PresentationAudit.md), [ROADMAP](ROADMAP.md) and this checkpoint.
-- **Evidence** Live main matched the clean base. The previous V3-PLAYTEST-02 documentation was published at `7f17e6c`. The audit references the approved PDF, active scene/prefab bindings, prior general Player smoke and existing official views. Optional local L0 record and command are in `Docs/Development/PresentationAudit/V1/`.
-- **Validation** PASS L0 links/anchors, enabled scenes, player/controller/clip and fire prefab references, audio inventory, documentation-only scope and diff. No new Unity, Player, Relay or screenshot runs. The second human playtest awaits two testers. Final integration stays deferred.
-- **Next** Commit and verify push. Then await second human playtest results and user decisions on Presentation candidates.
+- **Scope** Standard · Explore, Implement, Validate, Review, Finalize · UI and Gameplay input boundary. Approved design and roadmap, common uGUI controls and Editor Showcase.
+- **Open changes** `Assets/Game/UI/`, V3 bootstrap, gameplay input and camera gates, design and shared workflow links. The untracked team UI PDF is a local input and remains outside the task diff.
+- **Evidence** Local UI design PDF §3 and approved A–G compared with legacy V3 bindings. Optional ignored receipts and render targets in `Docs/Development/Presentation/V1/`. No Player rebuild.
+- **Validation** D3D11 `check-04.log` passed after the initial virtual pointer focus failure was corrected in the Editor test setup. Four layout sizes, glyphs, controls, modality, fade, idle legacy path and direct input regression passed. [Shared results](../Playtest/ValidationSummary.md#v3-pres-01--ugui-공통-ui). No Player or Relay run. Second human playtest still awaits two testers and final integration is deferred.
+- **Next** Verify exact staged scope and live main, commit and push. Capture UI first from the pushed checkout, then run the official map procedure in the same checkout. Resume V3-PRES-02 from the approved design and the root API on user request.
 
 ## State and handoff
 

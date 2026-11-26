@@ -145,6 +145,13 @@ Run16 왕로 산악은 약 905초와 Host 누적 GC 707.67 MiB를 기록했다. 
 - 동일 Windows PC의 일반 Player 두 개를 D3D11로 열어 메인 화면과 로비, Relay 방 생성 및 참가, 양쪽 기본 스폰과 자동 왕로 시작을 확인했다. 산기슭과 금색·파란색 망토가 보였고 일반 Shift 달리기에서 스태미나가 줄었다. 패킹된 어셈블리의 지상 달리기 배율은 2.4이며, 개발용 재생 드라이버와 진단 UI 심볼이 제외됐다. F3 입력에도 진단 UI가 표시되지 않았다.
 - 선택적 로컬 패키지는 `Builds/V3Playtest-20261127-2079709.zip`이며 SHA-256은 `D0C2CF1CD44F2737315CD6F86368774A9304349CE91D6EA59BB3E51D37691C1A`다. ZIP의 208개 파일을 빌드 및 체크리스트와 대조했다. 선택적 로컬 증거는 `Docs/Development/SecondHumanPlaytest/V1/`에 있다.
 
+## V3-PRES-01 · uGUI 공통 UI
+
+- Unity 6000.3.27f1 Windows Editor D3D11에서 C# 컴파일과 저장된 V3Gameplay·LevelBlockoutV3 씬 로드를 통과했다. 비어 있는 공통 Root에서는 기존 방 메뉴가 표시되며 Canvas와 Raycaster는 꺼져 있었다. Preview가 활성화되면 Input System EventSystem 하나를 재사용하고 AudioListener 수는 같았다.
+- 모의 마우스로 버튼의 호버·누름과 모달 열기를 통과했다. 모달의 포커스 및 복귀, 닉네임의 한글 확정 문자 입력, 방 코드 필드, 비활성 버튼, 게임 입력·커서 가드, 같은 프레임 클릭 전달 차단, 280ms 페이드 및 레거시 화면 복귀를 확인했다. 미접속 세션과 Phase는 동일했다. Windows IME 조합 키 입력과 새 Player는 검증하지 않았다.
+- Noto Sans KR 동적 아틀라스의 한글·브랜드명·숫자·기호와 현대 한글 음절 11,172개의 글리프 범위를 확인했다. Showcase는 1280×720, 1600×900, 1920×1080, 2560×1440에서 패널 레이아웃과 긴 오류 문구 잘림 검사를 통과했다. 진행바에 같은 값을 120회 적용해도 그래픽이 다시 생성 대상으로 표시되지 않았다.
+- 재현 명령은 [Presentation UI check](PlaytestGuide.md#presentation-ui-check)에 있다. 선택적 로컬 결과는 `Docs/Development/Presentation/V1/check-04.log`와 `Review/`에 있다. 기존 Player 208개 파일과 2차 플레이테스트 배포 ZIP의 SHA-256이 일치했다. 두 사람의 2차 플레이테스트와 최종 통합 대기 상태는 유지한다.
+
 ## 남은 확인
 
 최신 소스의 전체 월드 회귀, 전체 자동 경기 및 E2E Relay, 최종 배포 빌드 검증은 사용자가 시작하는 최종 통합 단계로 보류했다. 이전 전체 경기의 결과는 해당 후보 빌드의 기록이다.

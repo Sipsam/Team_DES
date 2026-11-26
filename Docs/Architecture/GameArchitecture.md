@@ -1,6 +1,7 @@
 # V3 게임 구조
 
 최신 게임 규칙의 기획 원본은 [통합 기획서](../GameDesign/TwinEdge_Latest_GamePlanning_IntegratedSummary.pdf)에 있다.
+UI·음향·연출 기준과 uGUI 전환 경계는 [프레젠테이션 설계](../GameDesign/PresentationDesign.md)를 따른다.
 
 ## 씬과 코드
 

@@ -46,6 +46,8 @@ public sealed class ThirdPersonCamera : MonoBehaviour
 
     private void Update()
     {
+        if (TwinEdge.Presentation.PresentationRoot.BlocksGameplay) return;
+
         HandleCursor();
 
         if (target == null || Cursor.lockState != CursorLockMode.Locked || Mouse.current == null)

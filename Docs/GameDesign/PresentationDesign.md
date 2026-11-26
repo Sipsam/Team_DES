@@ -1,0 +1,42 @@
+# Twin Edge V3 프레젠테이션 설계
+
+V3-PRES-01 사용자 승인 기준. 이후 화면, 음향과 연출 구현은 이 문서와 [로드맵](../Workflow/ROADMAP.md)을 따른다. 경기 규칙은 [최신 통합 기획서](TwinEdge_Latest_GamePlanning_IntegratedSummary.pdf)와 [현재 런타임 계약](../Architecture/GameArchitecture.md)을 함께 참조한다. [Presentation Audit](PresentationAudit.md)은 승인 전 구현 현황과 자산 조사 기록이다.
+
+작업 환경의 팀 상세기획서 `TwinEdge_Level_UI_Design.pdf` 1~6쪽을 직접 확인했다. 4~6쪽의 최소 HUD, 좌측 하단 상황별 키 안내, 우측 하단 스태미나 및 저채도 소재 방향을 반영했다. 대기실의 수동 시작 제안과 영문 결과 표기는 아래의 자동 시작과 한국어 UI 승인 기준으로 갱신한다. 상세 PDF는 로컬 팀 원본이므로 공유 클론은 이 문서와 추적 중인 통합 기획서를 참조한다.
+
+## 승인 사항
+
+| 영역 | 기준 |
+| --- | --- |
+| A · UI | 한국어 UI만 지원하며 브랜드명 **TWIN EDGE**는 원문으로 표기한다. 심볼과 텍스트를 조합한 로고, 나무·석재·양피지 포인트, 미니멀한 장식, 실시간 3D 월드 배경, 짧은 페이드의 메뉴 전환과 uGUI를 사용한다. |
+| B · 메뉴와 로비 | 두 플레이어의 준비에 따른 기존 자동 시작과 랜덤 망토 색상을 유지한다. 플레이어별 3D 캐릭터 미리보기, 닉네임 입력과 전용 로딩 화면을 제공한다. 재입장은 기존 수동 재입장 흐름을 사용하고 안내를 개선한다. |
+| C · HUD와 튜토리얼 | 우측 하단 작은 가로 스태미나 바에 숫자를 표시하지 않는다. 경기 시간은 결과 화면에 표시한다. 기믹 진행은 월드 표현과 상황별 HUD를 함께 사용한다. 최초 접근 시 상황별 튜토리얼을 제공하고 다시 볼 수 있게 한다. 체크포인트 활성화와 보석 획득·탈취는 각 월드 효과와 일시적 메시지로 알린다. |
+| D · 음악과 음향 | 중세 판타지·앰비언트 음악을 사용한다. 왕로는 평화로운 탐험, 복로는 긴박한 분위기로 전환하고 구간별 음악 분위기와 공간 환경음을 구성한다. 상황에 따라 음악을 동적으로 전환하고 캐릭터의 짧은 신음·기합을 사용한다. 사용권이 확인된 무료 또는 오픈소스 음원을 우선한다. |
+| E · 경기와 결과 | 짧은 시작 카운트다운, 공동 봉인 해제 VFX·SFX 강화, 최초 보석 획득 시 복로 전환 연출을 제공한다. 복로 전환 중 현재 카메라 시점을 유지하고 연출 중 플레이어 조작을 일시 제한한다. 승패 캐릭터 애니메이션을 사용하고 결과에 승패와 경기 시간을 표시한다. 결과 이후 메인 메뉴 복귀와 재경기를 지원한다. |
+| F · 설정과 편의 | Master 음량, 전체화면/창모드, 마우스 감도, 카메라 흔들림 등 연출 강도 및 비활성화를 제공하고 로컬에 저장한다. 그래픽 프리셋, 해상도 선택, 키 바인딩 변경은 범위에서 제외한다. |
+| G · 애니메이션과 VFX | 로우폴리 스타일과 중간 수준의 효과 강도를 사용한다. 공격 타격, 소규모 이동과 착지, 보석 발광과 파티클을 적용한다. 기존 캐릭터 모션을 우선 활용하며 기믹 상호작용 자세와 손·도구 정렬을 개선한다. |
+
+## uGUI 공통 자원
+
+- [PresentationRoot](../../Assets/Game/UI/Runtime/PresentationRoot.cs)는 1920×1080 기준 Screen Space Overlay Canvas와 Screen, Overlay, Modal 레이어를 제공한다. 각 화면은 해당 레이어 아래에서 앵커와 LayoutGroup으로 구성한다. `ShowScreen`, `ShowOverlay`, `ShowModal`로 화면 교체와 입력 소유를 지정한다. 수동 월드 클릭을 통한 재캡처 흐름을 이용한다. 페이드는 불투명한 시점에 화면을 바꾸며 편도 140ms다.
+- [UiKit](../../Assets/Game/UI/Runtime/UiKit.cs)은 브랜드 조합, 텍스트, 패널, 버튼, 필드, 상태와 오류, 모달, 진행바, 키캡, 로딩을 제공한다. 일반·호버·누름·선택·비활성의 색상과 측면 마커 형태를 함께 사용한다. 상태 카드에는 의미가 드러나는 한국어 레이블을 붙인다. 텍스트 스타일 토큰은 본문 26, 보조 22, 제목 44, 소제목 32 단위다.
+- [PresentationTheme](../../Assets/Game/UI/Runtime/PresentationTheme.cs)은 배경 `#252320`, 나무 `#594333`, 석재 `#77736C`, 양피지 `#D8C7A5`, 기본 글자 `#F2EBDB`, 보조 글자 `#B5ADA0`, 강조 `#C5A268`, 협동 `#6489A6`, 경쟁 `#A64B45`, 경고 `#D28A42`, 성공 `#71946C`를 정의한다. 석재와 의미 색상은 작은 표식과 테두리에 쓰고, 단색 바탕 위에서 글자 대비를 확보한다.
+- [TWIN EDGE 심볼](../../Assets/Game/UI/Art/TwinEdgeEmblem.png)은 이 프로젝트를 위해 만든 교차한 두 검과 중앙 보석의 조합이다. 256px 투명 Sprite와 `UiKit.Brand`의 한 줄 워드마크를 사용한다.
+- 프로젝트 자산을 조사한 뒤 공식 경량 한국어 OTF인 Noto Sans KR Regular 2.004를 도입했다. uGUI의 임포트된 동적 Font와 Text/InputField를 사용하며 문구는 화면에서 수정한다. [공식 배포 파일](https://github.com/notofonts/noto-cjk/blob/Sans2.004/Sans/SubsetOTF/KR/NotoSansKR-Regular.otf)
+- 폰트 원본을 게임에 포함해 재배포할 수 있는 SIL OFL 1.1이다. 폰트를 단독 판매할 수 없으며 재배포 시 저작권 문구와 라이선스 전체를 포함해야 한다. 폰트를 참조하는 향후 배포본에는 이 고지 파일을 동봉한다. [저작권 및 OFL 전문](../../Assets/Game/UI/Fonts/OFL.txt)
+
+## 기존 경로와 전환 경계
+
+| 책임 | 활성 경로와 후속 화면 연결 |
+| --- | --- |
+| 화면 표현 | `V3GameplayBootstrap.OnGUI`가 방 메뉴와 경기 HUD를 그린다. 이후 메인/방/로딩과 경기 HUD를 각 작업 단위에서 교체한다. Root에는 시작 시 보이는 화면이 없으며 입력을 소유하는 새 화면이 있을 때 레거시 방 메뉴를 잠시 숨긴다. |
+| UI 입력 | 현재 IMGUI가 방 코드, 클립보드, 생성·참가·퇴장 버튼을 처리한다. 새 UI는 Input System UI Module과 기존 EventSystem을 재사용하고 활성 EventSystem이 없을 때 하나를 만든다. 새 화면에서 세션 명령을 호출할 때 동일한 준비 및 중복 요청 가드를 사용한다. |
+| 세션 상태 | `MultiplayerSessionManager`가 연결 요청과 상태·코드·실패를 관리한다. UI는 상태를 읽고 기존 명령을 호출한다. |
+| Phase와 진행 | `GameStateManager`와 서버가 준비, 자동 시작, 경로 단계, 경기 시간과 승자를 결정한다. 각 기믹과 체크포인트·보석 런타임이 진행 데이터의 소유자다. |
+| 상호작용 | `PlayerInteraction.CurrentTarget`, 기믹별 Prompt/Hud와 `GameplayCharacter`가 현재 대상과 상태를 제공한다. 새 안내는 여기에서 읽을 수 있는 표현 데이터를 사용한다. |
+| 커서와 카메라 | `ThirdPersonCamera`가 Esc 해제와 월드 클릭 캡처를 맡고 `GameplayInput`이 캡처 상태를 확인한다. Root는 입력 화면·모달·페이드가 열린 동안 게임 입력을 차단하고 모달이 닫히면 이전 UI 포커스를 복원한다. 마지막 입력 화면이 닫히는 클릭은 월드 캡처에 전달되지 않는다. |
+| 진단 | F3 진단은 계속 `UNITY_EDITOR \|\| DEVELOPMENT_BUILD` 범위이며 Showcase는 Editor 전용이다. |
+
+## 편집기 Showcase
+
+`V3Gameplay` 씬을 Play 후 로컬 세션 연결 전에 **Tools > Twin Edge > Presentation > Toggle UI Component Showcase**를 사용한다. 화면과 모달을 열어 입력, 상태 마커, 실제 산악 배경과 페이드를 확인할 수 있다. 검증 및 캡처 절차는 [Playtest Guide](../Playtest/PlaytestGuide.md)를 따른다.

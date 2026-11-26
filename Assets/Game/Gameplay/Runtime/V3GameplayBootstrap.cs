@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Linq;
 using TwinEdge.Levels;
+using TwinEdge.Presentation;
 using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -31,9 +32,12 @@ namespace TwinEdge.Gameplay
         string error;
         public static V3GameplayBootstrap Current { get; private set; }
 
+        public PresentationRoot Presentation { get; private set; }
+
         void OnEnable()
         {
             Current = this;
+            Presentation = PresentationRoot.Create(gameObject.scene);
             SceneManager.sceneLoaded += DisableLevelPreview;
             var scene = SceneManager.GetSceneByName(levelScene);
             if (scene.IsValid() && scene.isLoaded) DisableLevelPreview(scene, LoadSceneMode.Additive);
@@ -42,6 +46,12 @@ namespace TwinEdge.Gameplay
         {
             SceneManager.sceneLoaded -= DisableLevelPreview;
             if (Current == this) Current = null;
+            if (Presentation)
+            {
+                Presentation.gameObject.SetActive(false);
+                Destroy(Presentation.gameObject);
+                Presentation = null;
+            }
         }
         void DisableLevelPreview(Scene scene, LoadSceneMode mode)
         {
@@ -228,7 +238,7 @@ namespace TwinEdge.Gameplay
         }
 
         bool InMatch => manager.IsListening && state.Phase >= FoundationPhase.Outbound;
-        bool MenuVisible => !InMatch || Cursor.lockState != CursorLockMode.Locked;
+        bool MenuVisible => !PresentationRoot.BlocksGameplay && (!InMatch || Cursor.lockState != CursorLockMode.Locked);
         Rect RoomArea => InMatch
             ? new Rect(12, Screen.height - 184, Mathf.Min(360, Screen.width - 24), 172)
             : new Rect(12, 12, Mathf.Min(360, Screen.width - 24), 260);
