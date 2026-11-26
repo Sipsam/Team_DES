@@ -2,6 +2,8 @@
 
 ## Install and connect
 
+For the second human playtest, use the prepared build and [two-player checklist](SecondHumanPlaytest.md).
+
 Each tester needs a Windows PC, keyboard, mouse and an internet connection. Use the same build on both PCs. On a linked Team_DES Unity project, open Unity **6000.3.27f1** and select **Tools > Twin Edge > Gameplay > Build V3 Windows Playtest Player**. Package the `Builds/V3Playtest/` runtime files together and leave the `*_DoNotShip` debug folder on the build machine. Extract the package to a writable folder and launch `V3Gameplay.exe`. The player starts in V3 and connects to the configured Unity Authentication and Relay project.
 
 Use this command to reproduce the windowed Direct3D 11 setup used for the Windows desktop check.
@@ -171,7 +173,7 @@ After generating the route data, use `-Case castleWalk` for the castle gate, puz
 
 Use `-Case mountainFromSpawn -PolePlan <plan> -Screenshots` for an isolated Windows Relay run from the ordinary spawns through the mountain checkpoint. To prepare a named plan from the saved graph, set `TWIN_EDGE_POLE_ROUTE_FILE` to a local text file with a plan name followed by its ordered summit IDs on each line. Use `Start` and `Final` as the first and last IDs. Run `TwinEdge.Levels.Editor.MountainPoleContinuousPlan.VerifyNamedRoutes` and pass the resulting `<name>Plan.json` from the mountain evidence directory to the runner.
 
-Use `-Case mountainEntry -Screenshots` to verify the ordinary spawns, initial camera and foothill inputs through Trail Entrance. This case ends before the pole grips and records the bound camera's position, forward vector and vertical FOV. The approved DeepGullies and FinalPolish combination still needs a Windows Player check at final integration. See the [mountain validation summary](ValidationSummary.md#승인된-deepgullies--finalpolish-산악).
+Use `-Case mountainEntry -Screenshots` to verify the ordinary spawns, initial camera and foothill inputs through Trail Entrance. This case ends before the pole grips and records the bound camera's position, forward vector and vertical FOV. Feedback 02 already exercised the approved DeepGullies and FinalPolish combination in a scoped Windows Development Player. Validate the latest combined world at final integration. See the [mountain validation summary](ValidationSummary.md#승인된-deepgullies--finalpolish-산악).
 
 For scene checks use the saved Foundation, Cooperative Pole, River, Castle, Underground and World Materials validators under **Tools > Twin Edge > Gameplay**. Inspect candidate mountain connections with **Tools > Twin Edge > V3 Mountain > Analyze Pole Reachability** and the Level Visualization window. After `MountainPoleTuning.VerifyCurrent` rebuilds the saved graph, run `TwinEdge.Levels.Editor.MountainPoleContinuousPlan.VerifyRepresentativeRoutes` to generate `ContinuousPlan.json`, `AlternativeContinuousPlan.json` and `EasternContinuousPlan.json`. These plans cover different starts, intermediate shelves and entries to Big summit. Replay them against a Development Player built from the same saved level.
 

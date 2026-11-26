@@ -71,7 +71,7 @@ Run16 왕로 산악은 약 905초와 Host 누적 GC 707.67 MiB를 기록했다. 
 - DeepGullies 저장 메시의 구조, 렌더 메시와 MeshCollider 참조 일치 및 첫 막대 교차 구간의 보행 분리를 확인했다. 산악 정적 검사에서 29개 지점의 방향 연결 94개와 착지 지지 표본을 대조했고 연속 계획 4개가 통과했다.
 - 앞선 Windows 격리 Relay에서는 양쪽이 정상 스폰에서 서쪽 선반을 경유해 Big Summit에 도착했다. 별도 복로 격리에서는 개인 발사를, 산기슭 격리에서는 스폰 카메라와 Trail Entrance까지의 이동을 확인했다. Revision 2에서는 기록된 Relay 좌표를 사용해 양쪽 각각 막대 운반 109구간과 지표 표본 12,962개를 Collider에서 대조했다. 이 Windows 실행 및 기록 대조는 앞선 후보의 검증이다.
 - 승인된 FinalPolish는 DeepGullies 메시와 두 저장 씬을 그대로 사용한다. Unity D3D11에서 Forward+ 조명, 셰이더 컴파일, 재질 및 텍스처 참조, 씬 재개방, 산악 서브메시와 재질 슬롯 각 1개를 확인했다. 비산악 대조 프레임은 픽셀 단위로 일치했다.
-- 최종 통합에서 최신 DeepGullies 메시와 FinalPolish 재질이 함께 패킹된 Windows Player의 지형, 충돌 및 D3D11 화면을 확인해야 한다. 산악 최종화에서는 기존 격리 결과를 사용했다.
+- 피드백 02에서 DeepGullies 메시와 FinalPolish 재질을 함께 패킹한 Windows Development Player를 D3D11 격리 Relay로 확인했다. 최종 통합에서는 최신 월드의 지형, 충돌 및 D3D11 화면을 확인한다.
 - 선택적 로컬 증거는 `Docs/Development/Level/V3/MountainRedesign/Verification.md`와 그 아래 `RidgelineReview/DeepGullies/FinalPolish/Verification.md`에 있다.
 
 ## V3 플레이테스트 피드백 1 · 체크포인트와 복구
@@ -139,11 +139,19 @@ Run16 왕로 산악은 약 905초와 Host 누적 GC 707.67 MiB를 기록했다. 
 - `castleUnderground` D3D11 격리 Relay에서 같은 PC의 두 피어가 왕로 성채 4단계의 오답 초기화, 지하 협동 점프 8그룹의 기한 내 통과, 봉인과 보석, 복로 지하 횡단을 확인했다. 하수도 승인 상판의 하강·녹색 표시와 복원은 두 피어가 봤다. 1번째와 11번째 정답 뒤에 넣은 오답은 진행, 부상, 이동 제한과 리스폰에 영향을 주지 않았다. 실제 왕로 문양 12개가 승인된 뒤 두 피어에 개방이 복제됐고, Client 재접속 후에도 우회로를 걸어서 통과했다. 별도로 Host의 복로 회랑 피격·리스폰 규칙을 확인했다.
 - 두 격리 사례의 종료 코드는 각각 0/0이다. 검증한 `Assembly-CSharp.dll` SHA-256은 함정 `93723588552C469F8D9BBA9B9B6816F543A6021229E42D15196E6CAFA4BDCAB2`, 지하·하수도 경로 `EBAFCDC298E8267AE9AA0ED6B551ED723A0AC96CB8661CADE76BF58AC6A3A963`이다. 두 빌드의 관련 함정 소스는 일치한다. 후속 빌드는 하수도 시각 요소와 캡처 구도를 조정했다. 선택적 로컬 기록은 `Docs/Development/DungeonSewer/V1/Verification.md`에 있다.
 
+## 2차 사람 플레이테스트 준비
+
+- 2026-11-27에 당시 원격 main과 일치한 깨끗한 `2079709428e58847bd08e9d582e288eef0dc3833`에서 Unity 6000.3.27f1 일반 Windows x64 Player를 빌드했다. `V3Gameplay`와 `LevelBlockoutV3`, 승인된 산악 메시와 재질의 패킹을 확인했다. 기존 11월 22일 빌드 208개 파일의 SHA-256은 작업 전후 일치했다.
+- 동일 Windows PC의 일반 Player 두 개를 D3D11로 열어 메인 화면과 로비, Relay 방 생성 및 참가, 양쪽 기본 스폰과 자동 왕로 시작을 확인했다. 산기슭과 금색·파란색 망토가 보였고 일반 Shift 달리기에서 스태미나가 줄었다. 패킹된 어셈블리의 지상 달리기 배율은 2.4이며, 개발용 재생 드라이버와 진단 UI 심볼이 제외됐다. F3 입력에도 진단 UI가 표시되지 않았다.
+- 선택적 로컬 패키지는 `Builds/V3Playtest-20261127-2079709.zip`이며 SHA-256은 `D0C2CF1CD44F2737315CD6F86368774A9304349CE91D6EA59BB3E51D37691C1A`다. ZIP의 208개 파일을 빌드 및 체크리스트와 대조했다. 선택적 로컬 증거는 `Docs/Development/SecondHumanPlaytest/V1/`에 있다.
+
 ## 남은 확인
 
-최신 소스의 전체 월드 회귀, 전체 자동 경기 및 E2E Relay, DeepGullies와 FinalPolish를 함께 패킹한 Windows Player, 최종 배포 빌드는 사용자가 시작하는 최종 통합 단계로 보류했다. 이전 전체 경기의 결과는 해당 후보 빌드의 기록이다.
+최신 소스의 전체 월드 회귀, 전체 자동 경기 및 E2E Relay, 최종 배포 빌드 검증은 사용자가 시작하는 최종 통합 단계로 보류했다. 이전 전체 경기의 결과는 해당 후보 빌드의 기록이다.
 
 ### 피드백 01–09의 사람 2인 재플레이
+
+[2차 플레이테스트 체크리스트](SecondHumanPlaytest.md)에 실행·방 참가 절차와 경기 기록표를 정리했다.
 
 | 피드백 | 별도 PC에서 확인할 항목 |
 | --- | --- |

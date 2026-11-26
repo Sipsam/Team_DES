@@ -1,14 +1,14 @@
 # Current task
 
-**V3-FEEDBACK-09** · Dungeon and Sewer Puzzle
+**V3-PLAYTEST-02** · Second Human Playtest Build
 
-**Checkpoint** `READY_TO_COMMIT` · **Base** `4af54c83fbaa891de3e176aecd23b5bafa063ce6` · **Updated** 2026-11-27 KST
+**Checkpoint** `READY_TO_COMMIT` · **Base** `2079709428e58847bd08e9d582e288eef0dc3833` · **Updated** 2026-11-27 KST
 
-- **Scope** Feedback 20–23. Remove two optional underground wall slides, fit six landing traps to the playable deck in its local frame, and replicate accepted Return sewer pad presses. Ignore incorrect sewer glyphs while preserving the accepted prefix and the twelve-glyph completion condition.
-- **Open changes** Underground and castle runtime, gameplay scene fields, underground installer, player movement cleanup, focused existing Relay fixtures and shared contracts.
-- **Validation** Saved underground structure and castle structure/presentation passed. Windows D3D11 live Relay `Feedback09-HazardsMeshFit` and `Feedback09-Candidate` both exited 0/0. Verified six mesh and damage ranges, both peers’ warning and attack states, actual edge hits and recovery, eight cooperative crossings and the physical Return route. The castle run retained outbound pad resets and verified sewer press and release on both peers, harmless wrong inputs, the twelve-glyph unlock, reconnect and bypass traversal.
-- **Evidence** Optional local `Docs/Development/DungeonSewer/V1/Verification.md` and `Docs/Development/Gameplay/V1/RelayRuns/`. The candidate PDB and scene blob record match the source inputs.
-- **Next** Verify actual remote main, commit and push the scoped files, then capture the official D3D11 map and runtime views. Record source hash and publication in local evidence. All nine feedback tasks have scoped evidence. Separate-PC human replay and final integration remain deferred.
+- **Scope** Build and smoke-test the normal Windows x64 Player from clean, remote-verified main. Prepare two-player instructions and checklist. Full integration is deferred.
+- **Open changes** Shared workflow and playtest documentation. The previous Feedback 09 checkpoint is reconciled with pushed source `2079709`.
+- **Evidence** Optional local `Docs/Development/SecondHumanPlaytest/V1/`. The original November 22 Player is in `Builds/V3Playtest/`. Its pre-build hashes are recorded. The new build targets `Builds/V3Playtest-20261127-2079709/`.
+- **Validation** Unity Windows x64 normal build succeeded. Packed scenes, approved mountain assets, sprint tuning and exclusion of Development diagnostics verified. Same-PC D3D11 Relay room creation, join, spawn and automatic match start passed. Package fully verified, and all 208 original build files matched their pre-build hashes.
+- **Next** Commit and verify push of the shared documentation. Then await the two testers on separate PCs using the packaged build and checklist. Final integration remains deferred.
 
 ## State and handoff
 

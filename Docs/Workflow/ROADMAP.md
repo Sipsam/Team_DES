@@ -4,7 +4,7 @@ Use this page for ordering and dependencies. [CURRENT_TASK](CURRENT_TASK.md) hol
 
 | ID | Task and priority | State | Dependencies and completion | Commit and deferred work |
 | --- | --- | --- | --- | --- |
-| V3-LEVEL-MOUNTAIN | Finish approved DeepGullies terrain and FinalPolish materials · first | `COMPLETED` | Scoped evidence reviewed, pushed to `main`, and all 14 official D3D11 views republished after push. | `6498cd4`. A Windows Player packing both approved assets and the new full integration run belong to V3-INTEGRATION. |
+| V3-LEVEL-MOUNTAIN | Finish approved DeepGullies terrain and FinalPolish materials · first | `COMPLETED` | Scoped evidence reviewed, pushed to `main`, and all 14 official D3D11 views republished after push. | `6498cd4`. Feedback 02 later verified both assets together in a scoped Windows Development Player. Latest whole-world validation belongs to V3-INTEGRATION. |
 | V3-WORKFLOW | Establish the repository-native workflow | `COMPLETED` | After V3-LEVEL-MOUNTAIN. Static workflow and recovery checks passed and remote main was verified. | `ea911d5`. Nonvisual. |
 | V3-WORKFLOW-V2 | Add lightweight task-centric orchestration | `COMPLETED` | Scoped L0 and ten document dry runs passed. | `97611f3`. Nonvisual. |
 | V3-FEEDBACK-01 | Checkpoint and Recovery Improvements · Feedback 1 | `COMPLETED` | Validated the three recovery locations and direct peer regressions. | `7f16d56`. Full E2E Relay deferred. |
@@ -15,7 +15,8 @@ Use this page for ordering and dependencies. [CURRENT_TASK](CURRENT_TASK.md) hol
 | V3-FEEDBACK-06 | Collapsing Bridge and Stairway · Feedback 2, 25 | `COMPLETED` | Ordered proximity with persistent server collapse and isolated bridge and Canyon stair checks. | `5109724`. Official map and runtime views captured. Full integration deferred. |
 | V3-FEEDBACK-07 | River and Raft Gameplay · Feedback 12, 13, 24 | `COMPLETED` | Isolated D3D11 Relay crossings and hit recovery passed. Official map and runtime views captured. | `009fe65`. Full integration deferred. |
 | V3-FEEDBACK-08 | Castle Environment and Puzzle UX · Feedback 14–19 | `COMPLETED` | Scoped castle presentation, puzzle state and stair traversal checks. Official map and runtime views published. | `4af54c8`. Full integration deferred. |
-| V3-FEEDBACK-09 | Dungeon and Sewer Puzzle · Feedback 20–23 | `COMPLETED` | Scoped underground traversal, hazards and Return sewer checks passed. | See [CURRENT_TASK](CURRENT_TASK.md) for the source checkpoint and capture receipt. Human replay and full integration deferred. |
+| V3-FEEDBACK-09 | Dungeon and Sewer Puzzle · Feedback 20–23 | `COMPLETED` | Scoped underground traversal, hazards and Return sewer checks passed. | `2079709`. Capture receipt is optionally available locally at `Docs/Development/DungeonSewer/V1/capture-sha256_2079709.txt`. |
+| V3-PLAYTEST-02 | Second human playtest build · after Feedback 01–09 | `COMPLETED` | Normal Windows x64 Player packaged from `2079709`. Same-PC D3D11 Relay room, spawn and start smoke passed. | Awaiting two testers on separate PCs. [Player instructions and checklist](../Playtest/SecondHumanPlaytest.md). |
 | V3-INTEGRATION | Final integration and release build · last | `DEFERRED` | All approved major development complete and user explicitly starts integration. Run whole-world and cross-system regression, full E2E Relay/full match, the latest combined DeepGullies/FinalPolish Windows Player check, and validate the final distribution build. Use the outstanding human playtest and platform checks in Validation Summary to plan coverage. | Pending. |
 
 Start the next feedback task only on user request.
