@@ -52,7 +52,7 @@ try {
         '^return' {
             $mode = 'returnSmoke'; $evidence = 'returnEvidence'; $timeout = 710
             $extra = @('-returnPlan',(Resolve-Path -LiteralPath $ReturnPlan).Path)
-            if ($Case -eq 'returnInput') { $extra += '-returnInput'; $marker = 'input-pass' }
+            if ($Case -eq 'returnInput') { $extra += '-returnInput'; $marker = 'input-pass'; $captureFlag = '-returnScreenshots' }
             if ($Case -eq 'returnReconnect') { $extra += '-returnRecovery' }
         }
         '^mountain$' {

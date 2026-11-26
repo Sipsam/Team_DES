@@ -147,6 +147,8 @@ Use `-Case cameraControls` for the two-peer WASD yaw/pitch matrix, walking and s
 
 Use `-Case poleRecovery` for rod-only obstruction, character collision, cancel and disconnect recovery. Use `-Case mountain -PolePlan <plan>` to replay an isolated mountain route from the grips. At the first landing, both peers verify a supported pivot step with the orbit player on another summit at a different elevation, then finish the exchange and route. The replay saves owner-camera and offscreen views of the first landing.
 
+After generating the saved mountain Return plan below, use `-Case return -ReturnPlan <plan>` to measure preview-to-landing distance over the full mountain segment in both peers. Use `-Case returnInput -ReturnPlan <plan> -Screenshots` to exercise concurrent owner previews, charge and aim updates, supported and risky contacts, unclear trajectories, release, cancel and respawn. The fixture drives the Input System and records managed allocation samples for the warmed prediction calculation.
+
 Use `-Case bridge` to verify all 13 timber deliveries, the outbound crossing, collapse and Lower dock recovery, and both players' Return crossings. Use `-Case bridgeContact` to verify collapse from the edge of an adjacent plank and complete Return from the Canyon landing in the same run. The fixture steers along the deck through the owner's camera-relative input. Repeat with distinct run names to cover different server-selected hazards and check both peers' Return pass files and exit codes.
 
 The mountain and finish fixtures need route data from the same saved scene. In the same PowerShell session, generate it and run the isolated finish when that path is in scope.

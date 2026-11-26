@@ -74,7 +74,7 @@ namespace TwinEdge.Levels.Editor
             summitSize=p.summitSize, rotation=p.rotation, silhouette=p.silhouette, shoulderWidth=p.shoulderWidth,
             crestOffset=p.crestOffset, crestRise=p.crestRise };
 
-        static float RockHeight(MountainPeakV3 p, float x, float z, float floor)
+        static float RockHeight(MountainPeakV3 p, float x, float z, float floor, bool roundCrown = false)
         {
             var d = new Vector2(x,z)-p.position;
             float a=-p.rotation*Mathf.Deg2Rad;
@@ -164,10 +164,19 @@ namespace TwinEdge.Levels.Editor
             float shoulder=Mathf.Max(1,p.shoulderWidth);
             float pitch=family==2?Mathf.Lerp(1.6f,4.2f,(Mathf.Sin(angle)+1)*.5f):family==1?2.3f:family==4?2.8f:2.0f;
             float lipPitch = p.id is "Start" or "Final" ? 2.25f : .65f;
-            float drop=distance*lipPitch+Mathf.Max(0,distance-shoulder)*Mathf.Max(0,pitch-lipPitch);
+            float rimDistance = distance;
+            if (roundCrown)
+            {
+                float outsideSupport = (Mathf.Sqrt(U * U + V * V) - 1) * Mathf.Min(rx, rz);
+                float clear = Mathf.SmoothStep(0, 1, Mathf.InverseLerp(1.5f, 5f, outsideSupport));
+                rimDistance = Mathf.Lerp(distance, MountainRidgelineV3.RoundPositiveEdge(distance, 4f), clear);
+            }
+            float drop=rimDistance*lipPitch+Mathf.Max(0,distance-shoulder)*Mathf.Max(0,pitch-lipPitch);
             // Fade perimeter crest continuously into the shoulder; flared geological foot below.
             float cliff=p.height+crest*Mathf.Exp(-distance/shoulder)-drop;
             float scree=floor+Mathf.Max(0,(p.height-floor)*.52f-distance*.7f);
+            if (roundCrown && distance > shoulder && cliff > scree && cliff < scree + 5f)
+                cliff = scree + MountainRidgelineV3.RoundPositiveEdge(cliff - scree, 5f);
             return Mathf.Max(floor,Mathf.Max(cliff,scree));
         }
 
@@ -399,7 +408,7 @@ namespace TwinEdge.Levels.Editor
                 foreach(var p in peaks)
                 {
                     if (ridgeline != null && p.landingTerrace) continue;
-                    float peakHeight = RockHeight(p, x, z, floor);
+                    float peakHeight = RockHeight(p, x, z, floor, ridgeline != null);
                     if (ridgeline != null && p == c.start)
                         peakHeight = Mathf.Lerp(floor, peakHeight, MountainRidgelineV3.StartCrownWeight(z - c.start.position.y));
                     y=Mathf.Max(y,peakHeight);

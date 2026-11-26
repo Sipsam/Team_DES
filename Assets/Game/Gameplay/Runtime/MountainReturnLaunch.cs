@@ -9,7 +9,7 @@ namespace TwinEdge.Gameplay
 
     // The existing owner transform stream transports movement. Only the server grants launch tickets.
     [DefaultExecutionOrder(-100)]
-    public sealed class MountainReturnLaunch : NetworkBehaviour
+    public sealed partial class MountainReturnLaunch : NetworkBehaviour
     {
         public MountainLaunchConfig config;
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
@@ -24,6 +24,7 @@ namespace TwinEdge.Gameplay
         public readonly NetworkVariable<Unity.Collections.FixedString64Bytes> Failure = new();
         CharacterController controller;
         PlayerMovement movement;
+        GameplayCharacter character;
         GameplayInput input;
         GameStateManager game;
         double began;
@@ -45,23 +46,51 @@ namespace TwinEdge.Gameplay
         public bool InFlight => IsSpawned && State.Value == LaunchState.Flying;
         public bool ReturnEnabled => IsSpawned && game != null && game.foundationMode && game.CanPlay && game.FoundationPhaseLabel == "Return";
         public float Charge => State.Value == LaunchState.Charging ? chargeLevel.Value : 0;
-        void Awake() { controller = GetComponent<CharacterController>(); movement = GetComponent<PlayerMovement>(); input = GetComponent<GameplayInput>(); }
-        public override void OnNetworkDespawn() { flight = false; preparePending = false; movement.ResetVerticalVelocity(); }
-        public override void OnNetworkSpawn() { game = FindFirstObjectByType<GameStateManager>(); applied = Revision.Value; }
-        bool Supported(out string summit)
+        void Awake()
         {
-            summit = PoleGeometry.Summit(transform.position, CooperativePole.Current?.mountain, controller.radius + .25f);
+            controller = GetComponent<CharacterController>();
+            movement = GetComponent<PlayerMovement>();
+            character = GetComponent<GameplayCharacter>();
+            input = GetComponent<GameplayInput>();
+        }
+        public override void OnNetworkDespawn() { flight = false; preparePending = false; HidePrediction(); movement.ResetVerticalVelocity(); }
+        public override void OnLostOwnership() => HidePrediction();
+        void OnDisable() => HidePrediction();
+        public override void OnNetworkSpawn() { game = FindFirstObjectByType<GameStateManager>(); applied = Revision.Value; }
+        static readonly Vector3[] SupportOffsets =
+        {
+            Vector3.zero, Vector3.right * .4f, Vector3.left * .4f, Vector3.forward * .4f, Vector3.back * .4f
+        };
+        readonly RaycastHit[] supportHits = new RaycastHit[16];
+
+        bool Supported(out string summit) => Supported(transform.position, out summit);
+
+        bool Supported(Vector3 feet, out string summit)
+        {
+            summit = PoleGeometry.Summit(feet, CooperativePole.Current?.mountain, controller.radius + .25f);
             if (summit == null) return false;
-            foreach (var offset in new[] { Vector3.zero, Vector3.right * .4f, Vector3.left * .4f, Vector3.forward * .4f, Vector3.back * .4f })
-                if (!Physics.RaycastAll(transform.position + offset + Vector3.up * .2f, Vector3.down, .6f, ~0, QueryTriggerInteraction.Ignore)
-                    .Any(h => !h.transform.IsChildOf(transform) && h.normal.y >= .85f)) return false;
+            foreach (var offset in SupportOffsets)
+            {
+                var origin = feet + offset + Vector3.up * .2f;
+                int count = Physics.RaycastNonAlloc(origin, Vector3.down, supportHits, .6f, ~0, QueryTriggerInteraction.Ignore);
+                var hits = supportHits;
+                if (count == hits.Length)
+                {
+                    hits = Physics.RaycastAll(origin, Vector3.down, .6f, ~0, QueryTriggerInteraction.Ignore);
+                    count = hits.Length;
+                }
+                bool supported = false;
+                for (int i = 0; i < count && !supported; i++)
+                    supported = hits[i].normal.y >= .85f && !hits[i].transform.IsChildOf(transform);
+                if (!supported) return false;
+            }
             return true;
         }
         bool Valid(RpcParams rpc, uint revision) => IsServer && rpc.Receive.SenderClientId == OwnerClientId && revision == Revision.Value && ReturnEnabled;
         [Rpc(SendTo.Server)]
         public void PrepareRpc(uint revision, RpcParams rpc = default)
         {
-            if (!Valid(rpc, revision) || State.Value != LaunchState.Ready || GetComponent<GameplayCharacter>().BlocksServerInteraction || NetworkManager.ServerTime.Time < availableAt.Value ||
+            if (!Valid(rpc, revision) || State.Value != LaunchState.Ready || character.BlocksServerInteraction || NetworkManager.ServerTime.Time < availableAt.Value ||
                 CooperativePole.Current == null || CooperativePole.Current.IsAttached(OwnerClientId) || !Supported(out _)) return;
             began = NetworkManager.ServerTime.Time; chargeLevel.Value = 0; State.Value = LaunchState.Charging;
         }
@@ -99,7 +128,7 @@ namespace TwinEdge.Gameplay
             availableAt.Value = NetworkManager.ServerTime.Time + config.landingSeconds;
         }
         public void BeforeRespawnServer() { if (IsServer) ResetServer("Respawn", config.cooldown); }
-        public void ResetOwner() { if (IsSpawned && IsOwner) FlightVelocity.Value = Vector3.zero; flight = false; preparePending = false; velocity = Vector3.zero; nextLandingRequest = 0; movement.ResetVerticalVelocity(); }
+        public void ResetOwner() { if (IsSpawned && IsOwner) FlightVelocity.Value = Vector3.zero; flight = false; preparePending = false; chargeEndedLocally = true; HidePrediction(); velocity = Vector3.zero; nextLandingRequest = 0; movement.ResetVerticalVelocity(); }
         void ResetServer(string reason, float delay)
         {
             Revision.Value++; Failure.Value = reason; State.Value = LaunchState.Cooldown;
@@ -110,7 +139,7 @@ namespace TwinEdge.Gameplay
         }
         void Update()
         {
-            if (!IsSpawned || config == null) return;
+            if (!IsSpawned || config == null) { HidePrediction(); return; }
             if (IsServer)
             {
                 if (State.Value == LaunchState.Charging) chargeLevel.Value = Mathf.Clamp01((float)(NetworkManager.ServerTime.Time - began) / config.chargeSeconds);
@@ -129,26 +158,48 @@ namespace TwinEdge.Gameplay
                 if (State.Value == LaunchState.Cooldown && NetworkManager.ServerTime.Time >= availableAt.Value) State.Value = LaunchState.Ready;
             }
             if (!IsOwner) return;
+            if (State.Value != LaunchState.Charging) chargeEndedLocally = false;
             if (State.Value != LaunchState.Ready || !ReturnEnabled || Time.unscaledTime >= prepareDeadline) preparePending = false;
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
             var keys = Keyboard.current;
             if (keys != null && keys.f5Key.wasPressedThisFrame) debug = !debug;
 #endif
             if (State.Value != LaunchState.Flying && flight) ResetOwner();
-            if (!ReturnEnabled) { if (flight) ResetOwner(); return; }
+            if (!ReturnEnabled) { if (flight) ResetOwner(); HidePrediction(); return; }
             if (State.Value == LaunchState.Flying && applied != Revision.Value)
             { applied = Revision.Value; velocity = InitialVelocity.Value; previous = transform.position; flight = true; nextLandingRequest = 0; movement.ResetVerticalVelocity(); }
             #if UNITY_EDITOR || DEVELOPMENT_BUILD
-            if (DevelopmentInputDriver) return;
+            if (DevelopmentInputDriver) { HidePrediction(); return; }
 #endif
             if (State.Value == LaunchState.Charging)
             {
-                if (!input.AcceptsInput || input.LaunchCancel.WasPressedThisFrame()) { CancelRpc(Revision.Value); return; }
-                yaw = Camera.main != null ? Camera.main.transform.eulerAngles.y : transform.eulerAngles.y;
+                if (chargeEndedLocally) return;
+                if (!input.AcceptsInput || character.BlocksOwnerInteraction || input.LaunchCancel.WasPressedThisFrame())
+                {
+                    chargeEndedLocally = true;
+                    HidePrediction();
+                    CancelRpc(Revision.Value);
+                    return;
+                }
+                var camera = Camera.main;
+                yaw = camera != null ? camera.transform.eulerAngles.y : transform.eulerAngles.y;
                 pitch = Mathf.Clamp(pitch + input.Move.ReadValue<Vector2>().y * config.aimDegreesPerSecond * Time.deltaTime, config.minPitch, config.maxPitch);
-                if (!input.Launch.IsPressed()) FireRpc(Revision.Value, yaw, pitch, Charge);
+                if (!input.Launch.IsPressed())
+                {
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+                    ReleasedPrediction = PredictLanding(config.Velocity(yaw, pitch, Charge));
+#endif
+                    chargeEndedLocally = true;
+                    HidePrediction();
+                    FireRpc(Revision.Value, yaw, pitch, Charge);
+                    return;
+                }
+                if (controller.enabled) UpdatePrediction();
+                else HidePrediction();
+                return;
             }
-            else if (State.Value == LaunchState.Ready && !GetComponent<GameplayCharacter>().BlocksOwnerInteraction && input.AcceptsInput && input.Launch.WasPressedThisFrame() && Supported(out _))
+            HidePrediction();
+            if (State.Value == LaunchState.Ready && !character.BlocksOwnerInteraction && input.AcceptsInput && input.Launch.WasPressedThisFrame() && Supported(out _))
             {
                 // Freeze local walking immediately; the server's grant may take a Relay round trip.
                 preparePending = true; prepareDeadline = Time.unscaledTime + 2;
@@ -160,9 +211,9 @@ namespace TwinEdge.Gameplay
         {
             if (!IsSpawned || !IsOwner || !flight || !controller.enabled) return;
             float remaining = Time.fixedDeltaTime;
-            while (remaining > .00001f)
+            while (remaining > MountainLaunchConfig.SubstepEpsilon)
             {
-                float dt = Mathf.Min(remaining, 1f / 120); remaining -= dt;
+                float dt = Mathf.Min(remaining, MountainLaunchConfig.MaxSubstep); remaining -= dt;
                 var flags = controller.Move(config.Step(ref velocity, dt));
                 if ((flags & CollisionFlags.Above) != 0) velocity.y = Mathf.Min(0, velocity.y);
                 if ((flags & CollisionFlags.Sides) != 0) { velocity.x = 0; velocity.z = 0; }
@@ -208,7 +259,13 @@ namespace TwinEdge.Gameplay
             if (!ControlsMovement && !launchAvailable) return;
             GUILayout.Label($"Mountain / {(preparePending ? "Preparing launch" : State.Value.ToString())}");
             GUILayout.Label("Hold R to charge, release to launch\nMouse aim | W/S angle | Esc cancel");
-            if (State.Value == LaunchState.Charging) GUILayout.Label($"Charge {Charge:P0} | Angle {pitch:F0}°");
+            if (State.Value == LaunchState.Charging && !chargeEndedLocally)
+            {
+                GUILayout.Label($"Charge {Charge:P0} | Angle {pitch:F0}°");
+                GUILayout.Label(Prediction.HasContact
+                    ? (Prediction.Summit != null ? "Landing preview: supported" : "Landing preview: risky")
+                    : "No reliable landing preview");
+            }
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
             if (debug)
             {

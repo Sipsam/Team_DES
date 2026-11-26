@@ -1,23 +1,20 @@
 # Current task
 
-**V3-FEEDBACK-03** · Cooperative Pole Traversal
+**V3-FEEDBACK-04** · Mountain Geometry and Launch Prediction
 
-**Checkpoint** `READY_TO_COMMIT` · **Base** `c512ce7d8db7da8fb162d78307554e88038b213e` · **Updated** 2026-11-26 KST
+**Checkpoint** `READY_TO_COMMIT` · **Base** `c2b464ba860267a9325f9d69f0fdec26073a9a56` · **Updated** 2026-11-26 KST
 
-- **Scope** Feedback 3 and 6. Keep DeepGullies, FinalPolish, the 32 m rigid pole and server-owned endpoint snapshots. Full E2E Relay and full match are deferred.
-- **Source** Clean local, tracked remote and live main matched. Feedback 2 is pushed and its official captures are recorded.
-- **Evidence** Optional local `Docs/Development/CooperativePole/V1/` contains the approved 94-edge baseline and retained route plans.
-- **Validation checkpoint** The saved terrain graph has 103 directed candidates and preserves all 94 approved IDs. All nine added connections have sampled shaft-only intersections with saved rock. The structural check confirmed separation at the first crossing and no Start-to-Final walking connection. Four approved and three representative continuous plans passed. The corrected representative Western route follows the approved chain through Peak_25.
-- **Peer checkpoint** D3D11 camera controls and pole recovery passed both peers. The initial Eastern replay stalled because the test driver's requested fine steering fell below the ordinary input dead zone. Its driver now keeps fine motion above that threshold. Runtime movement and acceptance rules are unchanged by that correction.
-- **Final-build peer checkpoint** Both peers passed camera controls, pole recovery and the Eastern mountain replay under D3D11. The first landing, cross-summit pivot move and role exchange passed while the shaft intersected the midspan fixture. The moved endpoints differed in height by 4.122m, remained 32.000m apart and matched exactly between peers. Both owner views show the landing ribbon. The replay completed 264 actions and nine exchanges, reached Big Summit with both players and passed gravity fall and checkpoint recovery.
-- **Next** Verify live main and the exact staged scope, then commit and push. Verify the pushed hash and use both the official map capture and the affected runtime player views. Record the commit and capture provenance in local evidence.
+- **Scope** Feedback 7 and 26. Localized DeepGullies rim and base rounding with the shared mesh, plus local Return charge previews with server-owned launch and landing decisions.
+- **Terrain** Unity 6000.3.27f1 saved-mesh checks retained 62,448 safe support samples, all 103 directed links, seven continuous plans and the western walking separation. FinalPolish and the saved scene references were retained.
+- **Peers** Isolated D3D11 Relay passed the 264-action Eastern route, nine role exchanges and both Final arrivals. In the final build, the two Return peers completed all nine launch legs with 0.080–0.108m prediction error. Both input peers passed independent preview, charge and aim, release, cancel and respawn. The final assembly, IL check and capture build are recorded in the evidence.
+- **Evidence** Optional local `Docs/Development/MountainGeometryLaunch/V1/Verification.md`. The first geometry and runtime visual iterations and the transient concurrent-hop retry are recorded there.
+- **Next** Verify live main, commit and push the staged scope, then capture the official map set and both Return owner views from the verified commit. Full E2E Relay and full match remain deferred.
 
-| Work | Logical Worker and domain | State | Dependency and acceptance |
+| Work | Logical Worker and domain | State | Evidence |
 | --- | --- | --- | --- |
-| Server pole movement and collision | Implement · Gameplay / Network | `COMPLETED` | Same-summit, airborne-orbit and distinct-summit movement passed. Shaft contact permits landing and exchange. Character capsule failure and checkpoint recovery passed. |
-| Summit edge visuals | Implement · Level / Rendering | `COMPLETED` | Production support and capsule predicates drive the 29 render-only boundaries. Both player views passed visual review. |
-| Graph, continuous routes and isolated peers | Validate · Level / Network | `COMPLETED` | 94 baseline edges preserved, nine new arcs verified, approved continuous plans passed, and three isolated Relay cases exited 0/0. |
-| Review, push and screenshots | Review / Finalize | `IN_PROGRESS` | Scoped review passed. Verify live main, push and capture the official map and runtime views. |
+| Terrain, support and pole routes | Implement / Validate · Level | `COMPLETED` | Shared mesh, saved support, walking separation, graph, seven plans and isolated Eastern peers passed. |
+| Launch preview and Return | Implement / Validate · Gameplay / Network | `COMPLETED` | Final-build D3D11 input and route cases passed both peers. |
+| Commit, push and captures | Review / Finalize | `IN_PROGRESS` | Scoped validation passed. Verify staged scope, push and publish. |
 
 ## State and handoff
 

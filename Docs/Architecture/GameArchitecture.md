@@ -37,6 +37,8 @@ V3 산악의 `MountainConfigV3`는 바깥 암릉과 횡단 능선을 월드 좌�
 
 왕로 막대 구간의 황토색 테두리는 실제 암석 표면을 따라 생성된다. 봉우리별로 0.8m 간격에서 서버와 같은 다섯 지점 지지 및 캐릭터 캡슐 여유를 검사하고, 판정이 바뀌는 구간을 가는 띠로 표시한다. 테두리에는 Collider가 없으며 저장된 지형 메시와 FinalPolish 재질을 그대로 사용한다.
 
+DeepGullies의 정상 림과 암반 기저 접합부를 좁은 범위에서 둥글게 연결한다. 생성기는 지지 타원 주변에 여유를 두고 기존 바닥으로 이어지는 높이 차이만 완화한다. 저장 메시의 삼각형 연결과 평면 좌표, 봉우리 마커 및 서쪽 침식 홈은 유지한다.
+
 저장한 산악의 Top, Perspective, World Top과 주요 지상 시점을 **Tools > Twin Edge > V3 Mountain > Capture Design Review**에서 캡처할 수 있다. 검토용 이미지는 로컬 `Docs/Development/Level/V3/MountainRedesign/RidgelineReview/After/`에 저장된다.
 
 생성 디렉터리는 새 GUID로 추가된다. 저장된 씬·프리팹·설정에서 사용 중인 생성 파일과 폴더 메타를 커밋한다. 저장하지 않은 상태와 Undo가 이전 생성물을 참조할 수 있다. 생성, 플레이 또는 Undo 세션을 끝내고 씬을 저장한 뒤 Unity를 정상 종료한다. `Tools/ProjectAudit/clean-generated.ps1`은 새 배치 세션에서 전체 비생성 에셋의 전이 의존성과 직렬화된 소유 경로를 검사한다. 형식과 출처를 확인할 수 있는 생성 폴더만 정리 대상으로 취급한다. 변경된 씬 및 새 메시와 함께 Git 삭제 목록을 검토한다.

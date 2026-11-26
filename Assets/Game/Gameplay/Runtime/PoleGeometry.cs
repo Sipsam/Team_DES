@@ -25,14 +25,20 @@ namespace TwinEdge.Gameplay
         public static string Summit(Vector3 feet, MountainConfigV3 config, float margin)
         {
             if (config == null) return null;
-            foreach (var p in Summits(config))
-            {
-                Vector2 center = SummitCenter(config, p);
-                Vector3 local = Quaternion.Euler(0, p.rotation, 0) * new Vector3(feet.x - center.x, 0, feet.z - center.y);
-                float rx = p.summitSize.x * .5f - margin, rz = p.summitSize.y * .5f - margin;
-                if (rx > 0 && rz > 0 && local.x * local.x / (rx * rx) + local.z * local.z / (rz * rz) <= 1 && Mathf.Abs(feet.y - p.height) < 6) return p.id;
-            }
+            if (WithinSummit(feet, config, config.start, margin)) return config.start.id;
+            if (WithinSummit(feet, config, config.destination, margin)) return config.destination.id;
+            foreach (var peak in config.smallPeaks)
+                if (WithinSummit(feet, config, peak, margin)) return peak.id;
             return null;
+        }
+
+        static bool WithinSummit(Vector3 feet, MountainConfigV3 config, MountainPeakV3 peak, float margin)
+        {
+            if (Mathf.Abs(feet.y - peak.height) >= 6) return false;
+            Vector2 center = SummitCenter(config, peak);
+            Vector3 local = Quaternion.Euler(0, peak.rotation, 0) * new Vector3(feet.x - center.x, 0, feet.z - center.y);
+            float rx = peak.summitSize.x * .5f - margin, rz = peak.summitSize.y * .5f - margin;
+            return rx > 0 && rz > 0 && local.x * local.x / (rx * rx) + local.z * local.z / (rz * rz) <= 1;
         }
     }
 }

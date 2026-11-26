@@ -156,11 +156,15 @@ namespace TwinEdge.Gameplay
                     yield return new WaitForSeconds(.1f);
                     Check(launch.State.Value == LaunchState.Charging, "Nonfinite launch rejected");
                 }
+                var forecast = fullMatch == null
+                    ? launch.PredictLanding(launch.config.Velocity(leg.yaw, leg.pitch, leg.charge))
+                    : default;
                 launch.FireRpc(revision, leg.yaw, leg.pitch, leg.charge);
                 yield return Until(() => launch.State.Value == LaunchState.Flying, "Launch accepted");
                 if (fullMatch == null) launch.FireRpc(revision, leg.yaw, leg.pitch, leg.charge);
                 yield return Until(() => launch.State.Value != LaunchState.Flying, "Actual flight completed", 12);
                 Check(launch.LastLanding.Value.ToString() == leg.to, "Actual landing " + leg.to);
+                if (fullMatch == null) ReportPrediction(forecast, leg.to, leg.yaw, leg.pitch, leg.charge);
                 File.AppendAllText(output + "/" + prefix + "-landings.txt", (++count) + " " + leg.from + " -> " + leg.to + " position=" + launch.transform.position + "\n");
             }
         }
@@ -174,26 +178,105 @@ namespace TwinEdge.Gameplay
             launch.DevelopmentInputDriver = false;
             yield return Until(() => launch.State.Value == LaunchState.Ready, "Input station ready");
             var before = launch.transform.position; int count = launch.GetComponent<GameplayCharacter>().RespawnCount.Value;
+            var camera = Camera.main.GetComponent<ThirdPersonCamera>();
+            camera.enabled = false;
+            float yaw = host ? -20 : 20;
+            void Aim(float direction)
+            {
+                camera.transform.SetPositionAndRotation(before + Vector3.up * 8 - Quaternion.Euler(0, direction, 0) * Vector3.forward * 9,
+                    Quaternion.Euler(22, direction, 0));
+            }
+            Aim(0);
+            bool capture = Array.IndexOf(Environment.GetCommandLineArgs(), "-returnScreenshots") >= 0;
             InputSystem.QueueStateEvent(keyboard, new KeyboardState(Key.R, Key.W));
             yield return Until(() => launch.State.Value == LaunchState.Charging, "Actual R binding prepares");
             Check(Vector3.ProjectOnPlane(launch.transform.position - before, Vector3.up).magnitude < .15f, "R+W does not leak into normal walking while approval pending");
-            yield return Until(() => launch.Charge >= .3f, "Actual R held charges on server", 5);
+            yield return Until(() => launch.PredictionVisible && launch.Prediction.Summit == "Final", "Low charge shows supported local contact", 5);
+            var early = launch.Prediction.Feet;
+            Aim(yaw);
+            yield return Until(() => launch.Charge >= .35f && launch.PredictionVisible &&
+                Vector3.Distance(launch.Prediction.Feet, early) > 1, "Charge, pitch and camera yaw move the preview", 5);
+            InputSystem.QueueStateEvent(keyboard, new KeyboardState(Key.R));
+            File.WriteAllText(output + "/" + prefix + "-preview-ready.txt", "ready");
+            yield return Until(() => File.Exists(output + "/host-preview-ready.txt") && File.Exists(output + "/client-preview-ready.txt"),
+                "Both peers charging");
+            var remote = Array.Find(FindObjectsByType<MountainReturnLaunch>(FindObjectsSortMode.None), p => p.IsSpawned && !p.IsOwner);
+            yield return Until(() => remote != null && remote.State.Value == LaunchState.Charging, "Remote charging replicated");
+            Check(launch.PredictionVisible && !remote.PredictionVisible, "Only the owner renders their prediction");
+            File.WriteAllText(output + "/" + prefix + "-preview-checked.txt", "ready");
+            yield return Until(() => File.Exists(output + "/host-preview-checked.txt") && File.Exists(output + "/client-preview-checked.txt"),
+                "Both owner previews checked");
+            if (capture)
+                PoleRuntimeCapture.SaveOwnerView(output + "/" + prefix + "-launch-prediction.png");
             InputSystem.QueueStateEvent(keyboard, new KeyboardState());
+            yield return Until(() => !launch.PredictionVisible, "Release hides preview");
             yield return Until(() => launch.InFlight, "Actual R release launches");
             var v = launch.InitialVelocity.Value;
-            Check(Mathf.Atan2(v.y, new Vector2(v.x, v.z).magnitude) * Mathf.Rad2Deg > 55, "Actual W adjusted elevation above default pitch");
+            float pitch = Mathf.Atan2(v.y, new Vector2(v.x, v.z).magnitude) * Mathf.Rad2Deg;
+            float charge = Mathf.InverseLerp(launch.config.minSpeed, launch.config.maxSpeed, v.magnitude);
+            Check(pitch > 55 && Mathf.Abs(Mathf.DeltaAngle(yaw, Mathf.Atan2(v.x, v.z) * Mathf.Rad2Deg)) < .1f,
+                "Actual W and camera changed elevation and yaw");
+            yield return Until(() => launch.State.Value == LaunchState.Landing, "Input launch landed", 12);
+            ReportPrediction(launch.ReleasedPrediction, "Final", yaw, pitch, charge);
             yield return Until(() => launch.State.Value == LaunchState.Ready, "Input launch landed and rearmed", 12);
             Check(launch.LastLanding.Value.ToString() == "Final" && launch.GetComponent<GameplayCharacter>().RespawnCount.Value == count, "Input flight real Final landing without respawn");
+            CheckPredictionMatrix();
             InputSystem.QueueStateEvent(keyboard, new KeyboardState(Key.R));
-            yield return Until(() => launch.State.Value == LaunchState.Charging, "Second actual R preparation");
+            yield return Until(() => launch.PredictionVisible, "Second actual R preparation displays preview");
             uint cancelRevision = launch.Revision.Value;
             InputSystem.QueueStateEvent(keyboard, new KeyboardState(Key.R, Key.Escape));
+            yield return Until(() => !launch.PredictionVisible, "Escape hides preview while R is still held");
             yield return Until(() => launch.Revision.Value != cancelRevision && launch.Failure.Value.ToString() == "Cancelled", "Actual Escape cancels");
             InputSystem.QueueStateEvent(keyboard, new KeyboardState());
             yield return Until(() => launch.State.Value == LaunchState.Ready && !launch.ControlsMovement, "Actual cancel restores movement");
-            File.WriteAllText(output + "/" + prefix + "-input-pass.txt", "PASS real Input System injected R/W/Release/Escape, pending approval walking freeze, charge, actual flight/Final landing, cancel. Not human OS input.");
+            InputSystem.QueueStateEvent(keyboard, new KeyboardState(Key.R));
+            yield return Until(() => launch.PredictionVisible, "Preview displayed before respawn");
+            File.WriteAllText(output + "/" + prefix + "-respawn-ready.txt", "ready");
+            yield return Until(() => File.Exists(output + "/host-respawn-ready.txt") && File.Exists(output + "/client-respawn-ready.txt"),
+                "Both owners charging before respawn");
+            if (host)
+            {
+                var respawn = FindFirstObjectByType<RespawnManager>();
+                respawn.RespawnPlayer(remote.GetComponent<PlayerMovement>());
+                respawn.RespawnPlayer(launch.GetComponent<PlayerMovement>());
+            }
+            yield return Until(() => launch.GetComponent<GameplayCharacter>().RespawnCount.Value > count && !launch.PredictionVisible,
+                "Respawn removes the charging preview");
+            File.WriteAllText(output + "/" + prefix + "-input-pass.txt",
+                "PASS R/W/release/Escape bindings, owner-only preview, contact/charge/yaw/pitch matrix, actual landing error, cancel and respawn over isolated Relay.");
             yield return Until(() => File.Exists(output + "/host-input-pass.txt") && File.Exists(output + "/client-input-pass.txt"), "Both real input bindings");
             InputSystem.RemoveDevice(keyboard); Application.Quit(0);
+        }
+
+        void CheckPredictionMatrix()
+        {
+            int safe = 0, risky = 0, unknown = 0;
+            foreach (float yaw in new[] { 0f, 45f, 90f, 135f, 180f, 225f, 270f, 315f })
+            foreach (float pitch in new[] { 20f, 45f, 70f })
+            foreach (float charge in new[] { 0f, .5f, 1f })
+            {
+                var result = launch.PredictLanding(launch.config.Velocity(yaw, pitch, charge));
+                if (!result.HasContact) unknown++;
+                else if (result.Summit == null) risky++;
+                else safe++;
+            }
+
+            var initial = launch.config.Velocity(0, 45, .3f);
+            launch.PredictLanding(initial);
+            long before = GC.GetAllocatedBytesForCurrentThread();
+            for (int i = 0; i < 20; i++) launch.PredictLanding(initial);
+            long bytes = GC.GetAllocatedBytesForCurrentThread() - before;
+            string summary = $"Saved Collider predictions: {safe} supported, {risky} risky, {unknown} indeterminate; {bytes} managed bytes in 20 warmed predictions.";
+            File.WriteAllText(output + "/" + prefix + "-prediction-matrix.txt", summary);
+            Check(safe > 0 && risky > 0 && unknown > 0 && bytes == 0, summary);
+        }
+
+        void ReportPrediction(MountainReturnLaunch.LandingPrediction forecast, string summit, float yaw, float pitch, float charge)
+        {
+            float error = forecast.HasContact ? Vector3.Distance(forecast.Feet, launch.transform.position) : float.NaN;
+            File.AppendAllText(output + "/" + prefix + "-prediction-errors.txt",
+                $"yaw={yaw:F1} pitch={pitch:F1} charge={charge:F2} predicted={forecast.Summit ?? "none"} expected={summit} prediction={forecast.Feet:F3} actual={launch.transform.position:F3} error={error:F3}m\n");
+            Check(forecast.HasContact && forecast.Summit == summit && error < .5f, $"Preview matches actual {summit} within 0.5m ({error:F3}m)");
         }
         IEnumerator ConcurrentCase(string expected)
         {

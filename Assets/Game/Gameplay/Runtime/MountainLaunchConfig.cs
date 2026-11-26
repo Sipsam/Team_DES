@@ -5,6 +5,9 @@ namespace TwinEdge.Gameplay
     [CreateAssetMenu(menuName = "Twin Edge/Mountain Return Launch")]
     public sealed class MountainLaunchConfig : ScriptableObject
     {
+        internal const float MaxSubstep = 1f / 120;
+        internal const float SubstepEpsilon = .00001f;
+
         [Header("Unconfirmed tuning hypotheses: metres, seconds, degrees")]
         public float minSpeed = 10, maxSpeed = 29, chargeSeconds = 1.8f;
         public float minPitch = 20, maxPitch = 70, gravity = 20;

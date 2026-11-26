@@ -91,14 +91,30 @@ namespace TwinEdge.Levels.Editor
                 float tailEdge = Mathf.Max(across - tailWidth, Mathf.Max(-along, along - reach));
                 float tailDrop = Mathf.Max(0, along - 15) * (.21f + .13f * Mathf.Cos(phase));
                 float shoulder = peak.height - tailDrop - Mathf.Max(0, tailEdge) * 1.4f;
-                float apron = Mathf.Max(peak.height - Mathf.Max(0, edge) * 1.65f, shoulder);
+                // Leave room for the triangles and contact probes around the authored support ellipse.
+                float clearOfSupport = Mathf.SmoothStep(0, 1, Mathf.InverseLerp(3.6f, 6f, safe));
+                float drop = Mathf.Lerp(Mathf.Max(0, edge), RoundPositiveEdge(edge, 4f), clearOfSupport);
+                float apron = Mathf.Max(peak.height - drop * 1.65f, shoulder);
 
                 // Keep the landing window low enough for the rod to clear taller neighbouring rock.
                 float clearanceEdge = Mathf.Lerp(safe - 2, Mathf.Min(face + .8f, safe - rim), rimVariation);
                 float limit = peak.height + Mathf.Max(0, clearanceEdge) * 1.25f;
-                float merged = Mathf.Max(substrate, apron);
+                // Ease the apron into the existing rock without raising the valley floor.
+                float relief = apron - substrate;
+                float baseWeight = clearOfSupport
+                    * Mathf.SmoothStep(0, 1, Mathf.InverseLerp(8, 16, peak.height - substrate));
+                float merged = Mathf.Max(substrate, apron) - (Mathf.Max(0, relief) - RoundPositiveEdge(relief, 5f)) * baseWeight;
                 return Mathf.Lerp(Mathf.Min(merged, limit), merged, Mathf.SmoothStep(0, 1, Mathf.InverseLerp(36, 65, radius)));
             }
+        }
+
+        // Match both the height and tangent of the original profile at the ends of the fillet.
+        internal static float RoundPositiveEdge(float distance, float width)
+        {
+            if (distance <= 0) return 0;
+            if (distance >= width) return distance;
+            float t = distance / width;
+            return distance * t * (2 - t);
         }
 
         readonly Flank[] flanks;
