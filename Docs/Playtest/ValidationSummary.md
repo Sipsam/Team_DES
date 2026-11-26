@@ -1,5 +1,19 @@
 # V3 검증 요약
 
+## V3-PRES-02 · 메뉴와 온라인 대기실
+
+검증 기준은 `fe1db9774fc41ebd85a4db1627aa91dd19bbba11`의 작업 트리다. 선택적 로컬 증거는 무시되는 `Docs/Development/Presentation/V2/`에 둔다.
+
+| 범위 | 결과 | 근거 |
+| --- | --- | --- |
+| Unity 6000.3.27f1 D3D11 Editor | PASS | `check-03.log`에서 1280×720, 1600×900, 1920×1080, 2560×1440의 메인 메뉴, 방 참여 오류, 대기실과 로딩을 검사했다. 대기실 fixture에서 같은 폭의 슬롯, 두 RenderTexture, 미리보기의 Animator와 자원 해제, Collider·NetworkObject·AudioListener·게임 입력 컴포넌트 부재를 확인했다. 공통 입력과 페이드도 통과했다. |
+| Windows D3D11 Development Player와 Relay | PASS | `build-05.log`와 `verified05-run.txt`에서 실제 창의 버튼과 필드를 조작했다. 방 생성 요청 연타, 코드 복사·붙여넣기, 두 닉네임과 포트레이트, 자동 왕로 시작과 정상 스폰, Client 퇴장·수동 재입장, 새 NGO ID의 슬롯 1과 망토 복원, Host 방 종료를 확인했다. 초기 후보에서 새 방 생성과 퇴장 복귀도 확인했다. |
+| 대기실 시각 및 오류 분류 | PASS | Host 실시간 대기실의 망토 배정 대기와 실제 배정 상태를 캡처했다. 양쪽 스폰 및 수동 재입장 화면에서 망토 색상이 일치했다. 로컬 형식 오류와 서비스 문자 제한, 제3 Player의 정원 초과, 방장의 퇴장으로 닫힌 방을 각각 확인했다. `provider-03.log`의 직접 SDK 진단은 실제 창 조작 검증과 구분한다. |
+| 물리 키보드 Windows 한국어 IME | PASS | `build-04.log`의 Windows D3D11 Player에서 사용자 확인으로 조합 중 표시, Backspace 삭제, Enter 확정, Ctrl+V 붙여넣기를 모두 확인했다. 별도의 OS 키 주입 결과는 수동 확인과 구분한다. |
+| 공식 캡처 | 소스 게시 후 수행 | 원격 main과 일치하는 클린 체크아웃에서 월드 세트와 실제 Player 화면을 캡처한다. 출처와 파일 목록을 캡처 영수증에 기록한다. |
+
+2차 사람 플레이테스트는 기존 패키지로 두 테스터를 기다린다. 전체 경기, 전체 E2E Relay와 월드 통합 검증은 최종 통합으로 보류한다.
+
 ## 전체 경기 자동 완주 기록
 
 Unity 6000.3.27f1 Windows Development Player 두 프로세스가 실제 Relay를 사용했다. 두 회차 모두 정상 스폰에서 출발한 뒤 공동 봉인·보석 픽업·복로·결승을 통과했다.

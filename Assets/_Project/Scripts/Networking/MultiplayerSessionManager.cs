@@ -1,26 +1,35 @@
 using System;
 using System.Threading.Tasks;
+using TwinEdge.Gameplay;
 using Unity.Netcode;
 using Unity.Services.Authentication;
 using Unity.Services.Core;
+using Unity.Services.Lobbies;
 using Unity.Services.Multiplayer;
 using UnityEngine;
 
 public sealed class MultiplayerSessionManager : MonoBehaviour
 {
+    internal enum RoomIssue { None, InvalidCode, NotFound, Full, InvalidNickname, Connection, HostLeft }
+    const string HostLeftReason = "Host closed the room.";
     [SerializeField] private NetworkManager networkManager;
 
     private ISession activeSession;
     private Task initializationTask;
     private bool operationInProgress;
+    private bool leaving;
+    private Task disconnectCleanup;
 
     public event Action<string> StatusChanged;
     public event Action<string> JoinCodeChanged;
 
     public string CurrentJoinCode { get; private set; } = string.Empty;
     public string CurrentStatus { get; private set; } = "Offline. Create or join a room.";
-    public bool IsBusy => operationInProgress;
+    public bool IsBusy => operationInProgress || (networkManager != null && networkManager.ShutdownInProgress);
     public bool HasSession => activeSession != null;
+    internal RoomIssue Issue { get; private set; }
+    internal string InterruptedRoomCode { get; private set; } = string.Empty;
+    internal bool WasDisconnected { get; private set; }
 
     private void Awake()
     {
@@ -39,6 +48,7 @@ public sealed class MultiplayerSessionManager : MonoBehaviour
 
         networkManager.OnClientConnectedCallback += HandleClientConnected;
         networkManager.OnClientDisconnectCallback += HandleClientDisconnected;
+        networkManager.OnClientStopped += HandleClientStopped;
     }
 
     private void OnDestroy()
@@ -50,34 +60,39 @@ public sealed class MultiplayerSessionManager : MonoBehaviour
 
         networkManager.OnClientConnectedCallback -= HandleClientConnected;
         networkManager.OnClientDisconnectCallback -= HandleClientDisconnected;
+        networkManager.OnClientStopped -= HandleClientStopped;
+        DetachSession();
     }
 
-    public async Task CreateRoomAsync()
+    public async Task CreateRoomAsync(string nickname = null)
     {
-        if (operationInProgress || activeSession != null)
+        if (IsBusy || activeSession != null)
         {
             return;
         }
 
+        ResetRoomIssue();
+        if (!SetConnectionNickname(nickname)) return;
         operationInProgress = true;
         SetStatus("Initializing Unity Services...");
 
         try
         {
-            await EnsureServicesReadyAsync();
+            await PrepareServicesAsync();
 
             SessionOptions options = new SessionOptions { MaxPlayers = 2 }.WithRelayNetwork();
-            activeSession = await MultiplayerService.Instance.CreateSessionAsync(options);
+            AttachSession(await MultiplayerService.Instance.CreateSessionAsync(options));
             CurrentJoinCode = activeSession.Code;
             JoinCodeChanged?.Invoke(CurrentJoinCode);
 
-            Debug.Log($"Relay session created. Join Code: {CurrentJoinCode}", this);
+            Debug.Log("Relay session created.", this);
             SetStatus("Room created. Waiting for player...");
             RefreshConnectionStatus();
         }
         catch (Exception exception)
         {
-            Debug.LogError($"Could not create Relay session: {exception}", this);
+            Issue = ClassifyIssue(exception, networkManager.DisconnectReason);
+            Debug.LogError($"Could not create Relay session ({exception.GetType().Name}, {Issue}).", this);
             SetStatus($"Room creation failed: {exception.Message}");
             await CleanupFailedOperationAsync();
         }
@@ -87,40 +102,46 @@ public sealed class MultiplayerSessionManager : MonoBehaviour
         }
     }
 
-    public async Task JoinRoomAsync(string joinCode)
+    internal static bool TryNormalizeJoinCode(string code, out string normalized)
     {
-        string sanitizedCode = string.IsNullOrWhiteSpace(joinCode)
-            ? string.Empty
-            : joinCode.Trim().Replace(" ", string.Empty).ToUpperInvariant();
+        normalized = (code ?? string.Empty).Trim().Replace(" ", string.Empty).ToUpperInvariant();
+        if (normalized.Length != 6) return false;
+        foreach (char c in normalized)
+            if (!(c is >= 'A' and <= 'Z' or >= '0' and <= '9')) return false;
+        return true;
+    }
 
-        if (string.IsNullOrEmpty(sanitizedCode))
+    public async Task JoinRoomAsync(string joinCode, string nickname = null)
+    {
+        if (IsBusy || activeSession != null) return;
+        ResetRoomIssue();
+
+        if (!TryNormalizeJoinCode(joinCode, out string sanitizedCode))
         {
-            SetStatus("Enter a Join Code first.");
+            Issue = RoomIssue.InvalidCode;
+            SetStatus("Enter a valid Join Code.");
             return;
         }
 
-        if (operationInProgress || activeSession != null)
-        {
-            return;
-        }
-
+        if (!SetConnectionNickname(nickname)) return;
         operationInProgress = true;
         SetStatus("Joining Relay session...");
 
         try
         {
-            await EnsureServicesReadyAsync();
-            activeSession = await MultiplayerService.Instance.JoinSessionByCodeAsync(sanitizedCode);
+            await PrepareServicesAsync();
+            AttachSession(await MultiplayerService.Instance.JoinSessionByCodeAsync(sanitizedCode));
             CurrentJoinCode = activeSession.Code;
             JoinCodeChanged?.Invoke(CurrentJoinCode);
 
-            Debug.Log($"Joined Relay session {activeSession.Id} with code {CurrentJoinCode}.", this);
+            Debug.Log("Joined Relay session.", this);
             SetStatus("Session joined. Connecting to host...");
             RefreshConnectionStatus();
         }
         catch (Exception exception)
         {
-            Debug.LogError($"Could not join Relay session with code '{sanitizedCode}': {exception}", this);
+            Issue = ClassifyIssue(exception, networkManager.DisconnectReason);
+            Debug.LogWarning($"Could not join Relay session ({exception.GetType().Name}, {Issue}).", this);
             SetStatus($"Join failed: {exception.Message}");
             await CleanupFailedOperationAsync();
         }
@@ -132,17 +153,27 @@ public sealed class MultiplayerSessionManager : MonoBehaviour
 
     public async Task LeaveRoomAsync()
     {
-        if (operationInProgress)
+        if (IsBusy)
         {
             return;
         }
 
         operationInProgress = true;
-        ISession sessionToLeave = activeSession;
-        activeSession = null;
+        leaving = true;
+        ResetRoomIssue();
+        ISession sessionToLeave = DetachSession();
 
         try
         {
+            if (networkManager.IsServer)
+            {
+                for (int i = networkManager.ConnectedClientsIds.Count - 1; i >= 0; i--)
+                {
+                    ulong clientId = networkManager.ConnectedClientsIds[i];
+                    if (clientId != networkManager.LocalClientId)
+                        networkManager.DisconnectClient(clientId, HostLeftReason);
+                }
+            }
             if (sessionToLeave != null)
             {
                 await sessionToLeave.LeaveAsync();
@@ -162,9 +193,85 @@ public sealed class MultiplayerSessionManager : MonoBehaviour
             CurrentJoinCode = string.Empty;
             JoinCodeChanged?.Invoke(CurrentJoinCode);
             SetStatus("Left session.");
+            leaving = false;
             operationInProgress = false;
         }
     }
+
+    private bool SetConnectionNickname(string nickname)
+    {
+        if (networkManager.NetworkConfig.PlayerPrefab?.GetComponent<GameplayCharacter>() == null) return true;
+        if (!PlayerNickname.TryNormalize(nickname ?? PlayerNickname.Fallback, out string normalized))
+        {
+            Issue = RoomIssue.InvalidNickname;
+            return false;
+        }
+        networkManager.NetworkConfig.ConnectionData = PlayerNickname.Encode(normalized);
+        return true;
+    }
+
+    private void ResetRoomIssue()
+    {
+        Issue = RoomIssue.None;
+        InterruptedRoomCode = string.Empty;
+        WasDisconnected = false;
+    }
+
+    private async Task PrepareServicesAsync()
+    {
+        if (disconnectCleanup != null) await disconnectCleanup;
+        await EnsureServicesReadyAsync();
+    }
+
+    private static RoomIssue ClassifyIssue(Exception exception, string disconnectReason)
+    {
+        if (disconnectReason == NetworkSpawnCoordinator.RoomFullReason) return RoomIssue.Full;
+        if (disconnectReason == NetworkSpawnCoordinator.InvalidNicknameReason) return RoomIssue.InvalidNickname;
+        for (var cause = exception; cause != null; cause = cause.InnerException)
+        {
+            if (cause is LobbyServiceException lobby)
+            {
+                if (lobby.Reason == LobbyExceptionReason.LobbyFull) return RoomIssue.Full;
+                if (lobby.Reason == LobbyExceptionReason.InvalidJoinCode) return RoomIssue.InvalidCode;
+                if (lobby.Reason is LobbyExceptionReason.LobbyNotFound or LobbyExceptionReason.EntityNotFound)
+                    return RoomIssue.NotFound;
+            }
+            if (cause is not SessionException session) continue;
+            if (session.Error is SessionError.SessionNotFound or SessionError.SessionDeleted or SessionError.AllocationNotFound)
+                return RoomIssue.NotFound;
+            // The pinned Multiplayer SDK drops some Lobby error codes and keeps the service detail.
+            if (session.Error != SessionError.Unknown) continue;
+            string detail = session.Message;
+            if (Contains(detail, "is full") || Contains(detail, "maximum number of players"))
+                return RoomIssue.Full;
+            if (Contains(detail, "contains an invalid character") || Contains(detail, "invalid join code") ||
+                Contains(detail, "invalid session code") || Contains(detail, "code is invalid"))
+                return RoomIssue.InvalidCode;
+            if (Contains(detail, "not found") || Contains(detail, "could not find") ||
+                Contains(detail, "does not exist"))
+                return RoomIssue.NotFound;
+        }
+        return RoomIssue.Connection;
+    }
+
+    private static bool Contains(string detail, string text) =>
+        detail.IndexOf(text, StringComparison.OrdinalIgnoreCase) >= 0;
+
+    private void AttachSession(ISession session)
+    {
+        activeSession = session;
+        session.Deleted += HandleSessionDeleted;
+    }
+
+    private ISession DetachSession()
+    {
+        ISession session = activeSession;
+        if (session != null) session.Deleted -= HandleSessionDeleted;
+        activeSession = null;
+        return session;
+    }
+
+    private void HandleSessionDeleted() => EndConnection(RoomIssue.HostLeft);
 
     private async Task EnsureServicesReadyAsync()
     {
@@ -203,8 +310,7 @@ public sealed class MultiplayerSessionManager : MonoBehaviour
 
     private async Task CleanupFailedOperationAsync()
     {
-        ISession failedSession = activeSession;
-        activeSession = null;
+        ISession failedSession = DetachSession();
 
         if (failedSession != null)
         {
@@ -243,16 +349,28 @@ public sealed class MultiplayerSessionManager : MonoBehaviour
             return;
         }
 
-        ISession disconnectedSession = activeSession;
-        activeSession = null;
+        if (!operationInProgress && !leaving)
+            EndConnection(networkManager.DisconnectReason == HostLeftReason ? RoomIssue.HostLeft : RoomIssue.Connection);
+    }
+
+    private void HandleClientStopped(bool wasHost)
+    {
+        if (!operationInProgress && !leaving && HasSession)
+            EndConnection(networkManager.DisconnectReason == HostLeftReason ? RoomIssue.HostLeft : RoomIssue.Connection);
+    }
+
+    private void EndConnection(RoomIssue issue)
+    {
+        ISession disconnectedSession = DetachSession();
+        if (disconnectedSession == null) return;
+        WasDisconnected = true;
+        Issue = issue;
+        InterruptedRoomCode = CurrentJoinCode;
         CurrentJoinCode = string.Empty;
         JoinCodeChanged?.Invoke(CurrentJoinCode);
         SetStatus("Connection ended. Return to the room menu.");
 
-        if (disconnectedSession != null)
-        {
-            _ = LeaveDisconnectedSessionAsync(disconnectedSession);
-        }
+        disconnectCleanup = LeaveDisconnectedSessionAsync(disconnectedSession);
     }
 
     private async Task LeaveDisconnectedSessionAsync(ISession disconnectedSession)

@@ -4,11 +4,14 @@ using UnityEngine;
 
 public sealed class NetworkSpawnCoordinator : MonoBehaviour
 {
+    internal const string RoomFullReason = "This prototype supports two players.";
+    internal const string InvalidNicknameReason = "Invalid player nickname.";
     [SerializeField] private NetworkManager networkManager;
     [SerializeField] private Transform[] spawnPoints;
 
     private readonly Dictionary<ulong, int> clientSpawnSlots = new Dictionary<ulong, int>();
     private readonly Dictionary<ulong, (Pose Pose, string Checkpoint)> approvedV3Spawns = new();
+    private readonly Dictionary<ulong, string> approvedNicknames = new();
 
     private void Awake()
     {
@@ -51,14 +54,24 @@ public sealed class NetworkSpawnCoordinator : MonoBehaviour
         {
             response.Approved = false;
             response.CreatePlayerObject = false;
-            response.Reason = "This prototype supports two players.";
+            response.Reason = RoomFullReason;
             return;
         }
 
+        bool isV3 = networkManager.NetworkConfig.PlayerPrefab.GetComponent<TwinEdge.Gameplay.GameplayCharacter>() != null;
+        if (isV3)
+        {
+            if (!TwinEdge.Gameplay.PlayerNickname.TryDecode(request.Payload, out string nickname))
+            {
+                response.Reason = InvalidNicknameReason;
+                return;
+            }
+            approvedNicknames[request.ClientNetworkId] = nickname;
+        }
         Transform spawnPoint = spawnPoints[spawnIndex];
         Pose pose = GetSpawnPose(spawnPoint, spawnIndex, out string checkpoint);
         clientSpawnSlots[request.ClientNetworkId] = spawnIndex;
-        if (networkManager.NetworkConfig.PlayerPrefab.GetComponent<TwinEdge.Gameplay.GameplayCharacter>() != null)
+        if (isV3)
             approvedV3Spawns[request.ClientNetworkId] = (pose, checkpoint);
 
         response.Approved = true;
@@ -142,6 +155,7 @@ public sealed class NetworkSpawnCoordinator : MonoBehaviour
     }
 
     public bool TryGetSlot(ulong clientId, out int slot) => clientSpawnSlots.TryGetValue(clientId, out slot);
+    internal string GetApprovedNickname(ulong clientId) => approvedNicknames[clientId];
 
     private static Pose GetSpawnPose(Transform spawnPoint, int slot, out string label)
     {
@@ -197,5 +211,6 @@ public sealed class NetworkSpawnCoordinator : MonoBehaviour
     {
         clientSpawnSlots.Remove(clientId);
         approvedV3Spawns.Remove(clientId);
+        approvedNicknames.Remove(clientId);
     }
 }

@@ -92,7 +92,7 @@ public sealed class GameStateManager : NetworkBehaviour
             !NetworkManager.ConnectedClients.TryGetValue(sender, out var peer) || peer.PlayerObject != player.NetworkObject)
             return;
         if (Phase >= FoundationPhase.Outbound) AssignFoundationCape(player);
-        readyFoundationPeers.Add(sender);
+        if (readyFoundationPeers.Add(sender)) player.MarkFoundationReadyServer();
     }
 
     void AssignFoundationCape(TwinEdge.Gameplay.GameplayCharacter player)

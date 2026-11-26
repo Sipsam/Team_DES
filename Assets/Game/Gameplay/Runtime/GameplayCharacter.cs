@@ -1,3 +1,4 @@
+using Unity.Collections;
 using Unity.Netcode;
 using UnityEngine;
 
@@ -15,6 +16,14 @@ namespace TwinEdge.Gameplay
         };
         internal static int CapeColorCount => CapeColors.Length;
         readonly NetworkVariable<byte> capeColor = new(byte.MaxValue);
+        readonly NetworkVariable<FixedString64Bytes> nickname = new();
+        readonly NetworkVariable<byte> slot = new(byte.MaxValue);
+        readonly NetworkVariable<bool> foundationReady = new();
+        internal string Nickname => nickname.Value.ToString();
+        internal int LobbySlot => slot.Value;
+        internal byte CapeColorIndex => capeColor.Value;
+        internal bool FoundationReady => foundationReady.Value;
+        internal void MarkFoundationReadyServer() => foundationReady.Value = true;
         MaterialPropertyBlock capeProperties;
         internal void SetCapeColorServer(byte color)
         {
@@ -23,9 +32,14 @@ namespace TwinEdge.Gameplay
 
         void ApplyCapeColor(byte previous, byte current)
         {
-            capeProperties.Clear();
-            if (current < CapeColorCount) capeProperties.SetColor(BaseColor, CapeColors[current]);
-            capeRenderer.SetPropertyBlock(capeProperties);
+            ApplyCapeAppearance(capeRenderer, capeProperties, current);
+        }
+
+        internal static void ApplyCapeAppearance(MeshRenderer renderer, MaterialPropertyBlock properties, byte index)
+        {
+            properties.Clear();
+            if (index < CapeColorCount) properties.SetColor(BaseColor, CapeColors[index]);
+            renderer.SetPropertyBlock(properties);
         }
 
         static readonly string[] MotionStates = { "Idle", "Walk", "Run", "Jump", "Walk_Carry" };
@@ -59,6 +73,15 @@ namespace TwinEdge.Gameplay
 
         public override void OnNetworkSpawn()
         {
+            if (IsServer)
+            {
+                var coordinator = NetworkManager.GetComponent<NetworkSpawnCoordinator>();
+                if (coordinator.TryGetSlot(OwnerClientId, out int approvedSlot))
+                {
+                    slot.Value = (byte)approvedSlot;
+                    nickname.Value = new FixedString64Bytes(coordinator.GetApprovedNickname(OwnerClientId));
+                }
+            }
             awaitingFoundationReady = false;
             InitializeContest();
             previous = transform.position; sampleTime = Time.time;

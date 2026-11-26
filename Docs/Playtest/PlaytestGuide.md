@@ -121,6 +121,17 @@ For the scoped check, close Unity and launch Unity 6000.3.27f1 from the reposito
 
 Working images go to `Docs/Development/Presentation/V1/Review/`. For official UI views, run from the verified pushed checkout and add `-twinPresentationOutput Screenshots -twinPresentationSuffix <seven-character-commit>`. Inspect the UI images and record the full commit, Editor graphics API and capture mode alongside the map set.
 
+### Main menu and Relay presentation
+
+Use the same Editor check with `-twinPresentationOutput Docs/Development/Presentation/V2/Review` for four-size main menu and join/error captures. The Editor drives the live screen handlers in a local fixture. Use Windows Players for user input and Relay evidence.
+
+Build a scoped Windows Player in a separate direct child of `Builds/`, such as `Builds/V3Presentation02`. Launch two copies with `-force-d3d11 -screen-fullscreen 0 -screen-width 1280 -screen-height 720` and separate log paths. Save the player build hashes and record which inputs came through onscreen controls.
+
+1. Type distinct nicknames. With the Windows Korean IME and physical keyboard, compose, backspace, commit and paste Hangul in the nickname field. Restart a Player to check the last submitted nickname. Inspect blank and overlong input.
+2. Create a room from the Host menu and copy the code from the waiting room. On the Client, check malformed and unknown codes, then use the paste button and join. Record both names, readiness, visible previews and cape state. Wait for the normal automatic start and verify spawn, camera and in-game HUD.
+3. Interrupt or leave the Client, check the Host waiting screen, then manually rejoin with the original code and nickname. Confirm the original slot and cape. Close the room from the Host Esc menu, check the Client's new-room message, then create and leave a fresh room.
+4. Save the six requested view types from the verified pushed source, including a frame while both previews are visible. Keep live room codes out of published images and logs. Record any sanitization and any view captured with an Editor fixture.
+
 ## Development build and automated Relay checks
 
 Run from the repository root with Unity closed. The two build methods explicitly include V3Gameplay and LevelBlockoutV3 in that order. The Playtest build uses StandaloneWindows64 with BuildOptions.None. The Development build uses BuildOptions.Development and includes the opt-in replay drivers.

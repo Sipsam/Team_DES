@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.IO;
+using System.Linq;
 using TwinEdge.Gameplay;
 using UnityEditor;
 using UnityEditor.SceneManagement;
@@ -79,15 +80,23 @@ namespace TwinEdge.Presentation.Editor
             Require(bootstrap && bootstrap.Presentation, "normal bootstrap installed the root");
             while (!SceneManager.GetSceneByName(bootstrap.levelScene).isLoaded || Mathf.Abs(bootstrap.standbyCamera.transform.position.y) < 1)
                 yield return null;
-            Canvas.ForceUpdateCanvases();
             var root = bootstrap.Presentation;
+            while (!bootstrap.WorldReady || root.IsTransitioning || !root.Screens.Find("Main Menu").gameObject.activeSelf)
+                yield return null;
+            Require(PresentationRoot.BlocksGameplay && root.Canvas.enabled, "production main menu owns input");
+            var menu = CheckSessionMenu(root);
+            while (menu.MoveNext()) yield return menu.Current;
+            bootstrap.SessionUI.enabled = false;
+            root.ShowScreen(null);
+            yield return null;
+            Canvas.ForceUpdateCanvases();
             Require(root.Canvas.renderMode == RenderMode.ScreenSpaceOverlay && !root.Canvas.enabled &&
                 !root.GetComponent<GraphicRaycaster>().enabled, "idle overlay canvas and raycaster");
             var scaler = root.GetComponent<CanvasScaler>();
             Require(scaler.uiScaleMode == CanvasScaler.ScaleMode.ScaleWithScreenSize &&
                 scaler.referenceResolution == new Vector2(1920, 1080), "reference canvas scaler");
-            Require(!PresentationRoot.BlocksGameplay && V3GameplayBootstrap.PointerOverMenu(new Vector2(24, Screen.height - 24)),
-                "legacy room menu still visible and hit-tested");
+            Require(!PresentationRoot.BlocksGameplay && !V3GameplayBootstrap.PointerOverMenu(new Vector2(24, Screen.height - 24)),
+                "idle overlay has no offline legacy room menu");
             var phase = bootstrap.state.Phase;
             var status = bootstrap.sessions.CurrentStatus;
             int eventSystems = UnityEngine.Object.FindObjectsByType<EventSystem>(FindObjectsSortMode.None).Length;
@@ -204,7 +213,7 @@ namespace TwinEdge.Presentation.Editor
                 frame = Time.frameCount;
                 while (Time.frameCount == frame) yield return null;
                 Require(fixture.AcceptsInput && Cursor.lockState == CursorLockMode.None &&
-                    V3GameplayBootstrap.PointerOverMenu(new Vector2(24, Screen.height - 24)), "legacy room menu and input restored");
+                    !V3GameplayBootstrap.PointerOverMenu(new Vector2(24, Screen.height - 24)), "gameplay input restored");
                 Require(!bootstrap.manager.IsListening && !bootstrap.sessions.HasSession &&
                     bootstrap.state.Phase == phase && bootstrap.sessions.CurrentStatus == status,
                     "showcase left multiplayer and game phase unchanged");
@@ -257,6 +266,148 @@ namespace TwinEdge.Presentation.Editor
             for (int i = 0; i < 120; i++) UiKit.SetProgress(showcase.Stamina, .68f);
             Canvas.ForceUpdateCanvases();
             Require(dirty == initialDirty, "steady progress does not dirty its graphic");
+        }
+
+        static IEnumerator CheckSessionMenu(PresentationRoot root)
+        {
+            var landing = root.Screens.Find("Main Menu");
+            var join = root.Screens.Find("Join Room");
+            var nickname = landing.GetComponentInChildren<UiTextField>();
+            string previousName = nickname.text;
+            var camera = GameObject.Find("Menu World Camera").GetComponent<Camera>();
+            string directory = Argument("-twinPresentationOutput", "Docs/Development/Presentation/V2/Review");
+            string suffix = Argument("-twinPresentationSuffix", "working");
+            Directory.CreateDirectory(directory);
+
+            Button Button(Transform view, string name) =>
+                view.GetComponentsInChildren<Button>().Single(button => button.name == name);
+
+            nickname.SetTextWithoutNotify("");
+            Button(landing, "방 생성").onClick.Invoke();
+            yield return null;
+            Require(landing.GetComponentsInChildren<Text>().Any(text => text.text.StartsWith("닉네임은")),
+                "blank nickname rejected through the menu");
+            const string maxNickname = "한글닉네임열두글자시험용";
+            nickname.text = maxNickname + "초과";
+            Button(landing, "방 참여").onClick.Invoke();
+            yield return null;
+            Require(!root.IsTransitioning &&
+                landing.GetComponentsInChildren<Text>().Any(text => text.text.StartsWith("닉네임은")),
+                "overlong nickname rejected through the menu");
+            nickname.text = "  " + maxNickname + "  ";
+
+            root.Canvas.renderMode = RenderMode.ScreenSpaceCamera;
+            root.Canvas.worldCamera = camera;
+            root.Canvas.planeDistance = camera.nearClipPlane + 1;
+            foreach (int width in new[] { 1280, 1600, 1920, 2560 })
+            {
+                int height = width * 9 / 16;
+                using var target = new RenderTarget(camera, width, height);
+                yield return null;
+                yield return null;
+                Canvas.ForceUpdateCanvases();
+                var wordmark = landing.GetComponentsInChildren<Text>().Single(text => text.text == "TWIN EDGE");
+                CheckLiveLayout(landing);
+                target.Capture(Path.Combine(directory, $"UI_MainMenu_{width}x{height}_v3_{suffix}.png"), wordmark);
+                Button(landing, "방 참여").onClick.Invoke();
+                while (!join.gameObject.activeSelf || root.IsTransitioning) yield return null;
+                var code = join.GetComponentInChildren<UiTextField>();
+                code.text = "!@";
+                Button(join, "참여").onClick.Invoke();
+                yield return null;
+                Canvas.ForceUpdateCanvases();
+                Require(join.GetComponentsInChildren<Text>().Any(text => text.text.StartsWith("방 코드는")),
+                    "invalid room code reported through the join screen");
+                CheckLiveLayout(join);
+                target.Capture(Path.Combine(directory, $"UI_JoinError_{width}x{height}_v3_{suffix}.png"));
+                Button(join, "뒤로 가기").onClick.Invoke();
+                while (!landing.gameObject.activeSelf || root.IsTransitioning) yield return null;
+                Debug.Log($"SESSION_PRESENTATION_LAYOUT PASS {width}x{height}");
+            }
+            nickname.text = previousName;
+            var lobbyLayouts = CheckLobbyLayouts(root, camera, directory, suffix);
+            while (lobbyLayouts.MoveNext()) yield return lobbyLayouts.Current;
+            root.Canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+            root.Canvas.worldCamera = null;
+        }
+
+        static IEnumerator CheckLobbyLayouts(PresentationRoot root, Camera camera, string directory, string suffix)
+        {
+            var bootstrap = V3GameplayBootstrap.Current;
+            bootstrap.SessionUI.enabled = false;
+            var lobby = root.Screens.Find("Lobby");
+            var loading = root.Screens.Find("Loading");
+            var portraits = lobby.GetComponentsInChildren<RawImage>(true);
+            var visual = bootstrap.manager.NetworkConfig.PlayerPrefab.transform.Find("VisualRoot");
+            root.ShowScreen(lobby.gameObject);
+            string[] names = { "한글닉네임열두글자시험용 (나)", "하늘탐색자07" };
+            for (int i = 0; i < portraits.Length; i++)
+            {
+                var card = portraits[i].transform.parent.parent;
+                var captions = card.GetComponentsInChildren<Text>();
+                captions[0].text = names[i];
+                captions[1].enabled = false;
+                captions[2].text = "연결됨 · 준비 중\n망토 배정 대기";
+            }
+
+            using (var first = new LobbyCharacterPreview(portraits[0], visual, 0))
+            using (var second = new LobbyCharacterPreview(portraits[1], visual, 1))
+            {
+                first.SetCape(0);
+                var stages = UnityEngine.Object.FindObjectsByType<Camera>(FindObjectsSortMode.None)
+                    .Where(item => item.name == "Portrait Camera").Select(item => item.transform.parent).ToArray();
+                Require(stages.Length == 2, "one portrait camera per slot");
+                foreach (var stage in stages)
+                    Require(!stage.GetComponentInChildren<Unity.Netcode.NetworkObject>() &&
+                        !stage.GetComponentInChildren<Collider>() && !stage.GetComponentInChildren<AudioListener>() &&
+                        !stage.GetComponentInChildren<PlayerMovement>() && !stage.GetComponentInChildren<GameplayInput>() &&
+                        stage.GetComponentInChildren<Animator>(), "portrait is an animated visual only");
+
+                foreach (int width in new[] { 1280, 1600, 1920, 2560 })
+                {
+                    int height = width * 9 / 16;
+                    using var target = new RenderTarget(camera, width, height);
+                    root.ShowScreen(lobby.gameObject);
+                    yield return null;
+                    yield return null;
+                    Canvas.ForceUpdateCanvases();
+                    CheckLiveLayout(lobby);
+                    Require(Mathf.Abs(portraits[0].transform.parent.parent.GetComponent<RectTransform>().rect.width -
+                        portraits[1].transform.parent.parent.GetComponent<RectTransform>().rect.width) < .1f,
+                        "portrait card widths match");
+                    Require(portraits.All(item => item.texture is RenderTexture texture && texture.IsCreated()),
+                        "both portrait render targets created");
+                    target.Capture(Path.Combine(directory, $"UI_LobbyFixture_{width}x{height}_v3_{suffix}.png"));
+
+                    root.ShowScreen(loading.gameObject);
+                    yield return null;
+                    Canvas.ForceUpdateCanvases();
+                    CheckLiveLayout(loading);
+                    var wordmark = loading.GetComponentsInChildren<Text>().Single(text => text.text == "TWIN EDGE");
+                    target.Capture(Path.Combine(directory, $"UI_LoadingFixture_{width}x{height}_v3_{suffix}.png"), wordmark);
+                    Debug.Log($"SESSION_PRESENTATION_LOBBY_LAYOUT PASS {width}x{height}");
+                }
+            }
+
+            yield return null;
+            Require(portraits.All(item => item.texture == null && !item.enabled) &&
+                !UnityEngine.Object.FindObjectsByType<Camera>(FindObjectsSortMode.None).Any(item => item.name == "Portrait Camera"),
+                "portrait targets and cameras released");
+            root.ShowScreen(root.Screens.Find("Main Menu").gameObject);
+        }
+
+        static void CheckLiveLayout(Transform screen)
+        {
+            foreach (var label in screen.GetComponentsInChildren<Text>())
+            {
+                if (string.IsNullOrEmpty(label.text)) continue;
+                Require(label.preferredHeight <= label.rectTransform.rect.height + 1,
+                    $"{screen.name} text fits ({label.text}): {label.preferredHeight:F1}/{label.rectTransform.rect.height:F1}");
+                foreach (char glyph in label.text)
+                    if (!char.IsWhiteSpace(glyph)) Require(label.font.HasCharacter(glyph), $"glyph U+{(int)glyph:X4}");
+            }
+            var content = (RectTransform)screen.Find("Panel/Content");
+            Require(LayoutUtility.GetPreferredHeight(content) <= content.rect.height + 1, $"{screen.name} panel content fits");
         }
 
         static void QueueMouse(Mouse mouse, Transform target, bool down)

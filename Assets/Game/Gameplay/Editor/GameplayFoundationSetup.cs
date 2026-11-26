@@ -54,6 +54,12 @@ namespace TwinEdge.Gameplay.Editor
 
             var root = new GameObject("V3GameplayBootstrap");
             var bootstrap = root.AddComponent<V3GameplayBootstrap>();
+            var presentation = new SerializedObject(bootstrap);
+            presentation.FindProperty("presentationFont").objectReferenceValue =
+                AssetDatabase.LoadAssetAtPath<Font>(TwinEdge.Presentation.Editor.PresentationShowcase.FontPath);
+            presentation.FindProperty("presentationEmblem").objectReferenceValue =
+                AssetDatabase.LoadAssetAtPath<Sprite>(TwinEdge.Presentation.Editor.PresentationShowcase.EmblemPath);
+            presentation.ApplyModifiedPropertiesWithoutUndo();
             var network = new GameObject("NetworkManager");
             var manager = network.AddComponent<NetworkManager>();
             var transport = network.AddComponent<UnityTransport>();
@@ -157,6 +163,7 @@ namespace TwinEdge.Gameplay.Editor
                     !File.Exists(Path.Combine(stage, "V3Gameplay_Data", "globalgamemanagers")))
                     throw new IOException("V3 build did not produce a complete Windows player.");
 
+                File.Copy("Assets/Game/UI/Fonts/OFL.txt", Path.Combine(stage, "NotoSansKR-OFL.txt"));
                 if (Directory.Exists(destination)) Directory.Move(destination, previous);
                 try { Directory.Move(stage, destination); }
                 catch

@@ -1,15 +1,14 @@
-# Current task
+﻿# Current task
 
-**V3-PRES-01** · uGUI Foundation and Design System
+**V3-PRES-02** · Main Menu, Lobby, Nickname and Loading
 
-**Checkpoint** `READY_TO_COMMIT` · **Base** `caef441f2d2e33e4aa0865cb57afc6ac0df9ab2c` · **Updated** 2026-11-27 KST
+**Checkpoint** `READY_TO_COMMIT` · **Base** `fe1db9774fc41ebd85a4db1627aa91dd19bbba11` · **Updated** 2026-11-27 KST
 
-- **Scope** Standard · Explore, Implement, Validate, Review, Finalize · UI and Gameplay input boundary. Approved design and roadmap, common uGUI controls and Editor Showcase.
-- **Open changes** The foundation is pushed at `caef441`. Final visual review found the wordmark absent at 2560×1440. Increase its line space and check both bounds and rendered pixels. The untracked team UI PDF remains outside the task diff.
-- **Evidence** Local UI design PDF §3 and approved A–G compared with legacy V3 bindings. Optional ignored receipts and render targets in `Docs/Development/Presentation/V1/`. The first pushed UI images are retained in `FirstPushed/`. No Player rebuild.
-- **Validation** D3D11 `check-05.log` passed the input, glyph, modality, fade, idle legacy path and four-size layout checks, including the new wordmark bounds and raster assertions. The corrected four layouts passed visual review. [Shared results](../Playtest/ValidationSummary.md#v3-pres-01--ugui-공통-ui). No Player or Relay run. Second human playtest still awaits two testers and final integration is deferred.
-- **Next** Recheck the four D3D11 sizes and wordmark raster coverage, then push and publish from the corrected source. Resume V3-PRES-02 from the approved design and the root API on user request.
-
+- **Scope** Complex · UI, Network, Rendering. Logical Workers run sequentially in this session. Menu, nickname, Relay presentation, lobby previews, loading and manual rejoin.
+- **Inputs** Live main matches HEAD and origin/main. The untracked team UI PDF was reviewed at pp. 4–5 and remains outside the task diff. PRES-01's fix is pushed; its foundation check evidence remains in Presentation/V1.
+- **Open changes** Server-approved nickname, replica slot/readiness, session outcomes, V3 uGUI screens, camera and lobby previews, and shared contracts are in the working tree. `Builds/V3Presentation02/` is the isolated Development Player destination.
+- **Evidence** Optional ignored `Docs/Development/Presentation/V2/`. `check-03.log` passed the four-size UI and preview lifecycle checks. `build-05.log` and `verified05-run.txt` passed the Windows D3D11 Relay UI scope, including malformed, full and closed rooms, two live portraits and manual slot and cape restoration. The user confirmed Hangul composition, deletion, commit and clipboard paste with a physical keyboard on candidate 04. The nickname field inputs match candidate 05.
+- **Next** Commit the reviewed task paths, verify and push to live main, then publish map and six Player views from the verified source. Record capture and remote receipts independently. The second human playtest awaits testers and final integration remains deferred.
 ## State and handoff
 
 Use `PLANNED` for queued work, `IN_PROGRESS` for implementation, `VALIDATING` for scoped checks, `BLOCKED` for a prerequisite or unresolved failure, and `AWAITING_APPROVAL` for an explicit user gate. Once required checks and review pass, use `READY_TO_COMMIT`. Use `COMPLETED` after verifying commit and push, and `DEFERRED` for intentionally postponed work.

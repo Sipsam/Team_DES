@@ -19,6 +19,8 @@ namespace TwinEdge.Gameplay
         public Transform interactionSample;
         public Camera standbyCamera;
         public CooperativePole cooperativePole;
+        [SerializeField] Font presentationFont;
+        [SerializeField] Sprite presentationEmblem;
         [SerializeField, Min(1)] float finishWidth = 4.5f;
         [SerializeField, Min(.1f)] float finishDwell = .35f;
         BoxCollider finish;
@@ -28,16 +30,19 @@ namespace TwinEdge.Gameplay
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
         bool debug;
 #endif
-        string code = "";
-        string error;
+        public bool WorldReady => ready;
+        public bool WorldFailed { get; private set; }
         public static V3GameplayBootstrap Current { get; private set; }
 
         public PresentationRoot Presentation { get; private set; }
+        public SessionPresentation SessionUI { get; private set; }
 
         void OnEnable()
         {
             Current = this;
             Presentation = PresentationRoot.Create(gameObject.scene);
+            SessionUI = Presentation.gameObject.AddComponent<SessionPresentation>();
+            SessionUI.Initialize(this, presentationFont, presentationEmblem);
             SceneManager.sceneLoaded += DisableLevelPreview;
             var scene = SceneManager.GetSceneByName(levelScene);
             if (scene.IsValid() && scene.isLoaded) DisableLevelPreview(scene, LoadSceneMode.Additive);
@@ -77,7 +82,8 @@ namespace TwinEdge.Gameplay
                 !markers.TryGetValue("Mountain.V3.ReturnFinish", out var returnFinish) ||
                 !markers.ContainsKey("Mountain.V3.TrailEntrance"))
             {
-                error = "V3 mountain route markers missing. Session disabled.";
+                WorldFailed = true;
+                Debug.LogError("V3 mountain route markers missing. Session disabled.", this);
                 yield break;
             }
             Physics.SyncTransforms();
@@ -106,6 +112,13 @@ namespace TwinEdge.Gameplay
             AddCheckpoint("Valley.V3.UpperCheckpoint", "Upper dock / castle rooms", CheckpointPhase.Cooperation);
             var fortress = FindObjectsByType<FortressSectionV3>(FindObjectsSortMode.None).FirstOrDefault();
             if (fortress != null) CreateCheckpoint("Underground start", fortress.config.origin + fortress.config.start, CheckpointPhase.Cooperation);
+            if (fortress != null)
+            {
+                Vector3 origin = fortress.config.origin;
+                Vector3 cameraPosition = origin + new Vector3(205, 135, 210);
+                Vector3 aim = origin + new Vector3(-160, 15, -190);
+                SessionUI.SetWorldCamera(new Pose(cameraPosition, Quaternion.LookRotation(aim - cameraPosition)));
+            }
             var colliders = FindObjectsByType<MeshCollider>(FindObjectsSortMode.None);
             respawns.ConfigureFallRecovery(colliders.Min(c => c.bounds.min.y) - 15f);
             ready = true;
@@ -229,26 +242,24 @@ namespace TwinEdge.Gameplay
 
         void OnGUI()
         {
-            if (MenuVisible) DrawRoomMenu();
+            if (MenuVisible) DrawMatchMenu();
             var player = manager.LocalClient?.PlayerObject;
-            if (player != null && state.Phase >= FoundationPhase.Outbound) DrawMatchHud(player);
+            if (player != null && state.Phase >= FoundationPhase.Outbound && !PresentationRoot.BlocksGameplay) DrawMatchHud(player);
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
             if (debug) DrawDiagnostics(player);
 #endif
         }
 
         bool InMatch => manager.IsListening && state.Phase >= FoundationPhase.Outbound;
-        bool MenuVisible => !PresentationRoot.BlocksGameplay && (!InMatch || Cursor.lockState != CursorLockMode.Locked);
-        Rect RoomArea => InMatch
-            ? new Rect(12, Screen.height - 184, Mathf.Min(360, Screen.width - 24), 172)
-            : new Rect(12, 12, Mathf.Min(360, Screen.width - 24), 260);
+        bool MenuVisible => InMatch && !PresentationRoot.BlocksGameplay && Cursor.lockState != CursorLockMode.Locked;
+        Rect RoomArea => new(12, Screen.height - 184, Mathf.Min(360, Screen.width - 24), 172);
         Rect HudArea => new(12, 12, Mathf.Min(390, Screen.width - 24), Mathf.Max(0, Screen.height - 202));
 
-        void DrawRoomMenu()
+        void DrawMatchMenu()
         {
             GUILayout.BeginArea(RoomArea);
             GUILayout.BeginVertical(GUI.skin.box);
-            GUILayout.Label(InMatch ? "ROOM MENU" : "TWIN EDGE");
+            GUILayout.Label("ROOM MENU");
             GUILayout.Label(sessions.CurrentStatus);
             if (!string.IsNullOrEmpty(sessions.CurrentJoinCode))
             {
@@ -257,28 +268,12 @@ namespace TwinEdge.Gameplay
                 if (GUILayout.Button("Copy", GUILayout.Width(64))) GUIUtility.systemCopyBuffer = sessions.CurrentJoinCode;
                 GUILayout.EndHorizontal();
             }
-            if (!sessions.HasSession && !manager.IsListening)
-            {
-                GUI.enabled = ready && !sessions.IsBusy;
-                if (!ready) GUILayout.Label(error ?? "Loading V3 level...");
-                if (GUILayout.Button("Create room")) _ = sessions.CreateRoomAsync();
-                code = GUILayout.TextField(code, 24);
-                if (GUILayout.Button("Join room")) _ = sessions.JoinRoomAsync(code);
-                GUI.enabled = !sessions.IsBusy;
-                if (GUILayout.Button("Quit game")) Application.Quit();
-            }
-            else
-            {
-                GUILayout.Label($"Players {state.ConnectedPlayerCount}/2");
-                if (!InMatch)
-                    GUILayout.Label(state.ConnectedPlayerCount < 2 ? "Waiting for your partner" : "Preparing both players...");
-                GUI.enabled = !sessions.IsBusy && sessions.HasSession;
-                if (GUILayout.Button("Leave room")) _ = sessions.LeaveRoomAsync();
-            }
+            GUILayout.Label($"Players {state.ConnectedPlayerCount}/2");
+            GUI.enabled = !sessions.IsBusy && sessions.HasSession;
+            if (GUILayout.Button(state.Phase == FoundationPhase.Finished ? "Return to main menu" : "Leave room"))
+                _ = SessionUI.Leave();
             GUI.enabled = true;
-            GUILayout.Label(InMatch
-                ? "WASD move | Shift sprint | Space jump | E interact\nClick to capture / attack | F grab, throw or resist"
-                : "The match starts automatically when both players are ready.");
+            GUILayout.Label("WASD move | Shift sprint | Space jump | E interact\nClick to capture / attack | F grab, throw or resist");
             GUILayout.EndVertical();
             GUILayout.EndArea();
         }
@@ -370,12 +365,12 @@ namespace TwinEdge.Gameplay
 
         public static bool PointerOverMenu(Vector2 point)
         {
-            if (Current == null || !Current.MenuVisible) return false;
+            if (Current == null || PresentationRoot.BlocksGameplay) return false;
             var guiPoint = new Vector2(point.x, Screen.height - point.y);
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
             if (Current.debug && Current.DiagnosticsArea.Contains(guiPoint)) return true;
 #endif
-            return Current.RoomArea.Contains(guiPoint) ||
+            return (Current.MenuVisible && Current.RoomArea.Contains(guiPoint)) ||
                 (CastleGameplay.Current?.IsKeypadOpen == true);
         }
     }

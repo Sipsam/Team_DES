@@ -23,7 +23,9 @@ namespace TwinEdge.Presentation.Editor
 
         [MenuItem(MenuPath, true)]
         static bool CanToggle() => EditorApplication.isPlaying && V3GameplayBootstrap.Current &&
-            V3GameplayBootstrap.Current.Presentation && !V3GameplayBootstrap.Current.manager.IsListening;
+            V3GameplayBootstrap.Current.Presentation && !V3GameplayBootstrap.Current.Presentation.IsTransitioning &&
+            V3GameplayBootstrap.Current.WorldReady && !V3GameplayBootstrap.Current.sessions.IsBusy &&
+            !V3GameplayBootstrap.Current.manager.IsListening;
 
         [MenuItem(MenuPath)]
         static void Toggle()
@@ -33,10 +35,14 @@ namespace TwinEdge.Presentation.Editor
                 if (current.Root.IsTransitioning) return;
                 current.Dispose();
                 current = null;
+                V3GameplayBootstrap.Current.SessionUI.ResumeScreens();
             }
             else
             {
-                current = new PresentationShowcase(V3GameplayBootstrap.Current.Presentation);
+                var bootstrap = V3GameplayBootstrap.Current;
+                if (bootstrap.Presentation.Modals.GetComponentInChildren<UiButton>()) return;
+                bootstrap.SessionUI.enabled = false;
+                current = new PresentationShowcase(bootstrap.Presentation);
                 current.Open();
             }
         }
