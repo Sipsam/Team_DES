@@ -1,19 +1,20 @@
 # Current task
 
-**V3-FEEDBACK-06** · Collapsing Bridge and Stairway
+**V3-FEEDBACK-07** · River and Raft Gameplay
 
-**Checkpoint** `READY_TO_COMMIT` · **Base** `263d821b4eaf799ac6cd517ea194d87fd7110749` · **Updated** 2026-11-26 KST
+**Checkpoint** `READY_TO_COMMIT` · **Base** `510972478c9afe7dc4750b69cf7b6d5d0132f20d` · **Updated** 2026-11-26 KST
 
-- **Scope** Feedback 2 and 25. Server-side Return plank proximity and the straight Canyon stairs between the existing bridge approach and Lower dock.
-- **Validation** Saved Foundation, bridge hazard geometry and 12 stairway CharacterController traversals passed. The saved wet bank and both stair joints passed. Unity 6000.3.27f1 Windows Development Player built. D3D11 bridge and Canyon Relay passed 0/0 each. Both players completed the bridge and stair crossings. Full-world, full E2E and full match deferred.
-- **Evidence** Optional local `Docs/Development/BridgeStairway/V1/Verification.md`. Raw Relay results are under ignored `Docs/Development/Gameplay/V1/RelayRuns/Feedback06-*/`.
-- **Next** Verify live main, commit and push the reviewed scope. Capture the official Editor maps and runtime bridge/stone stairway views from the verified source.
+- **Scope** Feedback 12, 13 and 24. Server-authorized raft hit presentation, 10 to 15 shared course hazards in each phase, and verification of downstream physics and water scroll.
+- **Open changes** River runtime, raft HUD, isolated river replay and editor validation, and shared documentation. The saved river, docks and Canyon stairs retain their inputs.
+- **Validation** Saved river and Canyon approach passed. Unity 6000.3.27f1 Windows Development D3D11 Relay passed both crossings and damage/recovery, 0/0 per case. Full-world, full E2E and full match remain deferred.
+- **Evidence** Optional local `Docs/Development/RiverRaft/V1/Verification.md`. Raw evidence `Feedback07-CrossingSteering` and `Feedback07-RecoveryVerified` under ignored `Docs/Development/Gameplay/V1/RelayRuns/`.
+- **Next** Verify live main, commit and push the scoped changes, and capture the official D3D11 map and runtime images. Record publication against the verified hash in local evidence.
 
 | Work | Logical Worker and domain | State | Evidence |
 | --- | --- | --- | --- |
-| Return proximity and persistence | Implement / Validate · Gameplay / Network | `COMPLETED` | Ordered reach, warning and collapse on both peers, jumps, fall and recovery, original timber deliveries. |
-| Straight stairway | Implement / Validate · Level / Rendering | `COMPLETED` | Saved meshes, end joints, walking and sprinting in both directions. |
-| Commit, push and captures | Review / Finalize | `IN_PROGRESS` | Verified live main and official D3D11 images. |
+| Damage flash and rider HUD | Implement / Validate · Gameplay / Network / UI | `COMPLETED` | Both-peer hull and HUD assertions, cooldown contact, 5/3-hit recovery and reconnect. |
+| Course density and downstream flow | Implement / Validate · Gameplay / Level / Rendering | `COMPLETED` | 15 hazards per phase, ribbon UVs, dock and stair access, upstream and downstream crossings. |
+| Commit, push and captures | Review / Finalize · Workflow | `IN_PROGRESS` | Verify live main and capture official D3D11 images. |
 
 ## State and handoff
 

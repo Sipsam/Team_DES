@@ -78,6 +78,7 @@ namespace TwinEdge.Gameplay
             yield return new WaitForSeconds(.35f);
             yield return Press(Key.E);
             yield return Wait(() => river.Read(0).Status == RiverRaftStatus.Sailing, "both seats occupied");
+            Require(river.ReplicatedHazardCount == 15, "Outbound replicated 15 hazards");
             var s = river.Read(0);
             Require(s.Left != s.Right && s.Left != RiverRaftSnapshot.Empty && s.Right != RiverRaftSnapshot.Empty, "distinct owners");
             Capture("boarded");
@@ -116,9 +117,11 @@ namespace TwinEdge.Gameplay
             yield return Wait(() => river.Read(1).Status == RiverRaftStatus.Sailing && river.Read(2).Status == RiverRaftStatus.Sailing,
                 "independent race rafts sailing");
             Require(river.TrySeat(player.OwnerClientId, out int index, out _, out _) && index > 0, "own solo seat");
+            Require(river.ReplicatedHazardCount == 15, "Return replicated 15 hazards");
             before = river.Read(index).Position.z;
             yield return new WaitForSeconds(2);
-            Require(river.Read(index).Position.z < before - 7, "faster downstream drift without input");
+            Require(river.Read(index).Position.z < before - 7 && river.Read(index).Velocity.z < -3,
+                "faster downstream drift without input");
             Capture("paired-race", (river.Read(1).Position + river.Read(2).Position) * .5f);
             yield return Traverse(index, manager);
             yield return Wait(() => river.Read(1).Status == RiverRaftStatus.Arrived && river.Read(2).Status == RiverRaftStatus.Arrived,
@@ -169,7 +172,7 @@ namespace TwinEdge.Gameplay
             while (river.Read(index).Status == RiverRaftStatus.Sailing && Time.time < deadline)
             {
                 var s = river.Read(index);
-                var aim = river.ReplayCourse(s.Position.z, outbound);
+                var aim = river.ReplayCourse(s.Position.z, outbound, avoidReturnHazards: fullMatch == null);
                 float correction = Mathf.Clamp((aim.x - s.Position.x) * 5f - (s.Velocity.x - aim.z * s.Velocity.z) * 2f,
                     -48, 48) * (outbound ? 1 : -1);
                 if (!outbound && s.Position.z < 1180)
@@ -225,7 +228,7 @@ namespace TwinEdge.Gameplay
                 $"continuous crossing of hull {index}: {finish.Status}, {finish.Position}, {finish.Hits}, {finish.Recovery}");
         }
 
-        void Capture(string name, Vector3? point = null)
+        void Capture(string name, Vector3? point = null, Vector3? cameraOffset = null)
         {
             if (!screenshots || Camera.main == null) return;
             var camera = Camera.main;
@@ -233,7 +236,7 @@ namespace TwinEdge.Gameplay
             var rotation = camera.transform.rotation;
             if (point.HasValue)
             {
-                camera.transform.position = point.Value + new Vector3(5, 13, -14);
+                camera.transform.position = point.Value + (cameraOffset ?? new Vector3(5, 13, -14));
                 camera.transform.LookAt(point.Value);
             }
             var target = RenderTexture.GetTemporary(1024, 720, 24, RenderTextureFormat.ARGB32);

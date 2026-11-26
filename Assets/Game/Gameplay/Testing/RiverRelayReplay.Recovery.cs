@@ -48,7 +48,13 @@ namespace TwinEdge.Gameplay
             {
                 // Keep the second hull at the headwater while the adjacent racer takes damage.
                 SetKeys(Key.S);
-                yield return Wait(() => river.Read(1).Status == RiverRaftStatus.Destroyed, "remote solo destroyed", 80);
+                for (int hit = 1; hit <= 3; hit++)
+                {
+                    int wanted = hit;
+                    yield return Wait(() => river.Read(1).Hits == wanted, $"remote solo replicated hit {wanted}", 40);
+                    yield return ValidateHitFlash(1, wanted, false);
+                }
+                Require(river.Read(1).Status == RiverRaftStatus.Destroyed, "remote solo destroyed");
                 yield return Wait(() => river.Read(1).Status == RiverRaftStatus.Docked, "remote solo rebuilt");
                 SetKeys(Key.W);
                 float z = river.Read(2).Position.z;
@@ -133,6 +139,16 @@ namespace TwinEdge.Gameplay
                 var hit = river.Read(index);
                 Require(hit.Hits == wanted && hit.Contact == RiverContact.Rock,
                     $"physical rock contact {wanted}/{hits}, {hit.Position} {hit.Contact}");
+                yield return ValidateHitFlash(index, wanted, true);
+                if (wanted == 1 && shared)
+                {
+                    int blocked = river.RecoveryBlockedContacts(index);
+                    SetKeys(Key.W);
+                    yield return Wait(() => manager.ServerTime.Time - hit.DamagedAt >= .58, "first flash and cooldown window", 2);
+                    Require(river.Read(index).Hits == wanted && river.Read(index).DamagedAt == hit.DamagedAt &&
+                        !river.HullFlashVisible(index) && (!host || river.RecoveryBlockedContacts(index) > blocked),
+                        "blocked rock contact during cooldown does not replay the flash");
+                }
                 if (wanted < hits && shared)
                 {
                     SetKeys(Key.S);
@@ -143,6 +159,17 @@ namespace TwinEdge.Gameplay
             Require(river.Read(index).Status == RiverRaftStatus.Destroyed, "threshold replicated destroyed");
             yield return new WaitForSeconds(.4f);
             Capture("destroyed");
+        }
+
+        IEnumerator ValidateHitFlash(int index, int hit, bool ownHud)
+        {
+            yield return Wait(() => river.HullFlashVisible(index), $"hull {index} rendered flash for hit {hit}", .25f);
+            string hud = river.Hud(player, out bool damaged);
+            Require(hud != null && damaged == ownHud, $"hull {index} hit {hit} owner HUD emphasis = {ownHud}");
+            if (!screenshots || hit != 1) yield break;
+
+            string label = index == 0 ? "linked-hit" : "solo-hit";
+            Capture(label, river.Read(index).Position, new Vector3(4, 7, -8));
         }
 
         IEnumerator FileBarrier(string label)

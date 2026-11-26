@@ -320,8 +320,14 @@ namespace TwinEdge.Gameplay
                 _ => null
             };
             if (prompt != null) GUILayout.Label(prompt);
-            var riverHud = RiverGameplay.Current?.Hud(player.GetComponent<PlayerMovement>());
-            if (riverHud != null) GUILayout.Label(riverHud);
+            if (RiverGameplay.Current is { } river &&
+                river.Hud(player.GetComponent<PlayerMovement>(), out bool damaged) is { } riverHud)
+            {
+                var textColor = GUI.contentColor;
+                if (damaged) GUI.contentColor = new Color(1, .56f, .32f);
+                GUILayout.Label(riverHud);
+                GUI.contentColor = textColor;
+            }
             cooperativePole?.DrawPlaytestHud(player);
             player.GetComponent<MountainReturnLaunch>()?.DrawPlaytestHud();
             CastleGameplay.Current?.DrawHud(player);

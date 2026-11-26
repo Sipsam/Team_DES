@@ -6,11 +6,25 @@ namespace TwinEdge.Gameplay
     public sealed partial class RiverGameplay
     {
         bool recoveryFixture;
+        readonly int[] recoveryBlockedContacts = new int[3];
         byte recoverySoloHit;
         Vector3 recoverySoloRock;
         internal void EnableRecoveryFixture()
         {
             if (IsServer) recoveryFixture = true;
+        }
+
+        internal int RecoveryBlockedContacts(int index) => recoveryBlockedContacts[index];
+        internal int ReplicatedHazardCount => hazardFeed.Count;
+
+        internal bool HullFlashVisible(int index)
+        {
+            var materials = hulls[index].FlashMaterials;
+            if (materials.Length == 0 || !hulls[index].View.gameObject.activeSelf) return false;
+            var block = new MaterialPropertyBlock();
+            var (renderer, slot) = materials[0];
+            renderer.GetPropertyBlock(block, slot);
+            return block.GetColor(BaseColor) == DamageColor;
         }
 
         internal Vector3 RecoveryFixtureRock(bool outbound)
@@ -59,7 +73,7 @@ namespace TwinEdge.Gameplay
             return false;
         }
 
-        internal Vector3 ReplayCourse(float z, bool outbound)
+        internal Vector3 ReplayCourse(float z, bool outbound, bool avoidReturnHazards)
         {
             var sample = channel.Sample(z);
             var dock = outbound ? channel.UpperDock.bounds : channel.LowerDock.bounds;
@@ -67,8 +81,22 @@ namespace TwinEdge.Gameplay
             float distance = Mathf.Abs(z - dock.center.z);
             float besideDock = Mathf.SmoothStep(0, 1, Mathf.InverseLerp(outbound ? 72 : 115, 9, distance));
             float x = Mathf.Lerp(sample.center.x, berthX, besideDock);
+            if (!outbound && avoidReturnHazards)
+            {
+                // Steer wide of the two upper predators and cross to the inside of the bend before the rock.
+                x += ReturnClearance(z, .82f, -10, 58);
+                x += ReturnClearance(z, .57f, -10, 44);
+                x += ReturnClearance(z, .48f, 10, 46);
+                x += ReturnClearance(z, .31f, 7, 26);
+            }
             float yaw = Quaternion.LookRotation(sample.upstream * (outbound ? 1 : -1)).eulerAngles.y;
             return new Vector3(x, yaw, distance < 16 && !outbound ? 0 : sample.upstream.x / sample.upstream.z);
+        }
+
+        float ReturnClearance(float z, float fraction, float offset, float approach)
+        {
+            float center = Mathf.Lerp(channel.Start, channel.End, fraction);
+            return offset * (1 - Mathf.SmoothStep(0, 1, Mathf.InverseLerp(10, approach, Mathf.Abs(z - center))));
         }
 
 #if UNITY_EDITOR
@@ -76,8 +104,11 @@ namespace TwinEdge.Gameplay
         {
             Physics.SyncTransforms();
             Bind(scene);
-            if (hulls[0].Oars.Length != 2 || hazards[2].Jaw == null || warningMaterial == null)
-                throw new System.InvalidOperationException("V3 river is missing working oars, jaw or URP warning material.");
+            if (hulls[0].Oars.Length != 2 || hazards[2].Jaw == null || warningMaterial == null ||
+                System.Array.Exists(hulls, hull => hull.FlashMaterials.Length == 0))
+                throw new System.InvalidOperationException("V3 river is missing working oars, jaw, warning material or raft tint slots.");
+            ValidateHazardLayout();
+            ValidateWaterFlow();
             int samples = 0;
             float minWidth = float.MaxValue, minDepth = float.MaxValue;
             for (float z = channel.Start + 4; z <= channel.End - 4; z += 2)
@@ -123,9 +154,75 @@ namespace TwinEdge.Gameplay
                 $"Full water length {channel.WaterLength:F1}m; playable rise {rise:F2}m, mean grade {100 * rise / channel.Length:F2}%, max sampled grade {maxGrade:F2}%. " +
                 $"Deck Y lower {channel.LowerDock.bounds.max.y:F2}, upper {channel.UpperDock.bounds.max.y:F2}. " +
                 $"Minimum water width {minWidth:F1} m, minimum center depth {minDepth:F1} m. " +
-                $"Lower {channel.Start:F0} to upper {channel.End:F0} in +Z, current in -Z. " +
+                $"Lower {channel.Start:F0} to upper {channel.End:F0} in +Z, current and scrolling water in -Z. " +
+                $"{hazards.Length} hazards in both phases, with clear dock approaches and a shared-width passive avoidance route. " +
                 $"Both docks support dry feet and connect to their checkpoints, three berths are inside the ribbon, hazard and model wrappers resolve. " +
                 $"Lower checkpoint {channel.LowerCheckpoint}, upper checkpoint {channel.UpperCheckpoint}.";
+        }
+
+        void ValidateWaterFlow()
+        {
+            var filter = channel.WaterRenderer.GetComponent<MeshFilter>();
+            var mesh = filter.sharedMesh;
+            var vertices = mesh.vertices;
+            var uv = mesh.uv;
+            var water = channel.WaterRenderer.sharedMaterial;
+            if (!water.IsKeywordEnabled("_RIVER_FLOW") || water.GetTextureScale("_BaseMap").y <= 0 ||
+                uv.Length != vertices.Length || outboundFlow <= 0 || returnFlow <= outboundFlow)
+                throw new System.InvalidOperationException("V3 river flow must use positive ribbon V scale and faster Return current.");
+            for (int i = 2; i < vertices.Length; i += 2)
+                if (filter.transform.TransformPoint(vertices[i]).z <= filter.transform.TransformPoint(vertices[i - 2]).z ||
+                    uv[i].y <= uv[i - 2].y || !Mathf.Approximately(uv[i].y, uv[i + 1].y))
+                    throw new System.InvalidOperationException("Saved water V must increase upstream on both banks.");
+        }
+
+        void ValidateHazardLayout()
+        {
+            if (hazards.Length != 15)
+                throw new System.InvalidOperationException("The V3 river course must have 15 hazards in both phases.");
+            foreach (var hazard in hazards)
+            {
+                float anchor = HazardZ(hazard);
+                float minZ = anchor - (hazard.Kind == HazardKind.Driftwood ? 50 : 0) - hazard.Radius;
+                float maxZ = anchor + (hazard.Kind == HazardKind.Driftwood ? 28 : 0) + hazard.Radius;
+                if (minZ < channel.LowerDock.bounds.max.z + 40 || maxZ > channel.UpperDock.bounds.min.z - 40)
+                    throw new System.InvalidOperationException($"Hazard {hazard.Kind} crowds a berth near Z={anchor:F1}.");
+            }
+
+            // Sample a connected path in ribbon offsets. Reserve the full active drift sweep and a metre of clearance.
+            // Predators and whirlpools still require timing or steering in the live crossing.
+            const int steps = 81, mid = steps / 2;
+            var reachable = new bool[steps];
+            var rowReachable = new bool[steps];
+            reachable[mid] = true;
+            for (float z = channel.Start; z <= channel.End; z++)
+            {
+                var row = channel.Sample(z);
+                float padding = (sharedRadius + 1) / Mathf.Max(.45f, row.upstream.z);
+                for (int slot = 0; slot < steps; slot++)
+                {
+                    int offset = slot - mid;
+                    rowReachable[slot] = false;
+                    if (Mathf.Abs(offset) + padding >= row.halfWidth ||
+                        !(reachable[slot] || slot > 0 && reachable[slot - 1] ||
+                          slot + 1 < steps && reachable[slot + 1])) continue;
+                    bool clear = true;
+                    foreach (var hazard in hazards)
+                    {
+                        float anchor = HazardZ(hazard);
+                        if (hazard.Kind == HazardKind.Rock)
+                            clear &= Vector2.Distance(Flat(row.center + Vector3.right * offset),
+                                Flat(channel.Point(anchor, hazard.Offset))) > hazard.Radius + sharedRadius + 1;
+                        if (hazard.Kind == HazardKind.Driftwood && z >= anchor - 50 - hazard.Radius - sharedRadius - 1 &&
+                            z <= anchor + 28 + hazard.Radius + sharedRadius + 1)
+                            clear &= Mathf.Abs(offset - hazard.Offset) > 5 + padding + hazard.Radius / row.upstream.z;
+                    }
+                    rowReachable[slot] = clear;
+                }
+                (reachable, rowReachable) = (rowReachable, reachable);
+            }
+            if (!reachable[mid])
+                throw new System.InvalidOperationException("No connected shared-width route through passive obstacles.");
         }
         void ValidateDockAccess(bool upper, Vector3 marker)
         {

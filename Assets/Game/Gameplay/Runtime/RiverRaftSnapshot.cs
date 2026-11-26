@@ -13,6 +13,7 @@ namespace TwinEdge.Gameplay
         public Vector3 Position, Velocity;
         public float Heading, TurnRate, LeftStamina, RightStamina, Drive, Steer, Flow, LeftDrive, RightDrive;
         public ulong Left, Right, Finisher;
+        public double DamagedAt;
         public uint Voyage;
         public byte Hits, FinishPlace;
         public RiverRaftStatus Status;
@@ -34,6 +35,7 @@ namespace TwinEdge.Gameplay
             serializer.SerializeValue(ref Left);
             serializer.SerializeValue(ref Right);
             serializer.SerializeValue(ref Finisher);
+            serializer.SerializeValue(ref DamagedAt);
             serializer.SerializeValue(ref Voyage);
             serializer.SerializeValue(ref Hits);
             serializer.SerializeValue(ref FinishPlace);
@@ -47,7 +49,7 @@ namespace TwinEdge.Gameplay
             Position.Equals(other.Position) && Velocity.Equals(other.Velocity) && Heading == other.Heading &&
             TurnRate == other.TurnRate && LeftStamina == other.LeftStamina && RightStamina == other.RightStamina &&
             LeftDrive == other.LeftDrive && RightDrive == other.RightDrive && Drive == other.Drive && Steer == other.Steer && Flow == other.Flow && Left == other.Left && Right == other.Right && Finisher == other.Finisher &&
-            Voyage == other.Voyage && Hits == other.Hits && FinishPlace == other.FinishPlace &&
+            Voyage == other.Voyage && Hits == other.Hits && DamagedAt == other.DamagedAt && FinishPlace == other.FinishPlace &&
             Status == other.Status && Contact == other.Contact && Recovery == other.Recovery;
     }
 }

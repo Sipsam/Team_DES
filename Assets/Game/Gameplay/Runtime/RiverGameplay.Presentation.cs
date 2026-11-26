@@ -9,6 +9,10 @@ namespace TwinEdge.Gameplay
     {
         [SerializeField] Material warningMaterial;
         MaterialPropertyBlock warningColors;
+        MaterialPropertyBlock damageColors;
+        static readonly int BaseColor = Shader.PropertyToID("_BaseColor");
+        static readonly Color DamageColor = new(1, .34f, .13f);
+        const float DamageFlashSeconds = .45f;
         ParticleSystem rain;
         public event Action<Vector3, string> OnContact;
         Transform NewView(string label, Transform parent)
@@ -68,6 +72,14 @@ namespace TwinEdge.Gameplay
             var hull = hulls[i];
             hull.View = NewView(i == 0 ? "Linked raft" : $"Race raft {i}", presentation);
             var visual = Visual(i == 0 ? sharedModel : soloModel, hull.View);
+            damageColors ??= new MaterialPropertyBlock();
+            damageColors.SetColor(BaseColor, DamageColor);
+            hull.FlashMaterials = visual.GetComponentsInChildren<Renderer>()
+                .Where(renderer => renderer.enabled)
+                .SelectMany(renderer => renderer.sharedMaterials.Select((material, slot) => (renderer, material, slot)))
+                .Where(entry => entry.material != null && entry.material.HasProperty(BaseColor))
+                .Select(entry => (entry.renderer, entry.slot)).ToArray();
+            hull.Flashing = false;
             if (i == 0)
             {
                 var pair = visual.GetComponent<RaftPair>();
@@ -177,6 +189,13 @@ namespace TwinEdge.Gameplay
                 var hull = hulls[i];
                 var s = Read(i);
                 bool show = s.Status != RiverRaftStatus.Hidden && !(i == 0 && s.Status == RiverRaftStatus.Arrived);
+                bool flash = show && DamageFlashActive(s);
+                if (flash != hull.Flashing)
+                {
+                    foreach (var (renderer, slot) in hull.FlashMaterials)
+                        renderer.SetPropertyBlock(flash ? damageColors : null, slot);
+                    hull.Flashing = flash;
+                }
                 if (!show)
                 {
                     hull.View.gameObject.SetActive(false);
@@ -281,12 +300,17 @@ namespace TwinEdge.Gameplay
             if (!rain.isPlaying) rain.Play();
         }
 
-        internal string Hud(PlayerMovement player)
+        bool DamageFlashActive(RiverRaftSnapshot state) => state.Hits > 0 &&
+            NetworkManager.ServerTime.Time - state.DamagedAt < DamageFlashSeconds;
+
+        internal string Hud(PlayerMovement player, out bool damaged)
         {
+            damaged = false;
             if (!IsSpawned || channel == null || player == null) return null;
             ulong id = player.OwnerClientId;
             if (TrySeat(id, out int i, out int side, out var s))
             {
+                damaged = DamageFlashActive(s);
                 if (s.Status == RiverRaftStatus.Destroyed) return "Raft destroyed. Recovering at the departure dock.";
                 if (s.Status == RiverRaftStatus.Docked) return $"{(side == 0 ? "Left" : "Right")} oar | Waiting for partner | E / Esc: leave";
                 float stamina = side == 0 ? s.LeftStamina : s.RightStamina;
@@ -317,7 +341,7 @@ namespace TwinEdge.Gameplay
             if (!IsSpawned || channel == null || player == null) return null;
             if (!TrySeat(player.OwnerClientId, out int i, out _, out var s))
             {
-                if (Hud(player) == null) return null;
+                if (Hud(player, out _) == null) return null;
                 i = Returning && player.transform.position.z > (channel.Start + channel.End) * .5f ? 1 : 0;
                 s = Read(i);
             }

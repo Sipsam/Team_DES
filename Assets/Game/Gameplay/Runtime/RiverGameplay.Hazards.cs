@@ -47,6 +47,7 @@ namespace TwinEdge.Gameplay
         [SerializeField, Min(.1f)] float predatorNoticeRange = 17f, predatorLunge = 12f;
         [SerializeField, Min(.1f)] float whirlpoolPeriod = 25f, whirlpoolActive = 16f, whirlpoolPull = 5.5f;
 
+        // Both phases use this shared course. Keep the approaches clear and stagger hazards across the channel.
         readonly Hazard[] hazards =
         {
             new(HazardKind.Rock, .12f, 10, 2.4f),
@@ -58,7 +59,12 @@ namespace TwinEdge.Gameplay
             new(HazardKind.Driftwood, .67f, 6, 2.6f),
             new(HazardKind.Whirlpool, .74f, -8, 10),
             new(HazardKind.Fish, .82f, 11, 3.2f),
-            new(HazardKind.Rock, .90f, -6, 2.5f)
+            new(HazardKind.Rock, .90f, -6, 2.5f),
+            new(HazardKind.Rock, .185f, 15, 2.4f),
+            new(HazardKind.Rock, .35f, -16, 2.6f),
+            new(HazardKind.Driftwood, .52f, 16, 2.6f),
+            new(HazardKind.Whirlpool, .63f, -17, 10),
+            new(HazardKind.Crocodile, .275f, 22, 3.5f)
         };
         NetworkList<HazardState> hazardFeed;
         float hazardTime, nextHazardPublish;
@@ -211,7 +217,13 @@ namespace TwinEdge.Gameplay
                     float limit = Mathf.Max(0, sample.halfWidth - radius / Mathf.Max(.45f, sample.upstream.z) - .25f);
                     next = new Vector3(Mathf.Clamp(corrected.x, sample.center.x - limit, sample.center.x + limit), sample.center.y + .05f, z);
                 }
-                if (Time.time < hull.NextHit) continue;
+                if (Time.time < hull.NextHit)
+                {
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+                    if (recoveryFixture && i == 0) recoveryBlockedContacts[index]++;
+#endif
+                    continue;
+                }
                 if (predator)
                 {
                     if ((h.HitMask & (1 << index)) != 0) continue;

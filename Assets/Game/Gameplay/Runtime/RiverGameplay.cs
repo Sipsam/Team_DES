@@ -83,6 +83,8 @@ namespace TwinEdge.Gameplay
             public Transform View;
             public Transform[] Oars, Seats;
             public BoxCollider Collider;
+            public (Renderer renderer, int slot)[] FlashMaterials;
+            public bool Flashing;
             public uint RenderedVoyage;
             public readonly Paddle Left = new(), Right = new();
             public float NextHit, RebuildAt;
@@ -536,6 +538,7 @@ namespace TwinEdge.Gameplay
             hull.State.Contact = contact;
             ContactFeedback(i);
             if (contact == RiverContact.Dock) return;
+            hull.State.DamagedAt = NetworkManager.ServerTime.Time;
             if (++hull.State.Hits >= (i == 0 ? SharedLimit : SoloLimit))
                 Recover(i, contact);
         }
