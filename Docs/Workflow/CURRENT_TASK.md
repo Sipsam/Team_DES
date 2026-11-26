@@ -1,20 +1,21 @@
 # Current task
 
-**V3-FEEDBACK-04** · Mountain Geometry and Launch Prediction
+**V3-FEEDBACK-05** · Player Appearance and PvP
 
-**Checkpoint** `READY_TO_COMMIT` · **Base** `c2b464ba860267a9325f9d69f0fdec26073a9a56` · **Updated** 2026-11-26 KST
+**Checkpoint** `READY_TO_COMMIT` · **Base** `33b7fcda71c85e287d65f3ba5a8172c3cec166ad` · **Updated** 2026-11-26 KST
 
-- **Scope** Feedback 7 and 26. Localized DeepGullies rim and base rounding with the shared mesh, plus local Return charge previews with server-owned launch and landing decisions.
-- **Terrain** Unity 6000.3.27f1 saved-mesh checks retained 62,448 safe support samples, all 103 directed links, seven continuous plans and the western walking separation. FinalPolish and the saved scene references were retained.
-- **Peers** Isolated D3D11 Relay passed the 264-action Eastern route, nine role exchanges and both Final arrivals. In the final build, the two Return peers completed all nine launch legs with 0.080–0.108m prediction error. Both input peers passed independent preview, charge and aim, release, cancel and respawn. The final assembly, IL check and capture build are recorded in the evidence.
-- **Evidence** Optional local `Docs/Development/MountainGeometryLaunch/V1/Verification.md`. The first geometry and runtime visual iterations and the transient concurrent-hop retry are recorded there.
-- **Next** Verify live main, commit and push the staged scope, then capture the official map set and both Return owner views from the verified commit. Full E2E Relay and full match remain deferred.
+- **Scope** Feedback 8, 9, 10, 11 and 27. Remove the IdentityBand mesh, assign and restore distinct cape colors, synchronize attack/hit pose timing, restore ordinary carry stride and clear the owner camera. Raise the server's ordinary hit range from 2.650m to 3.445m.
+- **Validation** Saved Foundation passed. Unity 6000.3.27f1 Windows Development D3D11 Relay cases `contest`, `contestLifecycle` and `cameraControls` all passed 0/0. Both peers agreed on cape colors and hit/carry state. Reconnect preserved color under a new NGO ID. The 3.425m hit, 3.465m miss, rear and wall checks passed. The server landed 0.004s after the scheduled pose contact. Carrier strides measured 3.500 and 8.400m/s. Resistance, throw, exhaustion, gem and camera regressions passed.
+- **Evidence** Optional local `Docs/Development/PlayerAppearancePvP/V1/Verification.md`. Includes the initial compile and capture fixture corrections, replicated-capsule collision and carry-lag diagnosis, and final build/run hashes.
+- **Next** Review staged scope, verify live main, commit and push, then generate the official maps and both players' PvP gameplay images from the verified commit. Full integration and full match remain deferred.
 
 | Work | Logical Worker and domain | State | Evidence |
 | --- | --- | --- | --- |
-| Terrain, support and pole routes | Implement / Validate · Level | `COMPLETED` | Shared mesh, saved support, walking separation, graph, seven plans and isolated Eastern peers passed. |
-| Launch preview and Return | Implement / Validate · Gameplay / Network | `COMPLETED` | Final-build D3D11 input and route cases passed both peers. |
-| Commit, push and captures | Review / Finalize | `IN_PROGRESS` | Scoped validation passed. Verify staged scope, push and publish. |
+| Appearance and session identity | Implement / Validate · Gameplay / Network | `COMPLETED` | Saved prefab, rendered color parity, respawn and rejoin. |
+| Attack and hit presentation | Implement / Validate · Gameplay | `COMPLETED` | Server contact timing, both rigs and D3D11 frames. |
+| Grab movement and camera | Implement / Validate · Gameplay | `COMPLETED` | Full carry strides, raised camera and wall, resistance and throw. |
+| Server attack range and rules | Implement / Validate · Gameplay / Network | `COMPLETED` | Range boundary, aim and obstruction guards, gem rules. |
+| Commit, push and captures | Review / Finalize | `IN_PROGRESS` | Isolated validation passed. Commit reviewed scope and publish from live main. |
 
 ## State and handoff
 

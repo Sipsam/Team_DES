@@ -20,7 +20,7 @@ public sealed class ThirdPersonCamera : MonoBehaviour
     private float pitch = 15f;
     private Vector3 positionVelocity;
     private bool hasInitializedPosition;
-    private bool v3Target;
+    private TwinEdge.Gameplay.GameplayCharacter v3Target;
     private readonly RaycastHit[] occlusionHits = new RaycastHit[16];
 
     private void Awake()
@@ -66,25 +66,16 @@ public sealed class ThirdPersonCamera : MonoBehaviour
             return;
         }
 
-        Quaternion orbitRotation = Quaternion.Euler(pitch, yaw, 0f);
+        var carried = v3Target != null ? v3Target.CarriedOpponent : null;
         Vector3 lookPoint = target.position + Vector3.up * height;
+        // Frame above the lifted character while preserving the owner's yaw and ground axes.
+        if (carried != null) lookPoint += Vector3.up * ClearDistance(lookPoint, Vector3.up, 1.3f, carried);
+        Quaternion orbitRotation = Quaternion.Euler(carried != null ? Mathf.Max(22f, pitch) : pitch, yaw, 0f);
         Vector3 desiredPosition = lookPoint - orbitRotation * Vector3.forward * distance;
-        if (v3Target)
+        if (v3Target != null)
         {
-            var direction = (desiredPosition - lookPoint).normalized;
-            float safeDistance = distance;
-            int count = Physics.SphereCastNonAlloc(lookPoint, .22f, direction, occlusionHits,
-                distance, ~0, QueryTriggerInteraction.Ignore);
-            // A full buffer can omit a closer wall. Preserve the unrestricted query in that case.
-            var hits = count == occlusionHits.Length
-                ? Physics.SphereCastAll(lookPoint, .22f, direction, distance, ~0, QueryTriggerInteraction.Ignore)
-                : occlusionHits;
-            for (int i = 0; i < (hits == occlusionHits ? count : hits.Length); i++)
-            {
-                var hit = hits[i];
-                if (!hit.transform.IsChildOf(target.root)) safeDistance = Mathf.Min(safeDistance, Mathf.Max(.15f, hit.distance - .1f));
-            }
-            desiredPosition = lookPoint + direction * safeDistance;
+            Vector3 direction = orbitRotation * Vector3.back;
+            desiredPosition = lookPoint + direction * Mathf.Max(.15f, ClearDistance(lookPoint, direction, distance, carried));
             // Resolve immediately against walls; smoothing can otherwise leave the lens inside geometry.
             hasInitializedPosition = false;
         }
@@ -106,6 +97,25 @@ public sealed class ThirdPersonCamera : MonoBehaviour
         transform.rotation = orbitRotation;
     }
 
+    private float ClearDistance(Vector3 origin, Vector3 direction, float length, Transform carried)
+    {
+        int count = Physics.SphereCastNonAlloc(origin, .22f, direction, occlusionHits,
+            length, ~0, QueryTriggerInteraction.Ignore);
+        // A full buffer can omit a closer wall.
+        var hits = count == occlusionHits.Length
+            ? Physics.SphereCastAll(origin, .22f, direction, length, ~0, QueryTriggerInteraction.Ignore)
+            : occlusionHits;
+        Transform ownRoot = target.root;
+        float clear = length;
+        for (int i = 0; i < (hits == occlusionHits ? count : hits.Length); i++)
+        {
+            var hit = hits[i];
+            if (!hit.transform.IsChildOf(ownRoot) && (carried == null || !hit.transform.IsChildOf(carried)))
+                clear = Mathf.Min(clear, Mathf.Max(0, hit.distance - .1f));
+        }
+        return clear;
+    }
+
     internal bool IsInitializedFor(Transform expected) =>
         isActiveAndEnabled && hasInitializedPosition && target == expected;
 
@@ -124,7 +134,7 @@ public sealed class ThirdPersonCamera : MonoBehaviour
     public void SetTarget(Transform newTarget)
     {
         target = newTarget;
-        v3Target = target != null && target.GetComponentInParent<TwinEdge.Gameplay.GameplayCharacter>() != null;
+        v3Target = target != null ? target.GetComponentInParent<TwinEdge.Gameplay.GameplayCharacter>() : null;
         hasInitializedPosition = false;
         if (target != null && !enabled)
         {
@@ -141,7 +151,7 @@ public sealed class ThirdPersonCamera : MonoBehaviour
 
         target = null;
         enabled = false;
-        v3Target = false;
+        v3Target = null;
     }
 
     private static void HandleCursor()

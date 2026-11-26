@@ -33,9 +33,16 @@ public sealed class GameStateManager : NetworkBehaviour
 #endif
     public string FoundationPhaseLabel => foundationMode ? foundationPhase.Value.ToString() : CurrentState.ToString();
     public event Action<FoundationPhase, FoundationPhase> FoundationPhaseChanged;
+    byte firstCape, secondCape;
+
     void StartFoundation()
     {
         if (!IsServer || !foundationMode || !IsGameReady || Phase != FoundationPhase.Preparing) return;
+        int count = TwinEdge.Gameplay.GameplayCharacter.CapeColorCount;
+        firstCape = (byte)UnityEngine.Random.Range(0, count);
+        secondCape = (byte)((firstCape + UnityEngine.Random.Range(1, count)) % count);
+        foreach (var client in NetworkManager.ConnectedClientsList)
+            AssignFoundationCape(client.PlayerObject.GetComponent<TwinEdge.Gameplay.GameplayCharacter>());
         courseStartedAt.Value = NetworkManager.ServerTime.Time;
         foundationPhase.Value = FoundationPhase.Outbound;
     }
@@ -84,7 +91,15 @@ public sealed class GameStateManager : NetworkBehaviour
         if (!IsServer || !foundationMode || !player.IsSpawned || player.OwnerClientId != sender ||
             !NetworkManager.ConnectedClients.TryGetValue(sender, out var peer) || peer.PlayerObject != player.NetworkObject)
             return;
+        if (Phase >= FoundationPhase.Outbound) AssignFoundationCape(player);
         readyFoundationPeers.Add(sender);
+    }
+
+    void AssignFoundationCape(TwinEdge.Gameplay.GameplayCharacter player)
+    {
+        // The V3 course has two slots. Rejoining can change NGO IDs but restores the vacant slot.
+        if (NetworkManager.GetComponent<NetworkSpawnCoordinator>().TryGetSlot(player.OwnerClientId, out int slot))
+            player.SetCapeColorServer(slot == 0 ? firstCape : secondCape);
     }
 
     private readonly NetworkVariable<int> connectedPlayerCount = new NetworkVariable<int>(0);

@@ -6,19 +6,43 @@ namespace TwinEdge.Gameplay
     public sealed partial class GameplayCharacter : NetworkBehaviour
     {
         public Animator animator;
+        [SerializeField] MeshRenderer capeRenderer;
+        static readonly int BaseColor = Shader.PropertyToID("_BaseColor");
+        static readonly Color32[] CapeColors =
+        {
+            new(168, 49, 31, 255), new(205, 154, 54, 255),
+            new(32, 130, 101, 255), new(59, 95, 169, 255)
+        };
+        internal static int CapeColorCount => CapeColors.Length;
+        readonly NetworkVariable<byte> capeColor = new(byte.MaxValue);
+        MaterialPropertyBlock capeProperties;
+        internal void SetCapeColorServer(byte color)
+        {
+            if (IsServer) capeColor.Value = color;
+        }
+
+        void ApplyCapeColor(byte previous, byte current)
+        {
+            capeProperties.Clear();
+            if (current < CapeColorCount) capeProperties.SetColor(BaseColor, CapeColors[current]);
+            capeRenderer.SetPropertyBlock(capeProperties);
+        }
+
+        static readonly string[] MotionStates = { "Idle", "Walk", "Run", "Jump", "Walk_Carry" };
         readonly NetworkVariable<byte> motion = new(0, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Owner);
         readonly NetworkVariable<bool> carrying = new(false);
         public readonly NetworkVariable<Unity.Collections.FixedString64Bytes> CheckpointName = new();
         public readonly NetworkVariable<int> RespawnCount = new();
         Vector3 previous;
-        Transform visualRoot, band;
-        Pose visualRest, bandRest;
+        Transform visualRoot;
+        Pose visualRest;
         Transform leftArm, rightArm;
         Quaternion leftArmRest, rightArmRest;
         bool seatVisual, wasRowing;
         float sampleTime;
         byte rendered = byte.MaxValue;
-        public string AnimationState => new[] { "Idle", "Walk", "Run", "Jump", "Walk_Carry" }[Mathf.Min(motion.Value, 4)];
+        byte DisplayMotion => holder.Value != NoPlayer ? (byte)0 : motion.Value;
+        public string AnimationState => MotionStates[DisplayMotion];
         bool awaitingFoundationReady;
 
         [Rpc(SendTo.Owner, InvokePermission = RpcInvokePermission.Server)]
@@ -40,19 +64,12 @@ namespace TwinEdge.Gameplay
             previous = transform.position; sampleTime = Time.time;
             animator.applyRootMotion = false;
             if (IsOwner) GetComponent<GameplayInput>().Activate();
-            // A small identity band preserves the source materials and avoids model duplication.
-            band = transform.Find("IdentityBand");
             visualRoot = transform.Find("VisualRoot");
             visualRest = new Pose(visualRoot.localPosition, visualRoot.localRotation);
-            bandRest = new Pose(band.localPosition, band.localRotation);
-            foreach (var joint in visualRoot.GetComponentsInChildren<Transform>())
-            {
-                if (joint.name == "UpperArm.L") leftArm = joint;
-                if (joint.name == "UpperArm.R") rightArm = joint;
-            }
-            var block = new MaterialPropertyBlock();
-            block.SetColor("_BaseColor", OwnerClientId == Unity.Netcode.NetworkManager.ServerClientId ? Color.white : Color.cyan);
-            band.GetComponent<Renderer>().SetPropertyBlock(block);
+            BindContestPose();
+            capeProperties ??= new MaterialPropertyBlock();
+            capeColor.OnValueChanged += ApplyCapeColor;
+            ApplyCapeColor(byte.MaxValue, capeColor.Value);
         }
         public void SetCarryingServer(bool value) { if (IsServer) carrying.Value = value; }
         void LateUpdate()
@@ -72,15 +89,15 @@ namespace TwinEdge.Gameplay
                 bool rowing = RiverGameplay.Current is { } river &&
                     river.IsSeated(OwnerClientId);
                 motion.Value = rowing ? (byte)0 : poleMotor != null && poleMotor.Attached ? (poleMotor.Orbiting ? (byte)3 : (byte)4) : GetComponent<MountainReturnLaunch>()?.State.Value == LaunchState.Landing ? (byte)0 : (GetComponent<MountainReturnLaunch>()?.InFlight == true || !GetComponent<PlayerMovement>().IsGrounded) ? (byte)3 : speed < .15f ? (byte)0 : carrying.Value ? (byte)4 : speed > 4f ? (byte)2 : (byte)1;
-                if (holder.Value != NoPlayer || ownerMotion == ContestMotion.Thrown) motion.Value = 3;
-                else if (held.Value != NoPlayer) motion.Value = (byte)(speed < .15f ? 0 : 4);
+                if (holder.Value != NoPlayer) motion.Value = 0;
+                else if (ownerMotion == ContestMotion.Thrown) motion.Value = 3;
                 previous = transform.position; sampleTime = Time.time;
             }
             RenderRaftRider();
             RenderContest();
-            if (rendered != motion.Value)
+            if (rendered != DisplayMotion)
             {
-                rendered = motion.Value;
+                rendered = DisplayMotion;
                 animator.speed = rendered == 2 ? PlayerMovement.SprintSpeedScale : 1f;
                 animator.CrossFadeInFixedTime(AnimationState, .12f, 0);
             }
@@ -93,7 +110,6 @@ namespace TwinEdge.Gameplay
                 if (!IsOwner)
                 {
                     visualRoot.SetPositionAndRotation(seat.position + seat.rotation * visualRest.position, seat.rotation * visualRest.rotation);
-                    band.SetPositionAndRotation(seat.position + seat.rotation * bandRest.position, seat.rotation * bandRest.rotation);
                     seatVisual = true;
                 }
                 if (!wasRowing)
@@ -116,7 +132,6 @@ namespace TwinEdge.Gameplay
             if (seatVisual)
             {
                 visualRoot.SetLocalPositionAndRotation(visualRest.position, visualRest.rotation);
-                band.SetLocalPositionAndRotation(bandRest.position, bandRest.rotation);
                 seatVisual = false;
             }
             if (wasRowing)

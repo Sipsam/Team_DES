@@ -41,12 +41,11 @@ namespace TwinEdge.Gameplay.Editor
             foreach (var demo in visual.GetComponentsInChildren<CharacterMotionDemo>()) demo.enabled = false;
             var character = player.AddComponent<GameplayCharacter>(); character.animator = visual.GetComponentInChildren<Animator>();
             character.animator.applyRootMotion = false;
-            var band = GameObject.CreatePrimitive(PrimitiveType.Cube); band.name = "IdentityBand";
-            band.transform.SetParent(player.transform, false); band.transform.localPosition = new Vector3(0, 1.8f, 0);
-            band.transform.localScale = new Vector3(.5f, .08f, .5f); Object.DestroyImmediate(band.GetComponent<Collider>());
-            var material = new Material(Shader.Find("Universal Render Pipeline/Lit"));
-            AssetDatabase.CreateAsset(material, "Assets/Game/Gameplay/Prefabs/IdentityBand.mat");
-            band.GetComponent<Renderer>().sharedMaterial = material;
+            var appearance = new SerializedObject(character);
+            appearance.FindProperty("capeRenderer").objectReferenceValue =
+                visual.GetComponentsInChildren<MeshRenderer>().Single(r => r.name == "Cape");
+            appearance.ApplyModifiedPropertiesWithoutUndo();
+            var material = AssetDatabase.LoadAssetAtPath<Material>("Assets/Game/Gameplay/Prefabs/IdentityBand.mat");
             var movement = new SerializedObject(player.GetComponent<PlayerMovement>());
             movement.FindProperty("moveSpeed").floatValue = 3.5f; movement.ApplyModifiedPropertiesWithoutUndo();
             // Prototype PvP inputs differ from the latest planning. Keep the dependency, dormant in this foundation.
@@ -95,6 +94,10 @@ namespace TwinEdge.Gameplay.Editor
             var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(PlayerPath);
             if (bootstrap == null || prefab == null || prefab.GetComponent<NetworkObject>() == null || prefab.GetComponent<OwnerNetworkTransform>() == null) throw new Exception("Network structure missing");
             if (prefab.GetComponent<CharacterController>().height != 2 || prefab.GetComponent<GameplayCharacter>().animator == null) throw new Exception("Character structure invalid");
+            var appearance = new SerializedObject(prefab.GetComponent<GameplayCharacter>());
+            if (prefab.transform.Find("IdentityBand") != null ||
+                appearance.FindProperty("capeRenderer").objectReferenceValue?.name != "Cape")
+                throw new Exception("V3 appearance bindings invalid");
             foreach (string state in new[] { "Idle", "Walk", "Run", "Jump", "Walk_Carry" })
                 if (!((UnityEditor.Animations.AnimatorController)prefab.GetComponent<GameplayCharacter>().animator.runtimeAnimatorController).layers[0].stateMachine.states.Any(s => s.state.name == state)) throw new Exception("Animation missing: " + state);
             EditorSceneManager.OpenScene(LevelPath, OpenSceneMode.Additive);

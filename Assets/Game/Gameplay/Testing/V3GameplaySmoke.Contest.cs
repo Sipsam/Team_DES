@@ -59,15 +59,24 @@ public sealed partial class V3GameplaySmoke
         contestMouse = InputSystem.AddDevice<Mouse>();
         Vector3 summit = MarkerPoint("Mountain.V3.ReturnFinish");
         Vector3 arena = summit + Vector3.forward * 11;
+        yield return CheckCapeColors(hitter, victim);
         if (Environment.GetCommandLineArgs().Contains("-v3ContestLifecycle"))
         {
             yield return TestContestLifecycle(game, hitter, victim, arena);
             yield break;
         }
-        yield return PlacePair(arena, 5, "out-of-range");
+        yield return PlacePair(arena, 3.8f, "out-of-range");
         Vector3 before = victim.transform.position;
         if (host) yield return Click();
         yield return Until(() => hitter.AttackReadyAtForTest > 0, "real mouse attack registered");
+        if (ContestScreenshots)
+        {
+            // A synchronous GPU capture can consume the recoil window. Capture separate swings.
+            yield return Until(() => hitter.ContestPoseAppliedForTest, "swing pose ready for capture");
+            yield return new WaitForEndOfFrame();
+            if (manager.ServerTime.Time < hitter.AttackContactAtForTest)
+                CaptureContestPair("windup", hitter, victim);
+        }
         yield return new WaitForSeconds(.25f);
         Check(victim.ControlledUntilForTest == 0 && Vector3.Distance(before, victim.transform.position) < .25f,
             "out-of-range attack has no effect");
@@ -77,6 +86,13 @@ public sealed partial class V3GameplaySmoke
         before = victim.transform.position;
         if (host) yield return Click();
         yield return Until(() => victim.ControlledUntilForTest > 0, "server hit and stun replicated");
+        if (ContestScreenshots)
+        {
+            yield return Until(() => hitter.ContestPoseAppliedForTest && victim.ContestPoseAppliedForTest,
+                "impact poses ready for capture");
+            yield return new WaitForEndOfFrame();
+            CaptureContestPair("impact", hitter, victim);
+        }
         double firstAttack = hitter.AttackReadyAtForTest;
         yield return new WaitForSeconds(.25f);
         if (host) yield return Click();
@@ -84,13 +100,25 @@ public sealed partial class V3GameplaySmoke
         Check(hitter.AttackReadyAtForTest == firstAttack, "attack cooldown refused the second click");
         Check(victim.transform.position.x > before.x + .4f, "capsule moved away from hit");
         yield return SyncContest("hit-done");
+        yield return CheckAttackRange(hitter, victim);
+        yield return CheckCarryStride(hitter, victim);
+        yield return Until(() => manager.ServerTime.Time > hitter.GrabReadyAtForTest + .1, "stride test grab cooldown expired");
 
         yield return PlacePair(arena, 1.55f, "grab-ready");
+        Camera.main.GetComponent<ThirdPersonCamera>().FaceInitialSpawn(Quaternion.Euler(0, host ? 60 : -115, 0));
         if (host) yield return Tap(Key.F);
         yield return Until(() => hitter.HeldForTest == victim.OwnerClientId && victim.HolderForTest == hitter.OwnerClientId,
             "grab acknowledged by both network variables");
         yield return Until(() => victim.transform.position.y > hitter.transform.position.y + .2f &&
             hitter.ChargeForTest > .35f, "synchronized carry pose and charge");
+        Check(victim.AnimationState == "Idle" && victim.ContestPoseAppliedForTest &&
+            hitter.ContestPoseAppliedForTest, "both characters show the held/carry rig over grounded locomotion");
+        if (ContestScreenshots)
+        {
+            yield return new WaitForEndOfFrame();
+            CaptureContest("carry");
+            CaptureContestPair("held-pose", hitter, victim);
+        }
         if (!host)
             for (int i = 0; i < 8; i++) yield return Tap(Key.F);
         yield return Until(() => hitter.HeldForTest == ulong.MaxValue && victim.HolderForTest == ulong.MaxValue,
@@ -203,6 +231,8 @@ public sealed partial class V3GameplaySmoke
 
     IEnumerator TestContestLifecycle(GameStateManager game, GameplayCharacter hitter, GameplayCharacter victim, Vector3 arena)
     {
+        byte hitterColor = hitter.CapeIndexForTest, victimColor = victim.CapeIndexForTest;
+        ulong leavingId = victim.OwnerClientId;
         var pole = CooperativePole.Current;
         Vector3 grip = pole.Snapshot.a;
         ContestPlace(grip + (host ? Vector3.zero : Vector3.right * 2.1f), Quaternion.Euler(0, host ? 90 : -90, 0));
@@ -226,6 +256,8 @@ public sealed partial class V3GameplaySmoke
         yield return Until(() => victim.RespawnCount.Value > oldLife && hitter.HeldForTest == ulong.MaxValue &&
             victim.HolderForTest == ulong.MaxValue, "respawn cleared both ends of the grab");
         yield return new WaitForSeconds(.85f);
+        Check(hitter.CapeIndexForTest == hitterColor && victim.CapeIndexForTest == victimColor,
+            "respawn retained both cape indices");
         yield return PlacePair(arena, 1.55f, "stale-hit");
         double attackReady = victim.AttackReadyAtForTest, controlledUntil = hitter.ControlledUntilForTest;
         if (!host) victim.RequestHitForLifeForTest(oldLife);
@@ -256,6 +288,12 @@ public sealed partial class V3GameplaySmoke
         player.GetComponent<GameplayInput>().SimulateCapturedCursor = true;
         Check(own.HeldForTest == ulong.MaxValue && own.HolderForTest == ulong.MaxValue &&
             player.GetComponent<CharacterController>().enabled, "owner controls restored after rejoin");
+        var rejoined = FindObjectsByType<GameplayCharacter>(FindObjectsSortMode.None)
+            .Single(character => character.OwnerClientId != Unity.Netcode.NetworkManager.ServerClientId);
+        var hostCharacter = host ? own : FindObjectsByType<GameplayCharacter>(FindObjectsSortMode.None).Single(character => !character.IsOwner);
+        Check(rejoined.OwnerClientId != leavingId && rejoined.CapeIndexForTest == victimColor &&
+            hostCharacter.CapeIndexForTest == hitterColor, "new NGO ID restored original color on both peers");
+        yield return CheckCapeColors(hostCharacter, rejoined, "-rejoined");
 
         var gem = GemOwnership.Current;
         yield return PlacePair(arena, 1.8f, "simultaneous-pickup-ready");
@@ -284,25 +322,37 @@ public sealed partial class V3GameplaySmoke
         if (SystemInfo.graphicsDeviceType == GraphicsDeviceType.Null) return;
         var camera = Camera.main;
         var pose = new Pose(camera.transform.position, camera.transform.rotation);
-        var target = RenderTexture.GetTemporary(960, 540, 24);
-        var previous = RenderTexture.active;
         try
         {
             camera.transform.position = summit + new Vector3(5, 4, -7);
             camera.transform.LookAt(summit + Vector3.up);
+            CaptureContest("finish");
+        }
+        finally
+        {
+            camera.transform.SetPositionAndRotation(pose.position, pose.rotation);
+        }
+    }
+
+    void CaptureContest(string label)
+    {
+        var camera = Camera.main;
+        var target = RenderTexture.GetTemporary(960, 540, 24);
+        var previous = RenderTexture.active;
+        try
+        {
             RenderPipeline.SubmitRenderRequest(camera, new UniversalRenderPipeline.SingleCameraRequest { destination = target });
             RenderTexture.active = target;
             var image = new Texture2D(target.width, target.height, TextureFormat.RGB24, false);
             image.ReadPixels(new Rect(0, 0, target.width, target.height), 0, 0);
             image.Apply();
-            File.WriteAllBytes(Path.Combine(evidence, ContestRole + "-finish.png"), image.EncodeToPNG());
+            File.WriteAllBytes(Path.Combine(evidence, $"{ContestRole}-{label}.png"), image.EncodeToPNG());
             Destroy(image);
         }
         finally
         {
             RenderTexture.active = previous;
             RenderTexture.ReleaseTemporary(target);
-            camera.transform.SetPositionAndRotation(pose.position, pose.rotation);
         }
     }
 

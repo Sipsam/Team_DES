@@ -44,7 +44,7 @@ public sealed class PlayerMovement : NetworkBehaviour
 
     internal float GroundMoveSpeed(bool sprint) => moveSpeed * (sprint ? SprintMultiplier : 1f);
 
-    internal float GroundSpeedScale => movementSpeedMultiplier.Value * (contest?.ContestSpeed ?? 1f) *
+    internal float GroundSpeedScale => movementSpeedMultiplier.Value *
         (IsSpawned
             ? (TwinEdge.Gameplay.CastleGameplay.Current?.SpeedScale(this) ?? 1f) *
               (TwinEdge.Gameplay.UndergroundGameplay.Current?.SpeedScale(this) ?? 1f)

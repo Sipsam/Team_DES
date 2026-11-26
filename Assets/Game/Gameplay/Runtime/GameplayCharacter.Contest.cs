@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Linq;
 using Unity.Netcode;
 using UnityEngine;
@@ -7,6 +8,9 @@ namespace TwinEdge.Gameplay
     public sealed partial class GameplayCharacter
     {
         const ulong NoPlayer = ulong.MaxValue;
+        const float AttackWindup = .18f;
+        const double CarryReplicaDelay = .35;
+        const float CarryObstructionDistance = 1.55f;
 
         [Header("V3 stamina (points / seconds)")]
         [SerializeField, Min(1)] float maximumStamina = 100;
@@ -15,11 +19,10 @@ namespace TwinEdge.Gameplay
         [SerializeField, Min(0)] float emptyRecoveryDelay = 5;
 
         [Header("V3 contest (metres / seconds)")]
-        [SerializeField, Min(.1f)] float hitRange = 2.65f, grabRange = 1.85f;
+        [SerializeField, Min(.1f)] float hitRange = 3.445f, grabRange = 1.85f;
         [SerializeField, Range(0, 90)] float aimHalfAngle = 60;
         [SerializeField, Min(.01f)] float hitStun = .1f, hitCooldown = 1, grabCooldown = 3;
         [SerializeField, Min(0)] float hitSpeed = 7, hitLift = 1.6f;
-        [SerializeField, Range(.1f, 1)] float holdMoveScale = .55f;
         [SerializeField, Min(.1f)] float chargeSeconds = 2, throwMinSpeed = 4, throwMaxSpeed = 11, throwLift = 5;
         [SerializeField, Min(.1f)] float throwControlSeconds = .8f;
         [SerializeField, Min(1)] int resistancePresses = 7;
@@ -27,6 +30,7 @@ namespace TwinEdge.Gameplay
         readonly NetworkVariable<float> stamina = new();
         readonly NetworkVariable<ulong> holder = new(NoPlayer), held = new(NoPlayer);
         readonly NetworkVariable<int> resistance = new();
+        readonly NetworkVariable<double> attackStartedAt = new(), hitReactAt = new();
         readonly NetworkVariable<double> throwPoseUntil = new();
         readonly NetworkVariable<double> attackAt = new(), grabAt = new(), holdBegan = new(), disabledUntil = new(), sprintUntil = new();
         enum ContestMotion : byte { Free, Held, Hit, Thrown }
@@ -35,9 +39,11 @@ namespace TwinEdge.Gameplay
         PlayerMovement contestMovement;
         GameplayInput contestInput;
         CharacterController contestController;
+        CharacterController carryCollisionPeer;
+        readonly Queue<(double Time, Vector3 Feet)> recentLiftTargets = new();
         double recoverAt, spentAt, sprintIntentUntil, lastResistance, nextJumpAt, respawnUntil;
         float nextSprintSend, ownerJumpDeadline, ownerMotionClock, grabObstructedSince;
-        bool ownerJumpAccepted, ownerMotionStarted;
+        bool ownerJumpAccepted, ownerMotionStarted, strikePending;
         int ownerLife;
         uint ownerJumpSequence, lastJumpSequence;
         ulong ownerHolder = NoPlayer;
@@ -50,7 +56,7 @@ namespace TwinEdge.Gameplay
         internal int OwnerLife => ownerLife;
         internal bool HasStamina => stamina.Value > 0;
         internal bool SprintAllowed => IsSpawned && sprintUntil.Value > Now && stamina.Value > 0;
-        internal float ContestSpeed => held.Value == NoPlayer ? 1 : holdMoveScale;
+        internal Transform CarriedOpponent => IsSpawned && held.Value != NoPlayer ? Peer(held.Value)?.transform : null;
         internal bool BlocksContestImpulse => ownerMotion != ContestMotion.Free;
         internal bool BlocksOwnerInteraction => ownerMotion != ContestMotion.Free || held.Value != NoPlayer;
         internal bool BlocksServerInteraction => holder.Value != NoPlayer || held.Value != NoPlayer || Now < disabledUntil.Value || Now < respawnUntil;
@@ -74,11 +80,16 @@ namespace TwinEdge.Gameplay
             holder.Value = held.Value = NoPlayer;
             resistance.Value = 0;
             attackAt.Value = throwPoseUntil.Value = grabAt.Value = holdBegan.Value = disabledUntil.Value = sprintUntil.Value = 0;
+            attackStartedAt.Value = hitReactAt.Value = 0;
+            strikePending = false;
             recoverAt = spentAt = sprintIntentUntil = lastResistance = nextJumpAt = respawnUntil = 0;
         }
 
         public override void OnNetworkDespawn()
         {
+            capeColor.OnValueChanged -= ApplyCapeColor;
+            RestoreContestPose();
+            RestoreCarryCollision();
             if (IsServer) BreakCarryServer();
         }
 
@@ -99,6 +110,7 @@ namespace TwinEdge.Gameplay
 
         void Update()
         {
+            RestoreContestPose();
             if (!IsSpawned || !IsOwner || !contestGame.CanPlay || !contestInput.AcceptsInput) return;
             if (contestInput.Grab.WasPressedThisFrame()) GrabRpc(ownerLife);
             if (contestInput.AttackReady && contestInput.Attack.WasPressedThisFrame()) HitRpc(ownerLife);
@@ -121,7 +133,8 @@ namespace TwinEdge.Gameplay
         }
 
         bool CanUseMovementAction => !BlocksServerInteraction && !SpecialMovement && !Attached;
-        bool CanSprintServer() => !BlocksServerInteraction && !SpecialMovement &&
+        bool CanSprintServer() => holder.Value == NoPlayer && Now >= disabledUntil.Value &&
+            Now >= respawnUntil && !SpecialMovement &&
             (!Attached || CooperativePole.Current.IsPairedPivot(OwnerClientId)) &&
             CastleGameplay.Current?.SprintBlocked(contestMovement) != true;
 
@@ -204,16 +217,22 @@ namespace TwinEdge.Gameplay
             if (!IsSpawned || !IsServer) return;
             if (!contestGame.CanPlay || NetworkManager.ConnectedClientsList.Count != 2)
             {
+                CancelPendingStrike();
                 BreakCarryServer();
                 sprintUntil.Value = 0;
                 return;
             }
 
+            if (strikePending && Now >= attackStartedAt.Value + AttackWindup)
+            {
+                strikePending = false;
+                if (!BlocksServerInteraction && !SpecialMovement) StrikeServer();
+            }
+
             if (held.Value != NoPlayer)
             {
                 var victim = Peer(held.Value);
-                bool obstructed = victim != null &&
-                    (victim.transform.position - HoldFeet()).sqrMagnitude > 1.55f * 1.55f;
+                bool obstructed = victim != null && CarryObstructed(victim.transform.position);
                 if (!obstructed) grabObstructedSince = -1;
                 else if (grabObstructedSince < 0) grabObstructedSince = Time.time;
                 if (victim == null || HasGem || SpecialMovement || victim.SpecialMovement ||
@@ -255,13 +274,27 @@ namespace TwinEdge.Gameplay
         void HitRpc(int life, RpcParams rpc = default)
         {
             if (!ValidAction(life, rpc) || Now < attackAt.Value || BlocksServerInteraction || SpecialMovement) return;
+            attackStartedAt.Value = Now;
             attackAt.Value = Now + hitCooldown;
-            var victim = FindTarget(Mathf.Max(hitRange, grabRange + .1f));
+            strikePending = true;
+        }
+
+        void CancelPendingStrike()
+        {
+            if (!strikePending) return;
+            strikePending = false;
+            attackStartedAt.Value = 0;
+        }
+
+        void StrikeServer()
+        {
+            var victim = FindTarget(hitRange);
             if (victim == null) return;
             victim.InterruptForContest();
             GemOwnership.Current?.TryDropServer(victim.OwnerClientId, victim.transform.position);
             Vector3 away = Vector3.ProjectOnPlane(victim.transform.position - transform.position, Vector3.up).normalized;
             if (away.sqrMagnitude < .01f) away = transform.forward;
+            victim.hitReactAt.Value = Now;
             victim.SetMotionServer(ContestMotion.Hit, away * hitSpeed + Vector3.up * hitLift, hitStun);
         }
 
@@ -280,7 +313,7 @@ namespace TwinEdge.Gameplay
             if (held.Value != NoPlayer)
             {
                 float speed = Mathf.Lerp(throwMinSpeed, throwMaxSpeed, Charge);
-                throwPoseUntil.Value = Now + .25;
+                throwPoseUntil.Value = Now + ThrowPoseSeconds;
                 EndCarryServer(transform.forward * speed + Vector3.up * throwLift);
                 return;
             }
@@ -293,6 +326,7 @@ namespace TwinEdge.Gameplay
             victim.InterruptForContest();
             held.Value = victim.OwnerClientId;
             holdBegan.Value = Now;
+            recentLiftTargets.Clear();
             grabObstructedSince = -1;
             victim.holder.Value = OwnerClientId;
             victim.resistance.Value = 0;
@@ -301,6 +335,19 @@ namespace TwinEdge.Gameplay
         }
 
         Vector3 HoldFeet() => transform.position + transform.forward * 1.2f + Vector3.up * .55f;
+
+        bool CarryObstructed(Vector3 victimFeet)
+        {
+            // The victim follows a replicated carrier, then replicates its own capsule back.
+            double now = Now;
+            while (recentLiftTargets.TryPeek(out var oldest) && now - oldest.Time > CarryReplicaDelay)
+                recentLiftTargets.Dequeue();
+            recentLiftTargets.Enqueue((now, HoldFeet()));
+            foreach (var target in recentLiftTargets)
+                if ((victimFeet - target.Feet).sqrMagnitude <= CarryObstructionDistance * CarryObstructionDistance)
+                    return false;
+            return true;
+        }
 
         bool HasCarryClearance(Vector3 feet)
         {
@@ -320,6 +367,7 @@ namespace TwinEdge.Gameplay
 
         void InterruptInteractionServer()
         {
+            CancelPendingStrike();
             BreakCarryServer();
             CastleGameplay.Current?.InterruptContestServer(OwnerClientId);
             UndergroundGameplay.Current?.InterruptContestServer(OwnerClientId);
@@ -340,6 +388,7 @@ namespace TwinEdge.Gameplay
         {
             var victim = Peer(held.Value);
             held.Value = NoPlayer;
+            recentLiftTargets.Clear();
             grabAt.Value = Now + grabCooldown;
             if (victim == null || !victim.IsSpawned || victim.holder.Value != OwnerClientId) return;
             victim.holder.Value = NoPlayer;
@@ -370,6 +419,7 @@ namespace TwinEdge.Gameplay
 
         internal bool ApplyOwnerContestMovement()
         {
+            UpdateCarryCollision();
             if (ownerMotion == ContestMotion.Free) return false;
             if (!ownerMotionStarted)
             {
@@ -411,9 +461,30 @@ namespace TwinEdge.Gameplay
             return true;
         }
 
+        void UpdateCarryCollision()
+        {
+            ulong partner = ownerMotion == ContestMotion.Held ? ownerHolder :
+                holder.Value != NoPlayer ? holder.Value : held.Value;
+            var peer = Peer(partner)?.contestController;
+            if (peer == carryCollisionPeer) return;
+            RestoreCarryCollision();
+            if (peer == null || !peer.enabled) return;
+            // The owner walks toward a separately replicated capsule while the lift pose catches up.
+            Physics.IgnoreCollision(contestController, peer, true);
+            carryCollisionPeer = peer;
+        }
+
+        void RestoreCarryCollision()
+        {
+            if (carryCollisionPeer != null)
+                Physics.IgnoreCollision(contestController, carryCollisionPeer, false);
+            carryCollisionPeer = null;
+        }
+
         internal void BeforeContestRespawnServer()
         {
             InterruptInteractionServer();
+            attackStartedAt.Value = hitReactAt.Value = throwPoseUntil.Value = 0;
             respawnUntil = Now + .5;
             sprintIntentUntil = 0;
             sprintUntil.Value = disabledUntil.Value = 0;
@@ -423,6 +494,7 @@ namespace TwinEdge.Gameplay
 
         internal void ResetContestOwner(int life)
         {
+            RestoreCarryCollision();
             ownerLife = life;
             ownerMotion = ContestMotion.Free;
             ownerJumpAccepted = false;
@@ -438,6 +510,12 @@ namespace TwinEdge.Gameplay
         internal double GrabReadyAtForTest => grabAt.Value;
         internal double ControlledUntilForTest => disabledUntil.Value;
         internal float ChargeForTest => Charge;
+        internal byte CapeIndexForTest => capeColor.Value;
+        internal MeshRenderer CapeRenderer => capeRenderer;
+        internal float HitRangeForTest => hitRange;
+        internal double AttackContactAtForTest => attackStartedAt.Value + AttackWindup;
+        internal double HitReactAtForTest => hitReactAt.Value;
+        internal bool ContestPoseAppliedForTest => Time.frameCount - contestPoseFrame <= 1;
 #endif
 
         float Charge => held.Value == NoPlayer ? 0 : Mathf.Clamp01((float)(Now - holdBegan.Value) / chargeSeconds);
@@ -447,17 +525,6 @@ namespace TwinEdge.Gameplay
             GUILayout.Label($"Stamina {stamina.Value:F0}/{maximumStamina:F0} | Hit {Mathf.Max(0, (float)(attackAt.Value - Now)):F1}s | Grab {Mathf.Max(0, (float)(grabAt.Value - Now)):F1}s");
             if (holder.Value != NoPlayer) GUILayout.Label($"Held | Tap F to escape ({resistance.Value}/{resistancePresses})");
             if (held.Value != NoPlayer) GUILayout.Label($"F: throw | Charge {Charge:P0}");
-        }
-
-        void RenderContest()
-        {
-            if (wasRowing) return;
-            float swing = Mathf.Clamp01(1 - (float)(attackAt.Value - Now) / Mathf.Max(.001f, hitCooldown));
-            float swingAngle = swing < .28f && attackAt.Value > 0 ? -55 * Mathf.Sin(swing / .28f * Mathf.PI) : 0;
-            if (throwPoseUntil.Value > Now)
-                swingAngle = -65 * Mathf.Sin(Mathf.Clamp01((float)(throwPoseUntil.Value - Now) / .25f) * Mathf.PI);
-            if (rightArm != null && swingAngle != 0) rightArm.RotateAround(rightArm.position, visualRoot.right, swingAngle);
-            visualRoot.localRotation = visualRest.rotation * Quaternion.Euler(Now < disabledUntil.Value ? -12 : 0, 0, 0);
         }
     }
 }

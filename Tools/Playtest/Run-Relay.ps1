@@ -46,6 +46,7 @@ try {
         }
         '^contest' {
             $extra = @('-v3Contest')
+            $captureFlag = '-v3ContestScreenshots'
             if ($Case -eq 'contestRegions') { $extra += '-v3ContestRegions' }
             if ($Case -eq 'contestLifecycle') { $extra += '-v3ContestLifecycle' }
         }
