@@ -17,6 +17,7 @@ namespace TwinEdge.Gameplay
     internal sealed class PresentationRelaySmoke : MonoBehaviour
     {
         bool host, capture, audioTrace;
+        int courseSelections;
         readonly Dictionary<string, int> audioCounts = new();
         string folder, code;
         V3GameplayBootstrap game;
@@ -67,6 +68,7 @@ namespace TwinEdge.Gameplay
 
             yield return Wait(() => State.IsGameReady, "two Runtime Ready reports");
             yield return Delay();
+            if (audioTrace) yield return CheckCourse(MusicTheme.Menu, AmbientBed.None);
             Require(State.Phase == FoundationPhase.WaitingForPlayers && !State.ClientReady, "runtime ready leaves phase in lobby");
             Require(LobbyAction().interactable == !host, "initial action availability");
             State.RequestMatchStartRpc();
@@ -138,6 +140,7 @@ namespace TwinEdge.Gameplay
             {
                 Require(AudioCount("Ready") == (host ? 0 : 3) && AudioCount("Unready") == (host ? 0 : 1) &&
                     AudioCount("Start") == (host ? 1 : 0), "Ready, cancel and Start each sound once for the approving player");
+                yield return CheckCourse(MusicTheme.Summit, AmbientBed.Mountain);
             }
             Require(SystemInfo.graphicsDeviceType == UnityEngine.Rendering.GraphicsDeviceType.Direct3D11, "D3D11 Player");
             if (host)
@@ -193,8 +196,11 @@ namespace TwinEdge.Gameplay
             yield return Wait(() => View("Gameplay HUD").activeInHierarchy, "live match HUD restored");
             CheckListener(game.standbyCamera.name);
             if (audioTrace)
+            {
                 Require(oldTransactions == AudioCount("GemPickup") + AudioCount("GemSteal") + AudioCount("Seal") +
                     AudioCount("Win") + AudioCount("Lose"), "rejoin does not replay gem acquisition, seal or result");
+                yield return CheckCourse(MusicTheme.Race, null);
+            }
             yield return Barrier("rejoined");
             if (host)
             {
@@ -209,8 +215,14 @@ namespace TwinEdge.Gameplay
             else yield return Wait(() => !game.sessions.HasSession, "client observed host closure");
             yield return Delay();
             CheckListener("Menu World Camera");
-            if (audioTrace) Require(game.GetComponent<AudioService>().GetComponentsInChildren<AudioSource>().All(s => !s.isPlaying),
-                "audio pool silent after session shutdown");
+            if (audioTrace)
+            {
+                yield return CheckCourse(MusicTheme.Menu, AmbientBed.None);
+                var service = game.GetComponent<AudioService>();
+                Require(service.PooledSources.All(s => !s.isPlaying) &&
+                    service.GetComponentsInChildren<AudioSource>().Count(s => s.isPlaying) == 1,
+                    "menu music is the only source after shutdown");
+            }
             Signal(Role + "-pass", "PASS Windows Player Relay readiness, input ownership and rejoin.");
             Application.Quit(0);
         }
@@ -261,9 +273,17 @@ namespace TwinEdge.Gameplay
             yield return Place("mountain", pole.a - Vector3.forward * 1.2f,
                 pole.a + Vector3.right * 3 - Vector3.forward * 1.2f);
             yield return Screenshot("mountain-names-and-pole");
+            if (audioTrace) yield return CheckZoneDwell(pole.a - Vector3.forward * 1.2f);
             yield return Place("bridge", BridgeGameplay.Current.CratePoint, BridgeGameplay.Current.CratePoint + Vector3.right * 2);
+            if (audioTrace) yield return CheckCourse(MusicTheme.Bridge, AmbientBed.Canyon);
             yield return Screenshot("bridge-hud");
             yield return Place("river", map.LowerDock, map.LowerDock + Vector3.right * 3);
+            if (audioTrace)
+            {
+                yield return CheckCourse(MusicTheme.River, AmbientBed.River);
+                yield return CheckSpatial("River Water", true);
+                yield return CheckSpatial("River Rain", false);
+            }
             yield return Screenshot("river-map-and-hud");
             if (host)
                 game.respawns.SetCheckpoint(local.GetComponent<PlayerMovement>(), local.transform.position,
@@ -273,10 +293,18 @@ namespace TwinEdge.Gameplay
 
             Vector3 castle = map.CastleGate + new Vector3(-15, 0, 65);
             yield return Place("castle", castle, castle + Vector3.right * 3);
+            if (audioTrace) yield return CheckCourse(MusicTheme.Castle, AmbientBed.CastleInterior);
             yield return Screenshot("castle-floor-and-hud");
             var cave = UndergroundGameplay.Current;
             yield return Place("cavern", cave.Landing(0, 0), cave.Landing(1, 0), false);
             yield return Screenshot("underground-floor-and-hud");
+            if (audioTrace)
+            {
+                yield return CheckCourse(MusicTheme.Cavern, AmbientBed.Cavern);
+                yield return Place("split-audio", pole.a - Vector3.forward * 1.2f, cave.Landing(1, 0), false);
+                yield return CheckCourse(host ? MusicTheme.Summit : MusicTheme.Cavern,
+                    host ? AmbientBed.Mountain : AmbientBed.Cavern);
+            }
 
             // Fixture advances only to SealPending and positions two players. Pickup still goes through the production RPC.
             Vector3 summit = map.FirstSummit;
@@ -289,11 +317,18 @@ namespace TwinEdge.Gameplay
                 gem.UnlockServer(feet + Vector3.up * .65f + Vector3.forward);
             }
             yield return Wait(() => gem.State == GemState.Available, "gem available on both peers");
+            if (audioTrace) yield return CheckCourse(MusicTheme.Summit, AmbientBed.Mountain);
             yield return Barrier("gem-available");
             if (host) gem.RequestAcquire();
             yield return Wait(() => gem.State == GemState.Carried && State.Phase == FoundationPhase.Return, "production pickup and Return transition");
             yield return Delay(.3f);
             yield return Screenshot("return-gem-notice");
+            int returnSample = 0;
+            if (audioTrace)
+            {
+                yield return CheckCourse(MusicTheme.Race, AmbientBed.Mountain);
+                returnSample = MusicSource(MusicTheme.Race).timeSamples;
+            }
             yield return Barrier("gem-carried");
 
             if (host)
@@ -306,6 +341,9 @@ namespace TwinEdge.Gameplay
             if (!host) gem.RequestAcquire();
             yield return Wait(() => gem.State == GemState.Carried && gem.Owner != Unity.Netcode.NetworkManager.ServerClientId,
                 "client picked up the previously carried gem");
+            if (audioTrace)
+                Require(MusicSource(MusicTheme.Race) is { } music && music.timeSamples > returnSample,
+                    "Return music continued through drop and theft");
             yield return Screenshot("gem-stolen");
             yield return Barrier("gem-stolen");
             if (host)
@@ -314,8 +352,70 @@ namespace TwinEdge.Gameplay
             yield return Delay(.3f);
             yield return Screenshot("gem-relocated");
             yield return Place("off-map", map.LastSummit, map.LowerDock);
+            if (audioTrace)
+            {
+                yield return CheckCourse(MusicTheme.Race, host ? AmbientBed.Mountain : AmbientBed.River);
+                yield return CheckSpatial("River Rain", !host);
+            }
             yield return Screenshot("return-edge-pins");
             yield return Barrier("route-views");
+        }
+
+        IEnumerator CheckZoneDwell(Vector3 mountain)
+        {
+            int initialSelections = courseSelections;
+            yield return Barrier("audio-dwell-start");
+            if (host)
+            {
+                for (int trial = 0; trial < 2; trial++)
+                {
+                    MoveBoth(BridgeGameplay.Current.CratePoint);
+                    yield return Delay(.18f);
+                    MoveBoth(mountain);
+                    yield return Delay(.3f);
+                }
+                Signal("audio-dwell-end");
+            }
+            yield return Wait(() => Exists("audio-dwell-end"), "brief visits across zone boundary finished");
+            yield return Delay(.7f);
+            Require(courseSelections == initialSelections, "brief zone visits did not switch or restart music");
+
+            void MoveBoth(Vector3 point)
+            {
+                foreach (var peer in game.manager.ConnectedClientsList)
+                {
+                    var at = point + (peer.ClientId == game.manager.LocalClientId ? Vector3.zero : Vector3.right * 2);
+                    peer.PlayerObject.GetComponent<PlayerMovement>().ApplyApprovedSpawnRpc(
+                        V3GameplayBootstrap.SafeGround(at), Quaternion.identity);
+                }
+            }
+        }
+
+        IEnumerator CheckSpatial(string name, bool playing)
+        {
+            var source = game.GetComponent<AudioService>().GetComponentsInChildren<AudioSource>().Single(s => s.name == name);
+            yield return Wait(() => source.isPlaying == playing, name + (playing ? " audible" : " stopped"));
+        }
+
+        AudioSource MusicSource(MusicTheme theme)
+        {
+            var clip = Resources.Load<CourseAudioCatalog>("V3CourseAudio").Music(theme);
+            return game.GetComponent<AudioService>().GetComponentsInChildren<AudioSource>()
+                .FirstOrDefault(s => s.clip == clip && s.isPlaying);
+        }
+
+        IEnumerator CheckCourse(MusicTheme theme, AmbientBed? bed)
+        {
+            var service = game.GetComponent<AudioService>();
+            var catalog = Resources.Load<CourseAudioCatalog>("V3CourseAudio");
+            yield return Wait(() => MusicSource(theme) is { volume: > .68f }, "course music " + theme);
+            if (!bed.HasValue) yield break;
+            var clip = catalog.Bed(bed.Value);
+            var sources = service.GetComponentsInChildren<AudioSource>()
+                .Where(s => s.name == "Ambient Bed A" || s.name == "Ambient Bed B").ToArray();
+            yield return Wait(() => clip
+                ? sources.Any(s => s.clip == clip && s.isPlaying && s.volume > .59f)
+                : sources.All(s => !s.isPlaying), "ambient bed " + bed);
         }
 
         IEnumerator Place(string stage, Vector3 hostPoint, Vector3 clientPoint, bool safeGround = true)
@@ -472,6 +572,7 @@ namespace TwinEdge.Gameplay
 
         void OnLog(string message, string trace, LogType type)
         {
+            if (audioTrace && message.StartsWith("AUDIO_COURSE ", StringComparison.Ordinal)) courseSelections++;
             if (audioTrace && message.StartsWith("AUDIO_PLAY ", StringComparison.Ordinal))
             {
                 int end = message.IndexOf(' ', 11);

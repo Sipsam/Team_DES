@@ -258,13 +258,32 @@ namespace TwinEdge.Gameplay
             }
         }
 
+        bool InRain(Vector3 point) => channel != null && Returning &&
+            point.z >= channel.Start - 18 && point.z <= channel.End + 18 &&
+            Mathf.Abs(point.x - channel.Sample(point.z).center.x) < 50;
+
+        internal bool TryAudioRain(Vector3 feet, out Vector3 position)
+        {
+            position = feet + Vector3.up * 11;
+            return IsSpawned && InRain(feet);
+        }
+
+        internal bool TryAudioWater(Vector3 listener, float range, out Vector3 position)
+        {
+            position = default;
+            if (!IsSpawned || channel == null) return false;
+            float z = Mathf.Clamp(listener.z, channel.WaterStart, channel.WaterEnd);
+            var sample = channel.Sample(z);
+            position = sample.center;
+            position.x = Mathf.Clamp(listener.x, sample.center.x - sample.halfWidth, sample.center.x + sample.halfWidth);
+            return (listener - position).sqrMagnitude < range * range;
+        }
+
         void RenderRain()
         {
             if (!IsClient || SystemInfo.graphicsDeviceType == UnityEngine.Rendering.GraphicsDeviceType.Null) return;
             var player = NetworkManager.LocalClient?.PlayerObject;
-            bool wet = player != null && Returning &&
-                player.transform.position.z >= channel.Start - 18 && player.transform.position.z <= channel.End + 18 &&
-                Mathf.Abs(player.transform.position.x - channel.Sample(player.transform.position.z).center.x) < 50;
+            bool wet = player != null && InRain(player.transform.position);
             if (!wet)
             {
                 if (rain != null && rain.isPlaying) rain.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);

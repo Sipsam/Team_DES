@@ -46,6 +46,8 @@ namespace TwinEdge.Gameplay
         public bool InFlight => IsSpawned && State.Value == LaunchState.Flying;
         public bool ReturnEnabled => IsSpawned && game != null && game.foundationMode && game.CanPlay && game.FoundationPhaseLabel == "Return";
         public float Charge => State.Value == LaunchState.Charging ? chargeLevel.Value : 0;
+        internal bool ChargeAudioActive => IsOwner && ReturnEnabled && State.Value == LaunchState.Charging &&
+            !chargeEndedLocally && !character.BlocksOwnerInteraction;
         void Awake()
         {
             controller = GetComponent<CharacterController>();

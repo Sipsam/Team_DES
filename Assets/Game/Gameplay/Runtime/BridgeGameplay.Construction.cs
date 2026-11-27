@@ -1,5 +1,6 @@
 using System;
 using System.Linq;
+using TwinEdge.Audio;
 using TwinEdge.Levels;
 using Unity.Netcode;
 using UnityEngine;
@@ -299,8 +300,9 @@ namespace TwinEdge.Gameplay
                 current.approvals |= id == current.left ? (byte)1 : (byte)2;
                 if (current.approvals == 3)
                 {
+                    Vector3 installedAt = SocketPoint;
                     ResetLoad();
-                    InstallNextServer();
+                    if (InstallNextServer()) game.EmitWorldCue(AudioCueId.TimberInstall, installedAt);
                 }
                 else load.Value = current;
                 return;
@@ -317,6 +319,7 @@ namespace TwinEdge.Gameplay
             SetCarry(id, true);
             lastActivity = NetworkManager.ServerTime.Time;
             load.Value = current;
+            game.EmitWorldCue(AudioCueId.TimberLift, current.Grip(takeRight, gripHalfWidth));
         }
 
         bool NearGrip(NetworkObject player, LoadState current, bool right) =>

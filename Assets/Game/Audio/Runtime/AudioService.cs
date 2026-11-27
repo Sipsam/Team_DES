@@ -1,4 +1,6 @@
 ﻿using System;
+using TwinEdge.Gameplay;
+using TwinEdge.Presentation;
 using UnityEngine;
 
 namespace TwinEdge.Audio
@@ -18,6 +20,8 @@ namespace TwinEdge.Audio
 
         static AudioService current;
         AudioCueCatalog catalog;
+        CourseAudio course;
+        CourseMapData courseMap;
         readonly System.Random pitchRandom = new();
         readonly Voice[] voices = new Voice[VoiceCount];
         AudioCueCatalog.Entry[] cues;
@@ -26,6 +30,8 @@ namespace TwinEdge.Audio
         bool started;
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
         bool trace;
+#else
+        const bool trace = false;
 #endif
 
         public static int MasterPercent => Mathf.Clamp(PlayerPrefs.GetInt(MasterPreference, 100), 0, 100);
@@ -83,6 +89,16 @@ namespace TwinEdge.Audio
             if (!catalog || !catalog.mixer) return;
             started = true;
             ApplyMaster();
+            var content = Resources.Load<CourseAudioCatalog>("V3CourseAudio");
+            courseMap = Resources.Load<CourseMapData>("V3CourseMap");
+            if (content && courseMap) course = new CourseAudio(transform, content, courseMap);
+            else Debug.LogError("Twin Edge course audio catalog or zone map is missing.");
+        }
+
+        void LateUpdate()
+        {
+            if (course != null && V3GameplayBootstrap.Current is { } game && listener && listener.isActiveAndEnabled)
+                course.Tick(game, listener, trace);
         }
 
         void ApplyMaster()
@@ -96,6 +112,10 @@ namespace TwinEdge.Audio
 
         public static bool Play(AudioCueId id, Vector3 position = default) =>
             current && current.isActiveAndEnabled && current.started && current.PlayCue(id, position);
+
+        internal static bool HasHardFooting(Vector3 feet) => current && current.courseMap &&
+            current.courseMap.At(feet) is CourseMapData.Zone.Bridge or CourseMapData.Zone.CastleInterior
+                or CourseMapData.Zone.Stair or CourseMapData.Zone.Cavern;
 
         bool PlayCue(AudioCueId id, Vector3 position)
         {
@@ -147,9 +167,10 @@ namespace TwinEdge.Audio
             return true;
         }
 
-        internal static void StopSession()
+        internal static void StopSession(bool keepMenuMusic = true)
         {
             if (!current) return;
+            current.course?.StopSession(keepMenuMusic);
             foreach (var voice in current.voices)
             {
                 if (!voice.Source) continue;
@@ -170,5 +191,16 @@ namespace TwinEdge.Audio
             current = null;
             AudioListener.volume = 1;
         }
+
+        void OnDisable() => course?.StopSession(false);
+
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+        internal AudioSource[] PooledSources => Array.ConvertAll(voices, voice => voice.Source);
+        internal void SuspendCourseAudio()
+        {
+            course?.StopSession(false);
+            course = null;
+        }
+#endif
     }
 }

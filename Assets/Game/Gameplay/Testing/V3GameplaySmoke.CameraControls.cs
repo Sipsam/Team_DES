@@ -13,6 +13,9 @@ public sealed partial class V3GameplaySmoke
     {
         var camera = Camera.main.GetComponent<ThirdPersonCamera>();
         bool capture = Array.IndexOf(Environment.GetCommandLineArgs(), "-v3ControlScreenshots") >= 0;
+        bool audioTrace = Array.IndexOf(Environment.GetCommandLineArgs(), "-twinAudioTrace") >= 0;
+        int steps = 0, jumps = 0, landings = 0;
+        if (audioTrace) Application.logMessageReceived += CountMovementCue;
         // Drive the bound camera transform directly so each sample has a fixed yaw and pitch.
         camera.enabled = false;
         var own = player.GetComponent<GameplayCharacter>();
@@ -58,8 +61,10 @@ public sealed partial class V3GameplaySmoke
         camera.transform.rotation = Quaternion.LookRotation(runDirection);
         Teleport(center);
         yield return Until(() => player.IsGrounded, "Grounded before distance samples");
+        int walkSteps = steps;
         yield return MeasureStride(3.5f, Key.W);
         Check(own.AnimationState == "Walk" && Mathf.Approximately(own.animator.speed, 1f), "Walk animation and cadence");
+        if (audioTrace) Check(steps > walkSteps, "Actual walk produced footsteps");
         SetControlKeys();
         Teleport(center);
         yield return ControlBarrier("sprint-start");
@@ -69,10 +74,12 @@ public sealed partial class V3GameplaySmoke
         yield return Until(() => own.SprintAllowed, "Server sprint lease received");
         float staminaAtStart = own.StaminaFraction;
         float sprintStart = Time.time;
+        int runSteps = steps;
         yield return MeasureStride(5.6f * 1.5f, Key.W, Key.LeftShift);
         float drain = (staminaAtStart - own.StaminaFraction) * 100f / (Time.time - sprintStart);
         Check(Mathf.Abs(drain - 2f) < .35f, $"Sprint stamina rate {drain:F2}/s");
         Check(own.AnimationState == "Run" && Mathf.Approximately(own.animator.speed, 1.5f), "Run animation and cadence");
+        if (audioTrace) Check(steps > runSteps, "Actual sprint produced footsteps");
         if (capture)
         {
             camera.transform.position = player.transform.position + Vector3.up * 1.15f - runDirection * 4f;
@@ -85,6 +92,13 @@ public sealed partial class V3GameplaySmoke
         yield return new WaitForSeconds(.25f);
         Check(Vector3.Dot(player.transform.position - center, runDirection) < 17.95f && player.IsGrounded,
             "Sprint did not penetrate wall or lose ground");
+        if (audioTrace)
+        {
+            camera.transform.position = player.transform.position + Vector3.up * 1.4f - runDirection * 4;
+            int blockedSteps = steps;
+            yield return new WaitForSeconds(.55f);
+            Check(steps == blockedSteps, "Held input at the wall produced no footsteps within listener range");
+        }
         SetControlKeys();
         yield return Until(() => own.StaminaFraction >= .999f && !own.SprintAllowed, "Stamina recovered after sprint", 5);
         yield return ControlBarrier("sprint-end");
@@ -100,6 +114,7 @@ public sealed partial class V3GameplaySmoke
 
         float ground = player.transform.position.y;
         float apex = ground;
+        int beforeJump = jumps, beforeLand = landings, idleSteps = steps;
         SetControlKeys(Key.Space);
         yield return Until(() => !player.IsGrounded, "Normal jump takes off");
         SetControlKeys();
@@ -110,11 +125,25 @@ public sealed partial class V3GameplaySmoke
             yield return null;
         }
         Check(player.IsGrounded && apex - ground > 1.33f && apex - ground < 1.55f, $"Normal jump lands, rise {apex - ground:F3}m");
+        if (audioTrace)
+        {
+            yield return new WaitForSeconds(.2f);
+            Check(jumps == beforeJump + 1 && landings == beforeLand + 1 && steps == idleSteps,
+                "One jump and one landing cue, with no footfalls in air");
+            Application.logMessageReceived -= CountMovementCue;
+        }
         yield return RunPoleCameraControls(camera, capture);
         camera.enabled = true;
         yield return ControlBarrier("finished");
         File.WriteAllText(evidence + (host ? "/host-pass.txt" : "/client-pass.txt"),
             "PASS camera-relative WASD matrix, walk and sprint distance, stamina, jump, sprint collision, animation and peer position, pole pivot and orbit controls.");
+
+        void CountMovementCue(string message, string stack, LogType type)
+        {
+            if (message.StartsWith("AUDIO_PLAY Step", StringComparison.Ordinal)) steps++;
+            if (message.StartsWith("AUDIO_PLAY Jump ", StringComparison.Ordinal)) jumps++;
+            if (message.StartsWith("AUDIO_PLAY Land ", StringComparison.Ordinal)) landings++;
+        }
     }
 
     IEnumerator MeasureStride(float expected, params Key[] keys)

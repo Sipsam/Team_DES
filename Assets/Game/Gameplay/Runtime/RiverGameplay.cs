@@ -252,6 +252,7 @@ namespace TwinEdge.Gameplay
             if (index != 0 || hull.State.Left != Empty && hull.State.Right != Empty)
                 hull.State.Status = RiverRaftStatus.Sailing;
             Publish(index);
+            game.EmitWorldCue(AudioCueId.RaftBoard, hull.State.Position + Vector3.up);
         }
 
         bool TryPlayer(ulong id, out PlayerMovement player)

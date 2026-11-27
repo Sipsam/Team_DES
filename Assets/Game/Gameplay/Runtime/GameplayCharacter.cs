@@ -126,6 +126,7 @@ namespace TwinEdge.Gameplay
                 else if (ownerMotion == ContestMotion.Thrown) motion.Value = 3;
                 previous = transform.position; sampleTime = Time.time;
             }
+            UpdateMovementAudio();
             RenderRaftRider();
             RenderContest();
             if (rendered != DisplayMotion)

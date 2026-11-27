@@ -1,15 +1,16 @@
 # Current task
 
-**V3-PRES-04** · Audio Foundation and Core SFX
+**V3-PRES-05** · Dynamic Music, Ambience and Character Audio
 
-**Checkpoint** `READY_TO_COMMIT` · **Base** `1b5fb173caa1ba06b25461033f53c88d8775a21a`
+**Checkpoint** `READY_TO_COMMIT` · **Base** `32c51dda151a4b4f4629d884e923700094461e6a`
 
-- Live remote main matched HEAD at start. The untracked team UI PDF is outside scope.
-- V3-PRES-03 source is pushed. This task has no visual publication target. Existing second human playtest artifacts, human testing and final integration remain outside execution.
-- Foundation and assets · Implement + Audio. Configure native mixer, catalog, bounded playback and Master storage. Verify imports, routing, listener and signal.
-- Gameplay and UI · Implement + Gameplay/Audio/Network. Consume existing replicated events and add server-only notifications for transient events without an event representation. Verify the production UI and representative Relay paths.
-- Validation and integration · Validate, Review, Finalize. Run focused D3D11 and isolated Relay, then review exact paths against live main. Raw assets and diagnostic evidence are under ignored `Docs/Development/Audio/V1/`.
-- Next · All required scoped checks passed. Build 02 covers the D3D11 Editor, WASAPI signal, presentation, contest, bridge and raft. Build 03 confirms the corrected castle door and first platform cues and passes castle/underground on both peers. Verify remote main, commit and push the reviewed scope. Record the verified hash in ignored evidence. Official screenshot publication is skipped for the audio-only change.
+- Build 06 D3D11 Development source and asset inputs verified. Managed-code comparison against Build 05 found only the 24 → 48 m lava range change. Packed audio data was unchanged.
+- Reused Build 05 WASAPI, Master persistence and hard mute, source limits, presentation, local zone choice, movement and session cleanup checks. Build 01 approved-action traces cover PvP, timber, bridge warnings, rowing and launch. Existing 37 cue entries and WAV files match the base.
+- Build 06 cavern-hazard and castle/underground Relay passed on both peers. Stair landing traces fell from 57/54 to 4/3. Joint seal, approved first pickup, trap and puzzle cues, rejoin, lava and fire playback passed. Both peers recorded one cue at the first approved pole exchange.
+- The incomplete Build 05 castle and Build 06 compilation logs are retained as shutdown records. Optional isolated finish traversal stopped when contest covered server outcomes. Human listening, DSP CPU capture, the second human playtest, full match, full-world and full E2E Relay remain deferred.
+- Evidence is optional locally under ignored `Docs/Development/Audio/V2/` and `Docs/Development/Gameplay/V1/RelayRuns/pres05-*`. The distribution playtest build and ZIP are outside these paths. Official screenshot publication is skipped.
+- Next · Verify live main, commit and push. Record the verified remote hash and `COMPLETED` receipt in ignored `Audio/V2/RunSummary.md`. Next gameplay work is V3-PRES-06 on user request.
+
 ## State and handoff
 
 Use `PLANNED` for queued work, `IN_PROGRESS` for implementation, `VALIDATING` for scoped checks, `BLOCKED` for a prerequisite or unresolved failure, and `AWAITING_APPROVAL` for an explicit user gate. Once required checks and review pass, use `READY_TO_COMMIT`. Use `COMPLETED` after verifying commit and push, and `DEFERRED` for intentionally postponed work.

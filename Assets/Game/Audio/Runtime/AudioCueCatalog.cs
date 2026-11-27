@@ -12,7 +12,10 @@ namespace TwinEdge.Audio
         BridgeWarning, BridgeCollapse, RaftHit, RaftBreak, RaftRestore,
         PuzzleAccept, PuzzleError, PuzzleComplete, DoorOpen, Switch, Platform,
         Seal, GemPickup, GemDrop, GemSteal, GemRelocate,
-        Checkpoint, Recovery, Win, Lose
+        Checkpoint, Recovery, Win, Lose,
+        StepSoft, StepHard, Jump, Land, AttackVoice, HurtVoice, EffortVoice,
+        PoleGrab, PoleSwap, PoleContact, TimberLift, TimberCarry, TimberInstall,
+        RaftBoard, RaftStroke, LaunchCharge, LaunchFire, LaunchLand
     }
 
     [CreateAssetMenu(menuName = "Twin Edge/Audio Cue Catalog")]

@@ -1,4 +1,4 @@
-Twin Edge V3 - Core audio credits
+Twin Edge V3 - Audio credits
 
 RPG Sound Pack by artisticdude
 Original release: https://opengameart.org/content/rpg-sound-pack
@@ -28,3 +28,206 @@ inventory/metal-ringing.wav Trap warning, gem steal
 inventory/metal-small1.wav  Underground platform activation
 inventory/wood-small.wav    Contact hits, bridge warning, raft damage, switch
 world/door.wav              Gate opening, bridge collapse, raft break
+
+V3-PRES-05 - Music, ambience and character/gameplay audio
+All entries below were verified 2026-11-27 as CC0 1.0 Universal on the listed release pages.
+https://creativecommons.org/publicdomain/zero/1.0/
+The CC0 legal text is included with this notice. Unity applies additional import compression and runtime mixing.
+
+AncientMysteries.ogg by sperrylion (Sperry Lion, LLC)
+Release: https://opengameart.org/content/ancient-mysteries
+Original: https://opengameart.org/sites/default/files/ancient_mysteries.ogg
+Use: Menu, join and lobby
+Edits: level matched, Vorbis export.
+
+SunsetPlains.ogg by Yoiyami
+Release: https://opengameart.org/content/sunset-plains
+Original: https://opengameart.org/sites/default/files/sunset_plains.wav
+Use: Outbound mountain and win result
+Edits: excerpt 24s + 92s, 2s loop overlap, level matched, Vorbis export.
+
+SunsetWalk.ogg by KiluaBoy
+Release: https://opengameart.org/content/sunset-walk-ambient-quiet-sweet-loop
+Original: https://opengameart.org/sites/default/files/SunsetWalk.ogg
+Use: Outbound bridge and canyon
+Edits: level matched, Vorbis export.
+
+OldTowerInn.ogg by RandomMind
+Release: https://opengameart.org/content/medieval-the-old-tower-inn
+Original: https://opengameart.org/sites/default/files/Loop_The_Old_Tower_Inn.wav
+Use: Outbound river
+Edits: 8ms raised-cosine loop edges, level matched, Vorbis export.
+
+BardsTale.ogg by RandomMind
+Release: https://opengameart.org/content/medieval-the-bards-tale
+Original: https://opengameart.org/sites/default/files/Loop_The_Bards_Tale.wav
+Use: Outbound castle
+Edits: 8ms raised-cosine loop edges, level matched, Vorbis export.
+
+WhispersInTheFog.ogg by Ruhinre
+Release: https://opengameart.org/content/whispers-in-the-fog
+Original: https://opengameart.org/sites/default/files/whispers_in_the_fog.ogg
+Use: Outbound stairs and cavern, lose result
+Edits: 8ms raised-cosine loop edges, level matched, Vorbis export.
+
+DeterminedPursuit.ogg by Emma_MA
+Release: https://opengameart.org/content/determined-pursuit-epic-orchestra-loop
+Original: https://opengameart.org/sites/default/files/determined_pursuit_loop.wav
+Use: Return cavern, castle and bridge/canyon
+Edits: level matched, Vorbis export.
+
+Hope.ogg by MintoDog
+Release: https://opengameart.org/content/hopeorchestral-battle-music
+Original: https://opengameart.org/sites/default/files/hope_orchestral_battle_music_bpm165_0.ogg
+Use: Return river and mountain
+Edits: level matched, Vorbis export.
+
+MountainWind.ogg by Thimras
+Release: https://opengameart.org/content/park-ambiences
+Original: https://opengameart.org/sites/default/files/park_ambience_wind.wav
+Use: Mountain bed
+Edits: excerpt 28s + 32s, 1s loop overlap, level matched, Vorbis export.
+
+CanyonWind.ogg by SketchMan3 (from JaggedStone)
+Release: https://opengameart.org/content/wind-whoosh-loop
+Original: https://opengameart.org/sites/default/files/wind%20woosh%20loop.ogg
+Use: Bridge/canyon bed
+Edits: level matched, Vorbis export.
+
+RiverNature.ogg by Thimras
+Release: https://opengameart.org/content/park-ambiences
+Original: https://opengameart.org/sites/default/files/park_ambience_river.wav
+Use: River bed
+Edits: excerpt 27s + 35s, low-pass filtered, 1s loop overlap, level matched, Vorbis export.
+
+CastleBirds.ogg by Thimras
+Release: https://opengameart.org/content/park-ambiences
+Original: https://opengameart.org/sites/default/files/park_ambience_birds.wav
+Use: Castle exterior bed
+Edits: excerpt 19s + 35s, 1s loop overlap, level matched, Vorbis export.
+
+CastleRoom.ogg by JaggedStone
+Release: https://opengameart.org/content/loopable-dungeon-ambience
+Original: https://opengameart.org/sites/default/files/dungeon_ambient_1_0.ogg
+Use: Castle interior and stair bed
+Edits: excerpt 6s + 27s, low-pass filtered, 1s loop overlap, 8ms raised-cosine loop edges, level matched, Vorbis export.
+
+Cavern.ogg by JaggedStone
+Release: https://opengameart.org/content/loopable-dungeon-ambience
+Original: https://opengameart.org/sites/default/files/dungeon_ambient_1_0.ogg
+Use: Cavern bed
+Edits: excerpt 40s + 42s, 1s loop overlap, 8ms raised-cosine loop edges, level matched, Vorbis export.
+
+RiverWater.ogg by Thimras
+Release: https://opengameart.org/content/park-ambiences
+Original: https://opengameart.org/sites/default/files/park_ambience_river.wav
+Use: Spatial river ribbon
+Edits: excerpt 77s + 19s, mono downmix, 1s loop overlap, level matched, Vorbis export.
+
+RiverRain.ogg by Kresiek The Furry
+Release: https://opengameart.org/content/amb-rain-loop-2
+Original: https://opengameart.org/sites/default/files/amb_rain2.ogg
+Use: Spatial Return rain
+Edits: excerpt 20s + 24s, mono downmix, 1s loop overlap, level matched, Vorbis export.
+
+LavaBubble.ogg by TinyWorlds
+Release: https://opengameart.org/content/boiling-water-loops
+Original: https://opengameart.org/sites/default/files/cooking_without_cover_01_0.ogg
+Use: Spatial lava
+Edits: mono downmix, low-pass filtered, 0.35s loop overlap, level matched, Vorbis export.
+
+Flame.ogg by PagDev
+Release: https://opengameart.org/content/fireplace-sound-loop
+Original: https://opengameart.org/sites/default/files/fire.wav
+Use: Spatial active cavern flame
+Edits: excerpt 3s + 9s, mono downmix, 0.4s loop overlap, level matched, Vorbis export.
+
+ChargeWind.ogg by SketchMan3 (from JaggedStone)
+Release: https://opengameart.org/content/wind-whoosh-loop
+Original: https://opengameart.org/sites/default/files/wind%20woosh%20loop.ogg
+Use: Owner launch charge loop
+Edits: mono downmix, low-pass filtered, 0.2s loop overlap, 8ms raised-cosine loop edges, level matched, Vorbis export.
+
+StepSoft.wav by Fantozzi, compiled by qubodup
+Release: https://opengameart.org/content/fantozzis-footsteps-grasssand-stone
+Original: https://opengameart.org/sites/default/files/Fantozzi-footsteps.7z / Fantozzi-SandL2.flac
+Use: Soft walking and running
+Edits: mono downmix, short edge fades, level matched, PCM16 export.
+
+StepHard.wav by Fantozzi, compiled by qubodup
+Release: https://opengameart.org/content/fantozzis-footsteps-grasssand-stone
+Original: https://opengameart.org/sites/default/files/Fantozzi-footsteps.7z / Fantozzi-StoneR2.flac
+Use: Hard walking and running
+Edits: mono downmix, short edge fades, level matched, PCM16 export.
+
+Land.wav by MentalSanityOff, uploaded by qubodup
+Release: https://opengameart.org/content/jump-landing-sound
+Original: https://opengameart.org/sites/default/files/jumpland.wav
+Use: General and launch landing
+Edits: short edge fades, level matched, PCM16 export.
+
+AttackVoice.wav by qubodup
+Release: https://opengameart.org/content/15-vocal-male-strainhurtpainjump-sounds
+Original: https://opengameart.org/sites/default/files/slightscreams.7z / slightscream-02.flac
+Use: Attack effort
+Edits: mono downmix, short edge fades, level matched, PCM16 export.
+
+HurtVoice.wav by qubodup
+Release: https://opengameart.org/content/15-vocal-male-strainhurtpainjump-sounds
+Original: https://opengameart.org/sites/default/files/slightscreams.7z / slightscream-08.flac
+Use: Actual PvP hit reaction
+Edits: mono downmix, short edge fades, level matched, PCM16 export.
+
+EffortVoice.wav by qubodup
+Release: https://opengameart.org/content/15-vocal-male-strainhurtpainjump-sounds
+Original: https://opengameart.org/sites/default/files/slightscreams.7z / slightscream-11.flac
+Use: Approved throw/launch exertion
+Edits: mono downmix, short edge fades, level matched, PCM16 export.
+
+Jump.wav by qubodup
+Release: https://opengameart.org/content/wind-hit-time-morph
+Original: https://opengameart.org/sites/default/files/qubodup-timehitwind.zip / 60009__qubodup__swosh_22.flac
+Use: Ordinary jump
+Edits: mono downmix, short edge fades, level matched, PCM16 export.
+
+LaunchCharge.wav by qubodup
+Release: https://opengameart.org/content/wind-hit-time-morph
+Original: https://opengameart.org/sites/default/files/qubodup-timehitwind.zip / qubodup-slomo1.wav
+Use: Approved charge onset
+Edits: mono downmix, short edge fades, level matched, PCM16 export.
+
+LaunchFire.wav by qubodup
+Release: https://opengameart.org/content/wind-hit-time-morph
+Original: https://opengameart.org/sites/default/files/qubodup-timehitwind.zip / qubodup-megaswosh1.wav
+Use: Approved launch
+Edits: mono downmix, short edge fades, level matched, PCM16 export.
+
+Grip.wav by Independent.nu (Ljudbank), compiled by qubodup
+Release: https://opengameart.org/content/35-wooden-crackshitsdestructions
+Original: https://opengameart.org/sites/default/files/independent_nu_ljudbank-wood_crack_hit_destruction.7z / impactwood03.mp3.flac
+Use: Pole grip and timber lift
+Edits: mono downmix, short edge fades, level matched, PCM16 export.
+
+TimberCreak.wav by Independent.nu (Ljudbank), compiled by qubodup
+Release: https://opengameart.org/content/35-wooden-crackshitsdestructions
+Original: https://opengameart.org/sites/default/files/independent_nu_ljudbank-wood_crack_hit_destruction.7z / crack04.mp3.flac
+Use: Pole role swap and timber carry
+Edits: mono downmix, short edge fades, level matched, PCM16 export.
+
+TimberImpact.wav by Independent.nu (Ljudbank), compiled by qubodup
+Release: https://opengameart.org/content/35-wooden-crackshitsdestructions
+Original: https://opengameart.org/sites/default/files/independent_nu_ljudbank-wood_crack_hit_destruction.7z / impactwood16.mp3.flac
+Use: Pole landing and installed timber
+Edits: mono downmix, short edge fades, level matched, PCM16 export.
+
+RaftBoard.wav by ezwa, edited by qubodup
+Release: https://opengameart.org/content/6-short-water-splashes
+Original: https://opengameart.org/sites/default/files/ezwa-water_splash.7z / water_splash-02.flac
+Use: Raft boarding splash
+Edits: short edge fades, level matched, PCM16 export.
+
+RaftStroke.wav by ezwa, edited by qubodup
+Release: https://opengameart.org/content/6-short-water-splashes
+Original: https://opengameart.org/sites/default/files/ezwa-water_splash.7z / water_splash-05.flac
+Use: Oar stroke splash
+Edits: short edge fades, level matched, PCM16 export.

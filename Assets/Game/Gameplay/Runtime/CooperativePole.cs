@@ -1,4 +1,5 @@
 using System.Linq;
+using TwinEdge.Audio;
 using TwinEdge.Levels;
 using Unity.Netcode;
 using UnityEngine;
@@ -95,6 +96,7 @@ namespace TwinEdge.Gameplay
                 pivotSummit = landed; s.surface = landed; s.phase = PolePhase.Ready;
                 SetAngles(ref s); s.revision++; snapshot.Value = s; intent = Vector2.zero; pivotIntent = Vector2.zero;
                 pivotSprint = false; stable = 0; candidate = null;
+                EmitCue(AudioCueId.PoleSwap, (s.a + s.b) * .5f + Vector3.up);
                 return;
             }
             if (s.Paired || s.phase == PolePhase.Failed) return;
@@ -108,7 +110,11 @@ namespace TwinEdge.Gameplay
             if (s.Paired) { SafeLanding(s.PivotPoint, out pivotSummit); SetAngles(ref s); }
             player.GetComponent<GameplayCharacter>()?.SetCarryingServer(true);
             s.revision++; snapshot.Value = s;
+            EmitCue(AudioCueId.PoleGrab, grip + Vector3.up);
         }
+
+        static void EmitCue(AudioCueId cue, Vector3 at) =>
+            V3GameplayBootstrap.Current?.state.EmitWorldCue(cue, at);
         static void SetAngles(ref PoleSnapshot s)
         {
             Vector3 d = (s.OrbitPoint - s.PivotPoint).normalized;
@@ -256,7 +262,11 @@ namespace TwinEdge.Gameplay
             bool landed = SafeLanding(s.OrbitPoint, out string id) && id != pivotSummit && (control.sqrMagnitude < .001f || stoppedOnLanding);
             stable = landed && candidate == id ? stable + Time.fixedDeltaTime : 0;
             candidate = landed ? id : null;
-            if (stable >= landingDwell) { s.phase = PolePhase.Landed; s.surface = id; }
+            if (stable >= landingDwell)
+            {
+                if (s.phase != PolePhase.Landed) EmitCue(AudioCueId.PoleContact, s.OrbitPoint);
+                s.phase = PolePhase.Landed; s.surface = id;
+            }
             else if (s.phase == PolePhase.Landed) { s.phase = PolePhase.Ready; s.surface = default; }
             snapshot.Value = s;
         }

@@ -53,7 +53,7 @@ namespace TwinEdge.Gameplay
         void OnDisable()
         {
             SceneManager.sceneLoaded -= DisableLevelPreview;
-            AudioService.StopSession();
+            AudioService.StopSession(keepMenuMusic: false);
             if (Current == this) Current = null;
             if (Presentation)
             {

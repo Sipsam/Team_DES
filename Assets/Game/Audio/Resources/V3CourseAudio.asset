@@ -1,0 +1,40 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 85ddd7d42a575e6886f1c443dfb85055, type: 3}
+  m_Name: V3CourseAudio
+  m_EditorClassIdentifier: Assembly-CSharp::TwinEdge.Audio.CourseAudioCatalog
+  musicOutput: {fileID: 397271651311520532, guid: 52de2442b5130864f969e967d158b7bf, type: 2}
+  ambienceOutput: {fileID: -4850730201185643675, guid: 52de2442b5130864f969e967d158b7bf, type: 2}
+  effectsOutput: {fileID: 1464727125624981262, guid: 52de2442b5130864f969e967d158b7bf, type: 2}
+  music:
+  - {fileID: 0}
+  - {fileID: 8300000, guid: 64a7ef10b2de5076960fc4fd22f0c499, type: 3}
+  - {fileID: 8300000, guid: ebb5f9b1cc775921b432ef0111f5932a, type: 3}
+  - {fileID: 8300000, guid: 92e6f750b286516e9e14b59421800945, type: 3}
+  - {fileID: 8300000, guid: 41489b875c2459bd95aeee7b8b903b9f, type: 3}
+  - {fileID: 8300000, guid: 0e3dcabf563153a88f0012227855290c, type: 3}
+  - {fileID: 8300000, guid: 4541ce30b9ff5d5cb1d293b63a697f3a, type: 3}
+  - {fileID: 8300000, guid: 8ee9087e79545651be2f9051855740b6, type: 3}
+  - {fileID: 8300000, guid: 7808c87b094852358a993c2d8677ed64, type: 3}
+  beds:
+  - {fileID: 0}
+  - {fileID: 8300000, guid: cb121cf1a547573680b41eef38c8f4bb, type: 3}
+  - {fileID: 8300000, guid: 8d31273759b25487901e71ab22dee63b, type: 3}
+  - {fileID: 8300000, guid: 69ed84a08628543a83b6c1ff1b20ff65, type: 3}
+  - {fileID: 8300000, guid: 97dc2a0cc97353f3ab0eb35342f149bf, type: 3}
+  - {fileID: 8300000, guid: 20b4f1f786d35b3fbcd1a656471a62f0, type: 3}
+  - {fileID: 8300000, guid: 633c89e435b05416914801b0aa3c99d1, type: 3}
+  water: {fileID: 8300000, guid: d09ac10fcfcd5c189c44c4a44ba8e64c, type: 3}
+  rain: {fileID: 8300000, guid: 9b9cea74d56356009a0838c99e61922b, type: 3}
+  lava: {fileID: 8300000, guid: c472c73b2f565b23afdc2737d6f178dc, type: 3}
+  flame: {fileID: 8300000, guid: c81a3bb14ddf5a148510f99e69c27d74, type: 3}
+  charge: {fileID: 8300000, guid: 6613dfd6f57d52ce9ef6c01e4dfba41d, type: 3}

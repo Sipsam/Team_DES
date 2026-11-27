@@ -32,6 +32,30 @@ namespace TwinEdge.Gameplay
         }
 
         readonly Trap[] traps = new Trap[6];
+
+        internal bool TryAudioLava(Vector3 listener, float range, out Vector3 position)
+        {
+            position = lavaBounds.ClosestPoint(listener);
+            position.y = lavaBounds.max.y;
+            return IsSpawned && IsBound && (listener - position).sqrMagnitude < range * range;
+        }
+
+        internal bool TryAudioFlame(Vector3 listener, float range, out Vector3 position)
+        {
+            position = default;
+            if (!IsSpawned || !IsBound) return false;
+            float nearest = range * range;
+            foreach (var trap in traps)
+            {
+                if (trap == null || trap.Kind != TrapKind.Fire || !trap.Attack.gameObject.activeInHierarchy) continue;
+                Vector3 at = trap.Attack.position;
+                float distance = (listener - at).sqrMagnitude;
+                if (distance >= nearest) continue;
+                nearest = distance;
+                position = at;
+            }
+            return nearest < range * range;
+        }
         readonly UndergroundVanishPlatform[] vanishing = new UndergroundVanishPlatform[2];
 
         float AttackPeriod => trapWarning + trapAttack + trapRecovery;
