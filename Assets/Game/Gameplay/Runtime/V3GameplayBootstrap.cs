@@ -261,26 +261,11 @@ namespace TwinEdge.Gameplay
             var keyboard = UnityEngine.InputSystem.Keyboard.current;
             if (keyboard != null && keyboard.f3Key.wasPressedThisFrame) debug = !debug;
         }
-#endif
-
         void OnGUI()
         {
-            var player = manager.LocalClient?.PlayerObject;
-            if (player != null && state.Phase != FoundationPhase.Finished &&
-                CastleGameplay.Current?.IsKeypadOpen == true && !PresentationRoot.BlocksGameplay)
-            {
-                GUILayout.BeginArea(HudArea, GUI.skin.box);
-                CastleGameplay.Current.DrawKeypad(player);
-                GUILayout.EndArea();
-            }
-#if UNITY_EDITOR || DEVELOPMENT_BUILD
-            if (debug) DrawDiagnostics(player);
-#endif
+            if (debug) DrawDiagnostics(manager.LocalClient?.PlayerObject);
         }
 
-        Rect HudArea => new(12, 12, Mathf.Min(390, Screen.width - 24), Mathf.Max(0, Screen.height - 202));
-
-#if UNITY_EDITOR || DEVELOPMENT_BUILD
         Rect DiagnosticsArea => new(Mathf.Max(410, Screen.width - 380), 12, 368, Screen.height - 24);
 
         void DrawDiagnostics(NetworkObject player)
@@ -312,7 +297,7 @@ namespace TwinEdge.Gameplay
             var guiPoint = new Vector2(point.x, Screen.height - point.y);
             if (Current.debug && Current.DiagnosticsArea.Contains(guiPoint)) return true;
 #endif
-            return CastleGameplay.Current?.IsKeypadOpen == true;
+            return false;
         }
     }
 }

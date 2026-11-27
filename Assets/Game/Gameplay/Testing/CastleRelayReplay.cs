@@ -16,7 +16,7 @@ namespace TwinEdge.Gameplay
     public sealed partial class CastleRelayReplay : MonoBehaviour
     {
         string output, role, room;
-        bool host, failed, screenshots, outboundReconnect;
+        bool host, failed, screenshots, outboundReconnect, keypadOnly;
         int slot;
         FullMatchRelayReplay fullMatch;
         Keyboard keyboard;
@@ -42,6 +42,7 @@ namespace TwinEdge.Gameplay
             replay.output = args[path + 1];
             replay.screenshots = args.Contains("-castleScreenshots");
             replay.outboundReconnect = args.Contains("-castleOutboundReconnect");
+            replay.keypadOnly = args.Contains("-castleKeypadOnly");
             Directory.CreateDirectory(replay.output);
         }
 
@@ -92,7 +93,9 @@ namespace TwinEdge.Gameplay
             yield return new WaitForSeconds(.5f);
             yield return ReplayCourse();
             if (outboundReconnect) yield break;
-            File.WriteAllText(Path.Combine(output, role + "-pass.txt"), "PASS: Relay, castle stage inputs, physical gate, underground seal and gem, castle exit");
+            File.WriteAllText(Path.Combine(output, role + "-pass.txt"), keypadOnly
+                ? "PASS: Relay, castle stage inputs, uGUI keypad, physical basement gate and reconnect"
+                : "PASS: Relay, castle stage inputs, physical gate, underground seal and gem, castle exit");
             yield return Wait(() => File.Exists(Path.Combine(output, (host ? "client" : "host") + "-pass.txt")),
                 "both routes completed", 190);
             yield return new WaitForSeconds(1.2f);
@@ -251,15 +254,20 @@ namespace TwinEdge.Gameplay
                 () => castle.LocalNumber >= 0, "private four-digit number");
             yield return UseAndConfirm(Station(CastleGameplay.Action.Keypad, slot, 4),
                 () => castle.KeypadForLocal == slot, "local keypad opened");
-            if (fullMatch == null)
+            if (keypadOnly) yield return CheckKeypad();
+            else
             {
-                int old = castle.Progress(slot).Revision;
-                castle.SubmitNumberRpc((castle.LocalNumber + 1) % 10000, old);
-                yield return Wait(() => castle.Progress(slot).Revision != old && castle.Progress(slot).Feedback == -1,
-                    "incorrect four-digit number rejected");
+                if (fullMatch == null)
+                {
+                    int old = castle.Progress(slot).Revision;
+                    castle.SubmitNumberRpc((castle.LocalNumber + 1) % 10000, old);
+                    yield return Wait(() => castle.Progress(slot).Revision != old && castle.Progress(slot).Feedback == -1,
+                        "incorrect four-digit number rejected");
+                }
+                castle.SubmitNumberRpc(castle.LocalNumber, castle.Progress(slot).Revision);
             }
-            castle.SubmitNumberRpc(castle.LocalNumber, castle.Progress(slot).Revision);
             yield return Wait(() => castle.DoorOpen, "both four-digit codes open basement", 30);
+            if (keypadOnly) yield return CaptureKeypad("hud-restored", null, 1920);
             yield return Walk(host ? 1.7f : -1.7f, 242.6f);
             if (fullMatch == null)
                 yield return CheckBasementRecovery(FoundationPhase.Outbound, 242.75f);
@@ -273,6 +281,11 @@ namespace TwinEdge.Gameplay
             Require(game.Phase == FoundationPhase.Outbound && !castle.Returning && castle.PartitionsDisabled,
                 "basement passage opens partitions and keeps outbound rules");
             Require(player.IsGrounded, "grounded beyond the basement door");
+            if (keypadOnly)
+            {
+                yield return CheckKeypadReconnect();
+                yield break;
+            }
             if (fullMatch != null) yield return fullMatch.Barrier("basement-door");
             if (walkOnly) yield break;
             var underground = UndergroundGameplay.Current;
@@ -734,6 +747,11 @@ namespace TwinEdge.Gameplay
 
         void WatchLogs(string message, string stack, LogType type)
         {
+            if (keypadOnly)
+            {
+                if (message.StartsWith("AUDIO_PLAY PuzzleError ", StringComparison.Ordinal)) keypadErrors++;
+                if (message.StartsWith("AUDIO_PLAY PuzzleAccept ", StringComparison.Ordinal)) keypadAccepts++;
+            }
             if (type is LogType.Exception or LogType.Assert) Fail(message + "\n" + stack);
         }
 

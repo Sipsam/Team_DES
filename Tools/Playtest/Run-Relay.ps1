@@ -1,7 +1,7 @@
 param(
     [Parameter(Mandatory)][string]$Build,
     [Parameter(Mandatory)][string]$Run,
-    [ValidateSet('rematch','presentation','settings','transition','transitionRecovery','foundation','foundationImpaired','cameraControls','poleRecovery','bridge','bridgeContact','bridgeDisconnect','river','riverRecovery','castleUnderground','castleReconnect','cavernHazards','cavernReconnect','contest','contestRegions','contestLifecycle','return','returnInput','returnReconnect','mountain','mountainExchange','mountainFromSpawn','mountainEntry','full','canyon','approach','summit','castle','castleWalk','riverLink','middle','finish')]
+    [ValidateSet('rematch','presentation','settings','transition','transitionRecovery','foundation','foundationImpaired','cameraControls','poleRecovery','bridge','bridgeContact','bridgeDisconnect','river','riverRecovery','castleUnderground','castleReconnect','castleKeypad','cavernHazards','cavernReconnect','contest','contestRegions','contestLifecycle','return','returnInput','returnReconnect','mountain','mountainExchange','mountainFromSpawn','mountainEntry','full','canyon','approach','summit','castle','castleWalk','riverLink','middle','finish')]
     [string]$Case = 'foundation',
     [string]$PolePlan = 'Docs/Development/Gameplay/V1/MountainPole/ContinuousPlan.json',
     [string]$ReturnPlan = 'Docs/Development/Gameplay/V1/MountainReturn/Route.json',
@@ -9,6 +9,7 @@ param(
     [switch]$Screenshots,
     [switch]$AudioTrace,
     [switch]$PolishTrace,
+    [switch]$PresentationMetrics,
     [ValidateSet(1024,1280,1600,1920,2560)][int]$Width = 1024,
     [string]$EvidenceRoot = 'Docs/Development/Gameplay/V1/RelayRuns'
 )
@@ -60,9 +61,10 @@ try {
             $mode = 'riverReplay'; $evidence = 'riverEvidence'; $timeout = 500; $captureFlag = '-riverScreenshots'
             if ($Case -eq 'riverRecovery') { $extra = @('-riverRecovery') }
         }
-        '^(castleUnderground|castleReconnect|cavern)' {
+        '^(castleUnderground|castleReconnect|castleKeypad|cavern)' {
             $mode = 'castleReplay'; $evidence = 'castleEvidence'; $timeout = 1250; $captureFlag = '-castleScreenshots'
             if ($Case -eq 'castleReconnect') { $extra = @('-castleOutboundReconnect') }
+            if ($Case -eq 'castleKeypad') { $extra = @('-castleKeypadOnly') }
             if ($Case -eq 'cavernHazards') { $extra = @('-castleCavernProbe','-castleCavernHazards'); $marker = 'hazards-pass' }
             if ($Case -eq 'cavernReconnect') { $extra = @('-castleCavernProbe','-castleCavernReconnect'); $marker = 'cavern-pass' }
         }
@@ -115,6 +117,7 @@ try {
     }
     if ($Screenshots -and !$Headless -and $captureFlag) { $extra += $captureFlag }
     if ($AudioTrace) { $extra += '-twinAudioTrace' }
+    if ($PresentationMetrics) { $extra += '-v3PresentationMetrics' }
     if ($PolishTrace) { $extra += '-v3PolishTrace' }
     foreach ($role in 'host','client') {
         $arguments = $graphics + @('-runInBackground',"-$mode",$role,"-$evidence",$output,'-logFile',"$output/$role.log") + $extra
@@ -143,7 +146,7 @@ try {
 }
 finally {
     $players | Where-Object { !$_.HasExited } | Stop-Process
-    if ($Case -eq 'settings' -and $createdOutput) {
+    if ($Case -in 'settings','castleKeypad' -and $createdOutput) {
         foreach ($name in 'room.txt', 'room.tmp') {
             $codeFile = Join-Path $output $name
             if (Test-Path -LiteralPath $codeFile) { Remove-Item -LiteralPath $codeFile }

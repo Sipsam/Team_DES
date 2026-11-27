@@ -31,7 +31,7 @@ Use this command to reproduce the windowed Direct3D 11 setup used for the Window
 | F | Grab a nearby opponent, press again to throw, or tap repeatedly to resist when held. Gem carriers cannot grab. |
 | R | On a supported return summit, hold to charge and release to launch. W/S adjusts the angle while charging. |
 | Esc | Release the mouse. Cancel a pole grip, timber carry, docked raft seat, launch charge, keypad or your seal participation when applicable. |
-| Digits and Submit | After opening your castle keypad with E, click its field, type the four digits shown at your number station and select Submit. Press Esc to close it. |
+| Castle keypad | Press E at your keypad. Use its number buttons or the keyboard to enter your four digits, then select 확인. Use 삭제 or Backspace to remove the last digit. Esc or 닫기 closes the keypad. Click the world again to capture the mouse. |
 
 ## Route
 
@@ -289,3 +289,16 @@ Build with Unity 6000.3.27f1 using a unique direct child such as `TWIN_EDGE_V3_B
 - `-PolishTrace` records motion transitions, per-hand world-distance to each grip before and after IK, and emitted and live particles. The before sample is the current controller pose before IK. The movement captures use a visible floor at the controls fixture. The settings case additionally checks 0/50/100%, active cleanup, the 160-particle cap and peer independence.
 - Compare matching camera and replay phases when collecting frame timings, batches, allocations and active particles. Record the tested build hashes, graphics API, limitations and any metric unavailable on the capture machine.
 - Use the official map procedure on clean pushed source. Inspect warmed D3D11 images and retain prior commit-qualified sets. Use the same source for fixed render targets from scoped gameplay and record the source and build hashes. Use pose and event logs or short recordings alongside stills for motion evidence. Leave full-world, full-match, E2E and the second human playtest deferred.
+
+## V3-PRES-10 presentation integration
+
+Use a unique Development build and evidence run for each Windows D3D11 pair.
+
+```powershell
+./Tools/Playtest/Run-Relay.ps1 -Build Builds/V3Presentation10Review-<build-id>/V3Gameplay.exe -Case castleKeypad -Run <unique-id> -EvidenceRoot Docs/Development/Presentation/V3-PRES-10 -Width 1600 -Screenshots -AudioTrace -PresentationMetrics
+```
+
+- `castleKeypad` stages the initial position outside the castle, walks the existing route, solves all four puzzle stages and opens the keypad with E. It uses the real uGUI pointer and keyboard paths and the existing server submission. Check the wrong and accepted cue counts per peer, the basement passage and the Client's restored progress after rejoining. Capture the new keypad across the four fixed render sizes with the HUD's private number hidden. The Player window size is a separate input to the replay.
+- Run the separate `presentation`, `settings`, `transition` and `rematch` cases for the session, controls, approved seal and pickup, result and fresh lobby boundaries. The transition and rematch cases stage positions or setup progress and use production approval for the reported shared seal, acquisition or finish. Keep that distinction in evidence.
+- Use `-PresentationMetrics` in `presentation`, `castleKeypad` or `rematch` to sample their scoped views and record resource counts. Review the two processes separately and retain frame count, elapsed time, window, FPS cap, minimap preference and effect intensity. A Unity counter with no samples is `NOT_RUN`. Scope the results to the Development fixture and machine.
+- Build the normal Player with `BuildPlaytestPlayer` into a separate smoke directory. Exercise its menu and check development drivers, F3 and Showcase boundaries independently of test playback. Keep the published second human playtest as the pre-Presentation build. Follow [official screenshots](#official-screenshots) for the post-push map set and the open, entered, rejected and dismissed keypad views.

@@ -59,6 +59,7 @@ public sealed partial class V3GameplaySmoke
             var view = VisiblePage("Match Result");
             if (cycle == 1) yield return ObserveResultMotion(view);
             yield return Until(() => view.activeInHierarchy && !Bootstrap.Presentation.IsTransitioning, "result fade completed");
+            if (cycle == 1) yield return PresentationMetrics.Sample(evidence, ContestRole, "result");
             Check(PresentationRoot.BlocksGameplay && !player.GetComponent<GameplayInput>().AcceptsInput, "result owns local input");
             bool localWin = state.Won(Seat);
             string title = localWin ? "승리" : "패배";

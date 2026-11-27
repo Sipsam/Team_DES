@@ -51,6 +51,8 @@ namespace TwinEdge.Gameplay
             if (!game) game = FindFirstObjectByType<V3GameplayBootstrap>();
             yield return Wait(() => game.WorldReady, "saved world loaded");
             CheckListener("Menu World Camera");
+            yield return Wait(() => View("Main Menu").activeInHierarchy, "main menu visible");
+            yield return PresentationMetrics.Sample(folder, Role, "menu");
             if (localSettingsProbe || restoreSettingsProbe)
             {
                 yield return CheckLocalSettings();
@@ -85,6 +87,7 @@ namespace TwinEdge.Gameplay
 
             yield return Wait(() => State.IsGameReady, "two Runtime Ready reports");
             yield return Delay();
+            yield return PresentationMetrics.Sample(folder, Role, "lobby-two-portraits");
             if (audioTrace) yield return CheckCourse(MusicTheme.Menu, AmbientBed.None);
             Require(State.Phase == FoundationPhase.WaitingForPlayers && !State.ClientReady, "runtime ready leaves phase in lobby");
             Require(LobbyAction().interactable == !host, "initial action availability");
@@ -202,6 +205,7 @@ namespace TwinEdge.Gameplay
             yield return TransitionLayouts("outbound-start");
             yield return Wait(() => View("Gameplay HUD").activeInHierarchy && !PresentationRoot.BlocksGameplay,
                 "start loading hands input back to gameplay");
+            yield return PresentationMetrics.Sample(folder, Role, "outbound-hud");
             Require(State.Phase == FoundationPhase.Outbound && !State.ClientReady, "start consumed readiness");
             CheckListener(game.standbyCamera.name);
             if (audioTrace)
@@ -241,6 +245,7 @@ namespace TwinEdge.Gameplay
             yield return Press(keys, Key.M);
             Require(PresentationRoot.BlocksGameplay && View("Detailed map").activeInHierarchy, "M opens modal and owns input");
             CheckListener(game.standbyCamera.name);
+            yield return PresentationMetrics.Sample(folder, Role, "full-map");
             yield return Screenshot("full-map");
             yield return Press(keys, Key.Escape);
             Require(!PresentationRoot.BlocksGameplay && mini.activeInHierarchy, "Esc closes map and releases input");
@@ -269,6 +274,7 @@ namespace TwinEdge.Gameplay
             yield return Wait(() => State.CanPlay, "live match recovered with no new user Ready");
             Require(State.Phase == FoundationPhase.Return && !State.ClientReady, "rejoin retains phase without user readiness");
             yield return Wait(() => View("Gameplay HUD").activeInHierarchy, "live match HUD restored");
+            PresentationMetrics.Snapshot(folder, Role, "match-rejoined");
             CheckListener(game.standbyCamera.name);
             if (audioTrace)
             {
@@ -290,6 +296,7 @@ namespace TwinEdge.Gameplay
             else yield return Wait(() => !game.sessions.HasSession, "client observed host closure");
             yield return Delay();
             CheckListener("Menu World Camera");
+            PresentationMetrics.Snapshot(folder, Role, "menu-after-leave");
             if (audioTrace)
             {
                 yield return CheckCourse(MusicTheme.Menu, AmbientBed.None);

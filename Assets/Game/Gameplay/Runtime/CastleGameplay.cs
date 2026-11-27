@@ -70,7 +70,6 @@ namespace TwinEdge.Gameplay
         Scene boundScene;
         int hintStage = -1, hintCode, localNumber = -1, pendingKeypad = -1;
         internal bool IsKeypadOpen => pendingKeypad >= 0;
-        string numberEntry = "";
         bool ready;
 
         public static CastleGameplay Current { get; private set; }
@@ -205,9 +204,6 @@ namespace TwinEdge.Gameplay
         void Update()
         {
             if (!ready || !boundScene.isLoaded) return;
-            if (pendingKeypad >= 0 && (!game.CanPlay || Returning ||
-                UnityEngine.InputSystem.Keyboard.current?.escapeKey.wasPressedThisFrame == true))
-                pendingKeypad = -1;
             if (IsSpawned && IsServer) TickServer();
             ApplyViews();
         }
@@ -283,7 +279,21 @@ namespace TwinEdge.Gameplay
         }
 
         [Rpc(SendTo.SpecifiedInParams, InvokePermission = RpcInvokePermission.Server)]
-        void CloseKeypadRpc(RpcParams rpc = default) => pendingKeypad = -1;
+        void CloseKeypadRpc(RpcParams rpc = default) => CloseLocalKeypad();
+
+        internal void CloseLocalKeypad() => pendingKeypad = -1;
+
+        internal bool TryReadLocalKeypad(NetworkObject player, out PlayerProgress state)
+        {
+            state = default;
+            if (!IsKeypadOpen || !ready || !boundScene.isLoaded || !player || !player.IsSpawned ||
+                !player.IsOwner || Slot(player.OwnerClientId) != pendingKeypad ||
+                player.GetComponent<GameplayCharacter>()?.BlocksOwnerInteraction == true ||
+                !CanUse(keypads[pendingKeypad], pendingKeypad) || !Near(player, keypads[pendingKeypad]))
+                return false;
+            state = Progress(pendingKeypad);
+            return true;
+        }
 
         bool TryPlayer(RpcParams rpc, out NetworkObject player, out int slot)
         {
@@ -323,6 +333,7 @@ namespace TwinEdge.Gameplay
 
         public override void OnNetworkDespawn()
         {
+            CloseLocalKeypad();
             stage.OnValueChanged -= OnPuzzleStageAudio;
             accepted.OnValueChanged -= OnCastleDoorAudio;
             sewerOpen.OnValueChanged -= OnSewerDoorAudio;
@@ -477,12 +488,6 @@ namespace TwinEdge.Gameplay
         void ShowNumberRpc(int number, RpcParams rpc = default) => localNumber = number;
 
         [Rpc(SendTo.SpecifiedInParams, InvokePermission = RpcInvokePermission.Server)]
-        void OpenKeypadRpc(int slot, RpcParams rpc = default)
-        {
-            pendingKeypad = slot;
-            numberEntry = "";
-            Cursor.lockState = CursorLockMode.None;
-            Cursor.visible = true;
-        }
+        void OpenKeypadRpc(int slot, RpcParams rpc = default) => pendingKeypad = slot;
     }
 }

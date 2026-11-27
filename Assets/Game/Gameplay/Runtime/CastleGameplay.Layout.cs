@@ -4,7 +4,6 @@ using System.Linq;
 using TwinEdge.Levels;
 using Unity.Netcode;
 using UnityEngine;
-using UnityEngine.InputSystem;
 using UnityEngine.SceneManagement;
 
 namespace TwinEdge.Gameplay
@@ -442,24 +441,6 @@ namespace TwinEdge.Gameplay
             if (DoorOpen) return "두 플레이어 모두 지하 입구를 통과하세요.";
             return (accepted.Value & (1 << slot)) != 0 ? "번호 확인 · 상대 입력 대기" :
                 localNumber >= 0 ? $"내 번호 {localNumber:D4} · 키패드에 입력하세요." : "내 방의 번호를 확인하세요.";
-        }
-
-        internal void DrawKeypad(NetworkObject player)
-        {
-            if (pendingKeypad < 0) return;
-            int slot = Slot(player.OwnerClientId);
-            if (!ready || slot != pendingKeypad || Returning || DoorOpen || (accepted.Value & (1 << slot)) != 0 ||
-                !Near(player, keypads[slot]) || Keyboard.current?.escapeKey.wasPressedThisFrame == true ||
-                Cursor.lockState == CursorLockMode.Locked)
-            {
-                pendingKeypad = -1;
-                return;
-            }
-            var p = Progress(slot);
-            GUILayout.Label(p.Feedback < 0 ? "번호가 일치하지 않습니다." : "네 자리 숫자를 입력하세요.");
-            numberEntry = new string(GUILayout.TextField(numberEntry, 4).Where(c => c >= '0' && c <= '9').ToArray());
-            if (GUILayout.Button("입력") && numberEntry.Length == 4 && int.TryParse(numberEntry, out int value))
-                SubmitNumberRpc(value, p.Revision);
         }
 
 #if UNITY_EDITOR || DEVELOPMENT_BUILD

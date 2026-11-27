@@ -1,28 +1,28 @@
 # Current task
 
-**V3-PRES-09** · Animation and VFX Polish
+**V3-PRES-10** · Presentation Integration and Legacy UI Cleanup
 
-**Checkpoint** `READY_TO_COMMIT` · **Base** `97ce4fc5ac0592e96c3c1b4e54af786641aded72`
+**Checkpoint** `READY_TO_COMMIT` · **Base** `04b92d13dfa7040aed0e3fff37ec84c1e341455e`
 
-HEAD, origin/main and live main matched at entry. PRES-08 is pushed and all 22 official images match its publication manifest. PRES-08 Run-015 landing failure and subsequent isolated pass remain historical evidence. The pre-existing untracked design PDF is outside scope.
+HEAD, origin/main and live main matched at entry. PRES-09 is pushed and 38 official images match its publication manifest. Keep the rejected first map and concurrent transition attempts. The pre-existing untracked design PDF is outside scope.
 
-Complex · Gameplay, Animation and Rendering · Logical Workers V2. Preserve the normal Player, second human playtest ZIP, prior captures and isolated evidence. Full integration and PRES-10 remain deferred.
+Complex · UI, Gameplay, Network, Audio and Rendering · Lightweight Task-Centric Orchestration V2. Use isolated evidence and builds, preserve the second human playtest Player and ZIP, and leave V3-INTEGRATION deferred.
 
 | Scope | Worker and dependency | State and exit |
 | --- | --- | --- |
-| 09-A | Explore · live prefab, rig and approval events | COMPLETED · imported rig/clip bindings and oar bounds |
-| 09-B | Implement + Validate · character motion | COMPLETED · D3D11 canyon and ordinary jump rechecks |
-| 09-C | Implement + Validate · pole, timber, raft and station poses | COMPLETED · high-angle reach and first role exchange rechecks |
-| 09-D/E/F | Implement + Validate · approved effects, gem and local intensity | COMPLETED · focused contest, bridge, river, settings, transition and gem runs |
-| 09-G | Validate, Review and Finalize · depends on B–F | IN_PROGRESS · exact stage review, verified push and official capture |
+| 10-A | Explore and Plan · active UI, GUIDs, approval and historical evidence | COMPLETED · V3 keypad was the remaining player-facing IMGUI, with F3 and old prototype components retained |
+| 10-B | Implement and Validate · server open and submit plus root modal | COMPLETED · keypad input, server approval, door and reconnect passed |
+| 10-C | Implement and Review · active V3 legacy callers | COMPLETED · keypad IMGUI removed and F3 method development-gated |
+| 10-D | Validate · 10-B/C and previous evidence | COMPLETED · Relay, normal smoke and three Editor checks passed |
+| 10-E | Validate · isolated representative windows and lifecycle | COMPLETED · six sampled views and keypad/rematch counts, unavailable counters recorded |
+| 10-F | Finalize · required focused checks | IN_PROGRESS · exact stage review, verified push and official capture |
 
-Ignored evidence is under `Docs/Development/Presentation/V3-PRES-09/`. Run-Audit-20261128-021005 confirmed the Generic rig, 240 bindings per inspected clip and root motion disabled. Run-CarryClip-20261128-021134 generated the native carry derivative. Run-Structure-20261128-025924 passed the saved seven-clip, root-motion, AirPose and marker checks.
+Ignored evidence is under `Docs/Development/Presentation/V3-PRES-10/`. `Run-Audit-20261128-034248` records prior official image hashes, protected distribution hashes and serialized GUID references. `Run-KeypadCandidate-20261128-035011` reached the actual keypad through all four stages and passed Escape, map and close checks. It failed the combined digit assertion after fixed-size capture. Preserve that run. The retry lets the window canvas layout settle before the next pointer event and checks mouse and keyboard separately.
 
-The 022255 series passed settings, cameraControls, contest, bridge, river, returnInput, transition, poleRecovery and rematch. The 023322 series repeated the affected material and event paths after correcting timber hand side and visual sync, pole anchors and oar immersion. The concurrent bridge failed at outbound delivery 8 and remains evidence. Run-isolated-bridge-20261128-024351 passed 13 deliveries and 35 Return jumps per peer with no route teleport or respawn. The isolated first pole exchange/release and castleWalk passed. The long scheduled mountain run was replaced at startup by the first-exchange fixture.
+Development Player 035102 passed `presentation`, `settings`, `transition` and `rematch`. The retry build 035812 changed the keypad test capture path and passed both peers in `Run-KeypadVerified-20261128-040656`. The four fixed-size captures preserve readable text and mask the private HUD number. Normal Player `Run-NormalSmoke-20261128-035856` passed actual 1280×720 menu, settings and F3/non-inclusion checks. Foundation, saved Castle and Presentation checks all exited 0 in `Run-UnityChecks-20261128-040212`. Representative measurements and limits are in [Validation Summary](../Playtest/ValidationSummary.md#v3-pres-10--프레젠테이션-통합과-성채-키패드).
 
-The 025924 pole build passed the saved first-exchange route and camera controls. Moving orbit grip error was below the 1mm logging precision on both peers. A short landing-to-idle transition had a 0.174m maximum residual. Run-Build-20261128-030353 added a short ground-support probe for visual stair traversal. The 030353 D3D11 cases passed canyon traversal and regular ground/air, including no cosmetic landings on stairs and the ordinary jump and landing cues.
+The official checkout is `D:/TwinEdge-Pres10-Capture`, currently at the base. After exact stage review and push, pin it to the verified commit for D3D11 shader warm-up, map publication and keypad replay. Record the resulting hash and capture receipt in ignored PRES-10 evidence. The original 198 screenshots, 208 second playtest Player files and ZIP match the preservation manifest.
 
-The clean publication worktree is `D:/TwinEdge-Pres09-Capture` at the verified base with warmed imports. Official map and runtime capture are pending against the verified pushed commit. Complete exact staged review and verify live main, then build and capture from the clean checkout. Preserve all prior screenshots and the verified second playtest package.
 ## State and handoff
 
 Use `PLANNED` for queued work, `IN_PROGRESS` for implementation, `VALIDATING` for scoped checks, `BLOCKED` for a prerequisite or unresolved failure, and `AWAITING_APPROVAL` for an explicit user gate. Once required checks and review pass, use `READY_TO_COMMIT`. Use `COMPLETED` after verifying commit and push, and `DEFERRED` for intentionally postponed work.

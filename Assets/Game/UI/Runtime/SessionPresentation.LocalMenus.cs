@@ -168,7 +168,8 @@ namespace TwinEdge.Presentation
             }
 
             if (Keyboard.current?.escapeKey.wasPressedThisFrame != true) return;
-            if (localDialog.activeSelf) CloseLocalDialog();
+            if (keypad.activeSelf) CloseKeypad();
+            else if (localDialog.activeSelf) CloseLocalDialog();
             else if (gameplay.HasOpenModal) gameplay.CloseModal();
             else if (root.HasModal) root.CloseModal();
             else if (settingsPage.activeSelf) CloseSettings();
@@ -184,7 +185,7 @@ namespace TwinEdge.Presentation
         static bool GameplayUsesEscape(NetworkObject local)
         {
             ulong owner = local.OwnerClientId;
-            if (CastleGameplay.Current?.IsKeypadOpen == true || DoorPuzzleUI.IsPanelVisible ||
+            if (DoorPuzzleUI.IsPanelVisible ||
                 CooperativePole.Current?.IsAttached(owner) == true || BridgeGameplay.Current?.Holds(owner) == true ||
                 RiverGameplay.Current?.IsSeated(owner) == true || UndergroundGameplay.Current?.HasParticipant(owner) == true ||
                 local.GetComponent<MountainReturnLaunch>()?.HasLaunchInput == true) return true;

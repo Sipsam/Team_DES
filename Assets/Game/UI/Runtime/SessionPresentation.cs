@@ -60,6 +60,7 @@ namespace TwinEdge.Presentation
             BuildLoading();
             BuildQuitModal();
             BuildLocalMenus();
+            BuildKeypad();
             BuildResult();
             gameplay = gameObject.AddComponent<GameplayPresentation>();
             gameplay.Initialize(game, ui);
@@ -87,6 +88,7 @@ namespace TwinEdge.Presentation
             if (!session.HasSession) hadPartner = false;
             else if (peers[0] && peers[1]) hadPartner = true;
             ScreenView desired = DesiredView();
+            UpdateKeypad(desired == ScreenView.Match && visible == ScreenView.Match && !root.IsTransitioning);
             if (desired != ScreenView.Match) gameplay.Refresh(false, peers);
             if (visible != desired && !root.IsTransitioning)
             {

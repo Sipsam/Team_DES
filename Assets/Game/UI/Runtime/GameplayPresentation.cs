@@ -399,8 +399,7 @@ namespace TwinEdge.Presentation
                     CloseModal();
                 return;
             }
-            if (PresentationRoot.BlocksGameplay || CastleGameplay.Current?.IsKeypadOpen == true ||
-                DoorPuzzleUI.IsPanelVisible ||
+            if (PresentationRoot.BlocksGameplay || DoorPuzzleUI.IsPanelVisible ||
                 EventSystem.current?.currentSelectedGameObject?.GetComponent<InputField>() is { isFocused: true }) return;
             if (keys.nKey.wasPressedThisFrame) map.ToggleMinimap();
             if (keys.mKey.wasPressedThisFrame && local.GetComponent<MountainReturnLaunch>()?.HasLaunchInput != true)
@@ -409,7 +408,7 @@ namespace TwinEdge.Presentation
 
         internal void ShowControls()
         {
-            if (CastleGameplay.Current?.IsKeypadOpen != true && root.ShowModal(controls, null)) modalOpen = true;
+            if (root.ShowModal(controls, null)) modalOpen = true;
         }
 
         internal bool HasOpenModal => modalOpen;

@@ -19,6 +19,8 @@ UI·음향·연출 기준과 uGUI 전환 경계는 [프레젠테이션 설계](.
 
 `V3GameplayBootstrap`은 이미 로드된 레벨을 검사한 뒤 필요 시 `LevelBlockoutV3`를 Additive로 로드한다. 저장 씬의 마커와 지형을 바탕으로 다리·뗏목·성채 기계·지하 장치·결승을 런타임에 구성한다. 레벨 미리보기 카메라는 비활성화하고 각 피어에서 자기 캐릭터의 카메라를 사용한다. 지형 검토에는 레벨 씬을 단독으로 연다.
 
+일반 V3 Player의 화면은 부트스트랩이 생성한 `PresentationRoot` 한 곳에서 관리한다. `SessionPresentation`의 세션·결과·설정 화면과 성채 키패드, `GameplayPresentation`의 HUD·지도·조작법·전환이 같은 Canvas 및 입력 소유권을 사용한다. `AudioService`와 `CourseAudio`가 활성 카메라의 Listener, 코스 음악과 반복음을 관리한다. V3의 IMGUI 진단과 Relay Driver는 Development/Editor 조건에 있고 Showcase는 Editor 어셈블리에 있다. 저장 V3 씬과 프리팹에 연결되지 않은 과거 프로토타입 UI 소스와 공유 입력 가드는 보존한다.
+
 `PlayerMovement`는 소유자 카메라의 수평 Forward와 Right를 기준으로 이동한다. Development 재생기는 목표 월드 방향을 같은 축에 투영한 스틱 값을 Input System으로 보낸다. 성채 재생은 정문·현관·퍼즐 문턱 양쪽의 웨이포인트를 사용하고, 기존 CharacterController와 서버 판정을 거친다.
 
 ## 경기 흐름

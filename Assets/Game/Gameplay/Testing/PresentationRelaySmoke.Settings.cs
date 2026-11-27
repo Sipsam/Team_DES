@@ -183,14 +183,6 @@ namespace TwinEdge.Gameplay
                 Require(View("Detailed map").activeInHierarchy, "M opens full map");
                 yield return Press(keys, Key.Escape);
                 Require(!Root.HasModal && !EscapeMenu.gameObject.activeSelf, "map consumes Escape");
-                var movement = local.GetComponent<PlayerMovement>();
-                var preKeypad = new Pose(local.transform.position, local.transform.rotation);
-                CastleGameplay.Current.OpenKeypadForSettingsCheck(movement);
-                yield return Wait(() => CastleGameplay.Current.IsKeypadOpen, "legacy keypad opens before Escape");
-                yield return Press(keys, Key.Escape);
-                Require(!CastleGameplay.Current.IsKeypadOpen && !EscapeMenu.gameObject.activeSelf,
-                    "legacy keypad consumes Escape without opening match menu");
-                movement.PlaceAtOwner(preKeypad.position, preKeypad.rotation);
                 yield return Press(keys, Key.N);
                 Require(mini.activeInHierarchy != originalMap, "N updates the HUD");
                 yield return Press(keys, Key.Escape);
@@ -380,15 +372,5 @@ namespace TwinEdge.Gameplay
         }
     }
 
-    public sealed partial class CastleGameplay
-    {
-        internal void OpenKeypadForSettingsCheck(PlayerMovement player)
-        {
-            int slot = Slot(player.OwnerClientId);
-            var position = keypads[slot].transform.position - Vector3.up + Vector3.forward * .5f;
-            player.PlaceAtOwner(position, player.transform.rotation);
-            OpenKeypadRpc(slot, RpcTarget.Single(player.OwnerClientId, RpcTargetUse.Temp));
-        }
-    }
 }
 #endif
