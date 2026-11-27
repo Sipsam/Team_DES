@@ -1,21 +1,12 @@
 # Current task
 
-**V3-PRES-07** · Result Screen and Rematch
+**V3-PRES-08** · Settings and Escape Menu
 
-**Checkpoint** `READY_TO_COMMIT` · **Base** `8a80a39cda5083e442659ebbd7ad138576b31308`
+**Checkpoint** `READY_TO_COMMIT` · **Base** `1ce226337d54547916d1f062f41e238b23cb8786`
 
-HEAD, origin/main and live main matched at entry. V3-PRES-06 is complete. All 21 local official images match the receipt for that commit. The untracked `Docs/GameDesign/TwinEdge_Level_UI_Design.pdf` predates this task.
+HEAD, origin/main and live main matched at entry. V3-PRES-07 source is pushed and all 21 official image hashes match its ignored capture receipt. The pre-existing untracked design PDF remains outside scope.
 
-| Subtask | State | Scope and next check |
-| --- | --- | --- |
-| 07-A | COMPLETED | Audited finish, winner ID and slot, confirmed timer, scene lifetime, player and course initialization, result audio, UI input, and imported animation assets. |
-| 07-B | COMPLETED | Korean uGUI result, input ownership, frozen server time and four fixed D3D11 layouts passed. Actual window requests reached 1280, 1600 and 1920 widths. The desktop limited 2560 to 1920. |
-| 07-C | COMPLETED | Both original clips visibly animate the copied rig. Result music and one-shot cues passed per peer, including Finished rejoin. |
-| 07-D | COMPLETED | Run-017 passed independent consent, cancellation, duplicate and stale requests, disconnect clearing, and explicit Ready and Start after reset. |
-| 07-E | COMPLETED | Run-017 passed two same-room resets, including a peer disconnect during reconstruction and subsequent Outbound rejoin. Round-one and round-two resource totals matched. |
-| 07-F | IN_PROGRESS | Run-020 passed final D3D11 Relay result, same-room reset, recovery, and resource checks. Run-021 passed existing real seal and Return recovery. Runs 003, 008 and 015 passed contest, presentation and transition regressions. Commit and push after live main and exact staged scope review. Official map and runtime captures follow from the clean pushed checkout. |
-
-Unique ignored evidence root `Docs/Development/Presentation/V3-PRES-07/`. Run-001 contains the Unity clip import and first build logs. Use a new run directory on each attempt. Second human playtest and final integration remain deferred.
+Local menus and persistence are verified. Evidence is in unique run directories under ignored `Docs/Development/Presentation/V3-PRES-08/`. Run-001 passed Editor D3D11 presentation checks. Runs 007–008 and 017–018 passed Windows display and restart checks, with WASAPI and camera sensitivity in Run-007. Runs 011 and 013 passed rematch and camera-relative movement. Runs 019–020 passed headless launch cancellation and camera collision. Run-022 passed the final D3D11 settings Relay check including keypad and Return intensity. Run-015 passed wood carry Escape and later failed a route landing. The PRES-07 base passed in Run-021, and the isolated final candidate passed the bridge case in Run-023 on D3D11. After exact staged review and verified push, publish map and runtime captures from a clean worktree. Record the commit and capture receipt in ignored evidence. Second human playtest and final integration remain deferred.
 
 ## State and handoff
 

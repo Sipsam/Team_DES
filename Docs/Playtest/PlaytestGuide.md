@@ -14,7 +14,7 @@ Use this command to reproduce the windowed Direct3D 11 setup used for the Window
 
 1. Host selects **Create room**, selects **Copy** beside the code, then sends it to Client.
 2. Client pastes the code and selects **Join room**. The Client selects **준비** and the Host selects **게임 시작**. The server starts the match after it approves the request and both peers finish world, spawn and camera initialization. Follow the foothill trail to the starting summit, where the 32 m cooperative pole is stored.
-3. Click the world to capture the mouse. Press Esc to open the room menu and release the pointer. The first world click after release captures the mouse. The following click can attack.
+3. Click the world to capture the mouse. During ordinary gameplay Esc opens the Korean match menu and releases the pointer. An open map, keypad or active cancelable interaction handles Esc first. Continuing from the menu restores the previous capture when focused and blocks input on the closing frame.
 4. Select **Leave room** to disconnect or leave after the result. Client can try the same code while Host keeps the session alive. Play waits for a second player. Check the restored position and puzzle state after rejoining. After Host leaves, both players return to the room menu and use a new code.
 5. Select **Quit game** from the disconnected menu. If a connection fails, record the on-screen message, whether Host is still connected, and which build each tester used.
 
@@ -266,3 +266,11 @@ Build into a fresh direct child of `Builds/`. Run the focused fixture with separ
 ```
 
 The fixture uses two Windows D3D11 Relay Players. It stages the gem and players at an isolated station, then uses the production acquisition, Return and finish paths with the server's ownership, ground and dwell checks. The separate contest case exercises live combat and a dropped-gem pickup before the same finish gate. Bridge, castle, sewer and underground progress may be seeded for reset checks. Review the per-peer receipts, actual Player window size, and fixed render target sizes independently. Publish matching result, consent, lobby and start views only from the verified pushed source, with the room code hidden. The second human playtest, whole-course and final integration remain deferred.
+## V3-PRES-08 settings and Escape
+
+Build a separate Development Windows Player with `TWIN_EDGE_V3_BUILD=Builds/V3Presentation08Review`. Use unique output folders under ignored `Docs/Development/Presentation/V3-PRES-08/`, including a separate log for each launch. Leave the second human playtest Player and ZIP at their existing paths.
+
+- For display and persistence, start a fresh windowed test profile with `-force-d3d11 -presentationSmoke host -presentationLocalSettings -presentationEvidence <run-path> -presentationScreenshots`. Launch again without a screen-mode override and replace the probe flag with `-presentationRestoreSettings`. Use a disposable Windows profile or preserve and restore the five test settings. The second run expects the confirmed values from the first run and tests reset through the real UI.
+- For scoped Relay, run `./Tools/Playtest/Run-Relay.ps1 -Build Builds/V3Presentation08Review/V3Gameplay.exe -Case settings -Run <unique-id> -EvidenceRoot Docs/Development/Presentation/V3-PRES-08 -Screenshots -AudioTrace -Width 1600`. This uses two D3D11 Players for countdown gating, local menu input, peer movement, map visibility, leave confirmation and manual re-entry.
+- Distinguish 1280×720, 1600×900, 1920×1080 and 2560×1440 fixed render targets from the actual Player window sizes. Check camera and interaction regressions with the affected cases only. Follow the existing WASAPI loopback procedure for representative Master output.
+- Publish representative menu and modal captures and the official map set after verifying the pushed source. Keep full-match, full-world and full E2E validation deferred.

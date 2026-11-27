@@ -58,8 +58,9 @@ public sealed class ThirdPersonCamera : MonoBehaviour
         }
 
         Vector2 mouseDelta = Mouse.current.delta.ReadValue();
-        yaw += mouseDelta.x * sensitivity;
-        pitch -= mouseDelta.y * sensitivity;
+        float lookSensitivity = sensitivity * (TwinEdge.Presentation.LocalPresentationSettings.MousePercent / 100f);
+        yaw += mouseDelta.x * lookSensitivity;
+        pitch -= mouseDelta.y * lookSensitivity;
         pitch = Mathf.Clamp(pitch, minimumPitch, maximumPitch);
     }
 
@@ -158,14 +159,17 @@ public sealed class ThirdPersonCamera : MonoBehaviour
         v3Target = null;
     }
 
-    private static void HandleCursor()
+    private void HandleCursor()
     {
         Keyboard keyboard = Keyboard.current;
         Mouse mouse = Mouse.current;
         if (keyboard != null && keyboard.escapeKey.wasPressedThisFrame)
         {
-            Cursor.lockState = CursorLockMode.None;
-            Cursor.visible = true;
+            if (!v3Target)
+            {
+                Cursor.lockState = CursorLockMode.None;
+                Cursor.visible = true;
+            }
         }
         else if (mouse != null && mouse.leftButton.wasPressedThisFrame &&
                  !NetworkDebugUI.IsPointerOverMenu(mouse.position.ReadValue()) &&

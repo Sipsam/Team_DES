@@ -14,7 +14,7 @@ using Object = UnityEngine.Object;
 
 namespace TwinEdge.Gameplay
 {
-    internal sealed class PresentationRelaySmoke : MonoBehaviour
+    internal sealed partial class PresentationRelaySmoke : MonoBehaviour
     {
         bool host, capture, audioTrace;
         int courseSelections;
@@ -34,6 +34,9 @@ namespace TwinEdge.Gameplay
             smoke.host = args[role + 1] == "host";
             smoke.capture = args.Contains("-presentationScreenshots");
             smoke.audioTrace = args.Contains("-twinAudioTrace");
+            smoke.settingsOnly = args.Contains("-presentationSettings");
+            smoke.localSettingsProbe = args.Contains("-presentationLocalSettings");
+            smoke.restoreSettingsProbe = args.Contains("-presentationRestoreSettings");
             smoke.folder = args[Array.IndexOf(args, "-presentationEvidence") + 1];
         }
 
@@ -48,6 +51,20 @@ namespace TwinEdge.Gameplay
             if (!game) game = FindFirstObjectByType<V3GameplayBootstrap>();
             yield return Wait(() => game.WorldReady, "saved world loaded");
             CheckListener("Menu World Camera");
+            if (localSettingsProbe || restoreSettingsProbe)
+            {
+                yield return CheckLocalSettings();
+                Signal(Role + "-pass");
+                Application.Quit(0);
+                yield break;
+            }
+            if (settingsOnly)
+            {
+                yield return RunSettingsRelay();
+                Signal(Role + "-pass");
+                Application.Quit(0);
+                yield break;
+            }
             if (host)
             {
                 var create = game.sessions.CreateRoomAsync("산마루");

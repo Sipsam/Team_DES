@@ -295,10 +295,16 @@ namespace TwinEdge.Gameplay
             else firstParticipationEnds.Value = Now + participationSeconds;
         }
 
+        internal bool HasParticipant(ulong clientId)
+        {
+            if (!IsSpawned) return false;
+            int lane = castle.Slot(clientId);
+            return lane >= 0 && (participants.Value & (1 << lane)) != 0;
+        }
+
         internal void CancelOwner(PlayerInteraction player)
         {
-            int lane = castle.Slot(player.OwnerClientId);
-            if (IsSpawned && player.IsOwner && lane >= 0 && (participants.Value & (1 << lane)) != 0) CancelRpc();
+            if (player.IsOwner && HasParticipant(player.OwnerClientId)) CancelRpc();
         }
 
         [Rpc(SendTo.Server, InvokePermission = RpcInvokePermission.Everyone)]

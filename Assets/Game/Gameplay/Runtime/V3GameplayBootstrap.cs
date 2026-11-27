@@ -265,7 +265,6 @@ namespace TwinEdge.Gameplay
 
         void OnGUI()
         {
-            if (MenuVisible) DrawMatchMenu();
             var player = manager.LocalClient?.PlayerObject;
             if (player != null && state.Phase != FoundationPhase.Finished &&
                 CastleGameplay.Current?.IsKeypadOpen == true && !PresentationRoot.BlocksGameplay)
@@ -279,35 +278,7 @@ namespace TwinEdge.Gameplay
 #endif
         }
 
-        bool InMatch => manager.IsListening && (state.Phase is >= FoundationPhase.Outbound and < FoundationPhase.Finished ||
-            state.Phase == FoundationPhase.Preparing && state.Transition.Kind == MatchTransition.Countdown);
-        bool MenuVisible => InMatch && !PresentationRoot.BlocksGameplay && Cursor.lockState != CursorLockMode.Locked &&
-            CastleGameplay.Current?.IsKeypadOpen != true;
-        Rect RoomArea => new(12, 84, Mathf.Min(360, Screen.width - 24), 172);
         Rect HudArea => new(12, 12, Mathf.Min(390, Screen.width - 24), Mathf.Max(0, Screen.height - 202));
-
-        void DrawMatchMenu()
-        {
-            GUILayout.BeginArea(RoomArea);
-            GUILayout.BeginVertical(GUI.skin.box);
-            GUILayout.Label("ROOM MENU");
-            GUILayout.Label(sessions.CurrentStatus);
-            if (!string.IsNullOrEmpty(sessions.CurrentJoinCode))
-            {
-                GUILayout.BeginHorizontal();
-                GUILayout.Label("Room code " + sessions.CurrentJoinCode);
-                if (GUILayout.Button("Copy", GUILayout.Width(64))) GUIUtility.systemCopyBuffer = sessions.CurrentJoinCode;
-                GUILayout.EndHorizontal();
-            }
-            GUILayout.Label($"Players {state.ConnectedPlayerCount}/2");
-            GUI.enabled = !sessions.IsBusy && sessions.HasSession;
-            if (GUILayout.Button("Leave room"))
-                _ = SessionUI.Leave();
-            GUI.enabled = true;
-            if (GUILayout.Button("조작법 다시 보기")) SessionUI.ShowControls();
-            GUILayout.EndVertical();
-            GUILayout.EndArea();
-        }
 
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
         Rect DiagnosticsArea => new(Mathf.Max(410, Screen.width - 380), 12, 368, Screen.height - 24);
@@ -337,12 +308,11 @@ namespace TwinEdge.Gameplay
         public static bool PointerOverMenu(Vector2 point)
         {
             if (Current == null || PresentationRoot.BlocksGameplay) return false;
-            var guiPoint = new Vector2(point.x, Screen.height - point.y);
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
+            var guiPoint = new Vector2(point.x, Screen.height - point.y);
             if (Current.debug && Current.DiagnosticsArea.Contains(guiPoint)) return true;
 #endif
-            return (Current.MenuVisible && Current.RoomArea.Contains(guiPoint)) ||
-                (CastleGameplay.Current?.IsKeypadOpen == true);
+            return CastleGameplay.Current?.IsKeypadOpen == true;
         }
     }
 }

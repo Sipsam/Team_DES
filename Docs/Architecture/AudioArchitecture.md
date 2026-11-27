@@ -12,7 +12,7 @@
 
 ## Master 저장 계약
 
-`AudioService.MasterPercent`는 0–100 정수 값을 반환하며 기본은 100이다. `SetMasterPercent(int)`는 범위를 제한하고 로컬 PlayerPrefs 키 `TwinEdge.Audio.MasterPercent`에 즉시 저장한다. 양수는 믹서 파라미터 `MasterVolumeDb`에 `20 × log10(percent / 100)`로 적용한다. 0은 −80 dB와 Listener 출력 0을 함께 적용한다. Master 아래의 기존 및 이후 소스에 이 값이 적용되며, 서비스의 Start에서 재실행 후 복원한다. V3-PRES-08은 이 API를 사용해 슬라이더에 연결한다.
+`AudioService.MasterPercent`는 0–100 정수 값을 반환하며 기본은 100이다. `SetMasterPercent(int)`는 범위를 제한하고 로컬 PlayerPrefs 키 `TwinEdge.Audio.MasterPercent`에 즉시 저장한다. 양수는 믹서 파라미터 `MasterVolumeDb`에 `20 × log10(percent / 100)`로 적용한다. 0은 −80 dB와 Listener 출력 0을 함께 적용한다. Master 아래의 기존 및 이후 소스에 이 값이 적용되며, 서비스의 Start에서 재실행 후 복원한다. 공통 설정의 전체 음량 슬라이더는 이 API를 직접 사용하며 슬라이더 값을 변경할 때 UI Click을 재생하지 않는다.
 
 ## 이벤트 소유권
 

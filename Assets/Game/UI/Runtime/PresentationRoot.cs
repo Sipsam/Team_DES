@@ -14,6 +14,7 @@ namespace TwinEdge.Presentation
         public RectTransform Screens => (RectTransform)screens.transform;
         public RectTransform Overlays => (RectTransform)overlays.transform;
         public RectTransform Modals => (RectTransform)modals.transform;
+        internal bool HasModal => modal;
         public bool IsTransitioning => transition != null;
 
         static PresentationRoot inputOwner;
@@ -64,11 +65,11 @@ namespace TwinEdge.Presentation
         }
 
         // Supply an inactive or active direct child of the corresponding layer.
-        public void ShowScreen(GameObject next, bool takesInput = true, GameObject focus = null)
+        public void ShowScreen(GameObject next, bool takesInput = true, GameObject focus = null, bool aboveOverlay = false)
         {
             CheckLayer(next, Screens);
             if (transition != null) throw new System.InvalidOperationException("Finish the current screen fade first.");
-            ApplyScreen(next, takesInput);
+            ApplyScreen(next, takesInput, aboveOverlay);
             if (!modal && screenTakesInput) Select(focus);
         }
 
@@ -141,9 +142,10 @@ namespace TwinEdge.Presentation
             curtain.alpha = to;
         }
 
-        void ApplyScreen(GameObject next, bool takesInput)
+        void ApplyScreen(GameObject next, bool takesInput, bool aboveOverlay = false)
         {
             if ((screen != next || !takesInput) && HasFocus(screen)) Select(null);
+            screens.transform.SetSiblingIndex(aboveOverlay ? 1 : 0);
             Replace(ref screen, next);
             screenTakesInput = next && takesInput;
             Refresh();

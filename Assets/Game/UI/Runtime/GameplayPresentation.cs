@@ -395,7 +395,7 @@ namespace TwinEdge.Presentation
             if (!active || !local || !local.IsSpawned || Keyboard.current is not { } keys) return;
             if (modalOpen)
             {
-                if (keys.escapeKey.wasPressedThisFrame || (map.IsOpen && keys.mKey.wasPressedThisFrame))
+                if (map.IsOpen && keys.mKey.wasPressedThisFrame)
                     CloseModal();
                 return;
             }
@@ -412,7 +412,9 @@ namespace TwinEdge.Presentation
             if (CastleGameplay.Current?.IsKeypadOpen != true && root.ShowModal(controls, null)) modalOpen = true;
         }
 
-        void CloseModal()
+        internal bool HasOpenModal => modalOpen;
+
+        internal void CloseModal()
         {
             if (!modalOpen) return;
             root.CloseModal();

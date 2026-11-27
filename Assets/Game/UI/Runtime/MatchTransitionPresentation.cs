@@ -23,7 +23,7 @@ namespace TwinEdge.Presentation
         bool wasLocked, wasVisible, wasAccepting;
 
         // Local visual setting hook for PRES-08. The server's input window is independent.
-        internal static float EffectIntensity { get; set; } = 1f;
+        internal static float EffectIntensity => LocalPresentationSettings.EffectPercent / 100f;
 
         internal MatchTransitionPresentation(UiKit ui, Transform overlay, Transform world)
         {

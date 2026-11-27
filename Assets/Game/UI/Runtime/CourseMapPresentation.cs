@@ -31,7 +31,20 @@ namespace TwinEdge.Presentation
         readonly Pin[] pins;
         readonly UiButton[] zoneButtons = new UiButton[ZoneNames.Length + 1];
         readonly UiButton close;
-        bool miniVisible;
+        static bool? minimapVisible;
+        internal static bool MinimapVisible
+        {
+            get => minimapVisible ??= Mathf.Clamp(PlayerPrefs.GetInt(Preference, 1), 0, 1) == 1;
+            set
+            {
+                minimapVisible = value;
+                PlayerPrefs.SetInt(Preference, value ? 1 : 0);
+                PlayerPrefs.Save();
+            }
+        }
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        static void ResetMinimapPreference() => minimapVisible = null;
         int fullSelection;
         Zone zone, candidate;
         float acceptZoneAt;
@@ -49,7 +62,6 @@ namespace TwinEdge.Presentation
                 Debug.LogError("V3 course map data missing. Bake the public course atlas.");
                 return;
             }
-            miniVisible = PlayerPrefs.GetInt(Preference, 1) == 1;
             pins = (Pin[])data.Pins.Clone();
             System.Array.Sort(pins, (a, b) => PinPriority(a.Kind).CompareTo(PinPriority(b.Kind)));
             symbols = CreateSymbols();
@@ -146,12 +158,7 @@ namespace TwinEdge.Presentation
             return true;
         }
 
-        internal void ToggleMinimap()
-        {
-            miniVisible = !miniVisible;
-            PlayerPrefs.SetInt(Preference, miniVisible ? 1 : 0);
-            PlayerPrefs.Save();
-        }
+        internal void ToggleMinimap() => MinimapVisible = !MinimapVisible;
 
         internal void Dispose()
         {
@@ -187,6 +194,7 @@ namespace TwinEdge.Presentation
             if (zoneLabel.text != name) zoneLabel.text = name;
             zoneLabel.color = PresentationTheme.PrimaryText;
             rim.color = tint;
+            bool miniVisible = MinimapVisible;
             miniFrame.gameObject.SetActive(miniVisible && !IsOpen);
             var rootSize = root.Overlays.rect.size;
             float diameter = Mathf.Min(rootSize.x * .13f, rootSize.y * .32f);

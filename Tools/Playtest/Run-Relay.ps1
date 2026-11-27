@@ -1,7 +1,7 @@
 param(
     [Parameter(Mandatory)][string]$Build,
     [Parameter(Mandatory)][string]$Run,
-    [ValidateSet('rematch','presentation','transition','transitionRecovery','foundation','foundationImpaired','cameraControls','poleRecovery','bridge','bridgeContact','bridgeDisconnect','river','riverRecovery','castleUnderground','castleReconnect','cavernHazards','cavernReconnect','contest','contestRegions','contestLifecycle','return','returnInput','returnReconnect','mountain','mountainFromSpawn','mountainEntry','full','canyon','approach','summit','castle','castleWalk','riverLink','middle','finish')]
+    [ValidateSet('rematch','presentation','settings','transition','transitionRecovery','foundation','foundationImpaired','cameraControls','poleRecovery','bridge','bridgeContact','bridgeDisconnect','river','riverRecovery','castleUnderground','castleReconnect','cavernHazards','cavernReconnect','contest','contestRegions','contestLifecycle','return','returnInput','returnReconnect','mountain','mountainFromSpawn','mountainEntry','full','canyon','approach','summit','castle','castleWalk','riverLink','middle','finish')]
     [string]$Case = 'foundation',
     [string]$PolePlan = 'Docs/Development/Gameplay/V1/MountainPole/ContinuousPlan.json',
     [string]$ReturnPlan = 'Docs/Development/Gameplay/V1/MountainReturn/Route.json',
@@ -36,9 +36,10 @@ try {
             $marker = 'rematch-pass'
             $timeout = 510
         }
-        '^presentation$' {
+        '^(presentation|settings)$' {
             $mode = 'presentationSmoke'; $evidence = 'presentationEvidence'; $timeout = 330
             $captureFlag = '-presentationScreenshots'
+            if ($Case -eq 'settings') { $extra = @('-presentationSettings') }
         }
         '^transition(Recovery)?$' {
             $mode = 'castleReplay'; $evidence = 'castleEvidence'; $timeout = 550; $captureFlag = '-castleScreenshots'
@@ -139,6 +140,12 @@ try {
 }
 finally {
     $players | Where-Object { !$_.HasExited } | Stop-Process
+    if ($Case -eq 'settings' -and $createdOutput) {
+        foreach ($name in 'room.txt', 'room.tmp') {
+            $codeFile = Join-Path $output $name
+            if (Test-Path -LiteralPath $codeFile) { Remove-Item -LiteralPath $codeFile }
+        }
+    }
     if ($Case -eq 'rematch' -and $createdOutput) {
         foreach ($name in 'join-code.txt', 'join-code.tmp') {
             $codeFile = Join-Path $output $name

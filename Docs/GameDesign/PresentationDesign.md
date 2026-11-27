@@ -29,12 +29,12 @@ V3-PRES-01 사용자 승인 기준. 이후 화면, 음향과 연출 구현은 �
 
 | 책임 | 활성 경로와 후속 화면 연결 |
 | --- | --- |
-| 화면 표현 | `SessionPresentation`이 메인 메뉴, 방 참여, 대기실, 로딩과 결과를 표시한다. `V3GameplayBootstrap.OnGUI`에는 경기 중 Esc 메뉴, 키패드와 개발 진단을 유지한다. `GameplayPresentation`이 경기 HUD와 이름표, 튜토리얼과 알림을 표시한다. |
+| 화면 표현 | `SessionPresentation`이 메인 메뉴, 방 참여, 대기실, 로딩, 결과, 공통 설정과 경기 중 Esc 메뉴를 표시한다. `V3GameplayBootstrap.OnGUI`는 키패드와 개발 진단을 표시한다. `GameplayPresentation`이 경기 HUD와 이름표, 튜토리얼과 알림을 표시한다. |
 | UI 입력 | Root는 Input System UI Module과 활성 EventSystem을 재사용한다. 메뉴의 닉네임과 방 코드는 단일 행으로 입력한다. 방 코드를 복사한 결과는 대기실에서 확인할 수 있다. 생성·참여 중에는 요청이 끝날 때까지 추가 호출을 차단한다. |
 | 세션 상태 | `MultiplayerSessionManager`가 Unity Authentication, Relay, 방 코드와 연결 결과를 관리한다. UI는 결과 분류를 한국어로 표시하고 연결이 끊기면 같은 코드로 수동 재입장할 수 있게 한다. 방 종료가 확인되면 새 방이 필요함을 안내한다. |
 | Phase와 진행 | `GameStateManager`와 서버가 사용자 준비, 경기 시작 승인, 런타임 준비, 경로 단계, 경기 시간과 승자를 결정한다. 각 기믹과 체크포인트·보석 런타임이 진행 데이터의 소유자다. |
 | 상호작용 | `PlayerInteraction.CurrentTarget`, 기믹별 Prompt/Hud와 `GameplayCharacter`가 현재 대상과 상태를 제공한다. 새 안내는 여기에서 읽을 수 있는 표현 데이터를 사용한다. |
-| 커서와 카메라 | `ThirdPersonCamera`가 Esc 해제와 월드 클릭 캡처를 맡고 `GameplayInput`이 캡처 상태를 확인한다. Root는 입력 화면·모달·페이드가 열린 동안 게임 입력을 차단하고 모달이 닫히면 이전 UI 포커스를 복원한다. 마지막 입력 화면이 닫히는 클릭은 월드 캡처에 전달되지 않는다. |
+| 커서와 카메라 | V3에서 `SessionPresentation`이 Esc 화면 전환을 맡고 `ThirdPersonCamera`가 월드 클릭 캡처를 맡는다. `GameplayInput`이 캡처 상태를 확인한다. Root는 입력 화면·모달·페이드가 열린 동안 게임 입력을 차단하고 모달이 닫히면 이전 UI 포커스를 복원한다. 마지막 입력 화면이 닫히는 프레임에는 게임 입력을 제한한다. |
 | 진단 | F3 진단은 계속 `UNITY_EDITOR \|\| DEVELOPMENT_BUILD` 범위이며 Showcase는 Editor 전용이다. |
 
 ## V3-PRES-02 메뉴와 대기실
@@ -59,7 +59,25 @@ V3-PRES-01 사용자 승인 기준. 이후 화면, 음향과 연출 구현은 �
 ## V3-PRES-04 핵심 효과음
 
 - 현재 승인된 UI·기믹과 서버 이벤트에서 핵심 효과음을 재생한다. 함정 전조에 높은 우선순위를 부여하고, 사적인 퍼즐 입력 결과는 입력자에게만 전달한다.
-- Master 음량만 공개할 수 있도록 0–100 API와 로컬 저장을 구현했다. 음악, 환경음과 캐릭터 음성도 이 값을 사용한다. 설정 화면 연결은 V3-PRES-08에서 진행한다. [오디오 구조와 저장 계약](../Architecture/AudioArchitecture.md)
+- 설정 화면은 기존 Master 0–100 API를 사용한다. 음악, 환경음과 캐릭터 음성에도 이 값이 적용된다. [오디오 구조와 저장 계약](../Architecture/AudioArchitecture.md)
+
+## 공통 설정과 Esc 메뉴
+
+메인 메뉴와 인게임 Esc 메뉴는 같은 한국어 설정 화면을 연다. 기본값 복원은 확인을 거쳐 아래 설정만 바꾼다. 모든 값은 로컬 PlayerPrefs에 저장한다.
+
+| 설정 | 기본값과 범위 | 저장 키 및 적용 책임 |
+| --- | --- | --- |
+| 전체 음량 | 100%, 0–100% | `TwinEdge.Audio.MasterPercent`, `AudioService.MasterPercent`와 `SetMasterPercent(int)` |
+| 화면 모드 | 창모드, 전체화면 | `TwinEdge.DisplayFullscreen`, `LocalPresentationSettings`가 Windows 전체화면 창과 창모드를 적용 |
+| 미니맵 표시 | 켜짐 | `TwinEdge.MinimapVisible`, `CourseMapPresentation.MinimapVisible`을 HUD, N키와 설정에서 공유 |
+| 마우스 감도 | 100%, 10–200% | `TwinEdge.MouseSensitivityPercent`, `ThirdPersonCamera`의 기존 마우스 델타 배율 |
+| 연출 효과 강도 | 100%, 0–100% | `TwinEdge.EffectIntensityPercent`, `LocalPresentationSettings.EffectPercent` 및 `MatchTransitionPresentation.EffectIntensity` |
+
+화면 모드는 현재 렌더 크기를 요청하고 이전 창 크기를 복원에 사용한다. 모드 변경을 15초 안에 확인하면 재실행에 사용할 값을 저장한다. 취소, Esc, 시간 초과는 이전 모드와 크기를 요청한다. 명시적인 화면 모드 실행 인수가 있으면 해당 실행의 인수를 우선한다. 모드 변경은 Windows Player에서 제공한다.
+
+연출 강도는 전환 화면 강조와 페이드, 선택적 조명·발광·장식 파편에 적용한다. 0%에서도 카운트다운과 필수 배너는 표시한다. 서버 시각과 입력 승인, 함정·붕괴 전조, 착지 링, 스태미나, 지도, 필수 마커와 퍼즐 진행은 강도 설정과 독립적이다.
+
+Esc는 확인 모달, 조작법과 전체 지도, 설정과 경기 메뉴 순으로 열린 화면을 먼저 처리한다. 경기 중 키패드, 막대, 목재, 뗏목, 지하 참여와 산악 발사 충전은 기존 취소 입력을 우선 사용한다. 일반 플레이 중 Esc는 로컬 입력만 제한하며 서버 경기 시간과 상대 조작은 계속 진행된다. 방 나가기 확인은 Host와 Client 안내를 구분하고 기존 세션 종료 경로를 호출한다.
 
 ## V3-PRES-05 음악과 공간 음향
 

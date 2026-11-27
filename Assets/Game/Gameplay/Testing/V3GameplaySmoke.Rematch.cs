@@ -48,7 +48,10 @@ public sealed partial class V3GameplaySmoke
         string code = sessions.CurrentJoinCode;
         const string guest = "파하가나다라마바사아자차";
         int master = TwinEdge.Audio.AudioService.MasterPercent;
-        int minimap = PlayerPrefs.GetInt("TwinEdge.MinimapVisible", 1);
+        bool minimap = CourseMapPresentation.MinimapVisible;
+        int mouse = LocalPresentationSettings.MousePercent;
+        int effects = LocalPresentationSettings.EffectPercent;
+        bool fullscreen = Screen.fullScreen;
         Check(SessionPresentation.FormatResultTime(3599.99) == "59:59" &&
               SessionPresentation.FormatResultTime(3600) == "01:00:00", "result timer hour boundary");
         for (int cycle = 1; cycle <= 2; cycle++)
@@ -209,8 +212,9 @@ public sealed partial class V3GameplaySmoke
                 !state.HasRematchVote(0) && !state.HasRematchVote(1) && sessions.CurrentJoinCode == code,
                 "same room and clean lobby with no automatic start");
             Check(ResultField<uint>(Bootstrap.Presentation.GetComponent<GameplayPresentation>(), "seenLessons") == 0 &&
-                TwinEdge.Audio.AudioService.MasterPercent == master && PlayerPrefs.GetInt("TwinEdge.MinimapVisible", 1) == minimap,
-                "tutorial history resets and local audio and map settings survive");
+                TwinEdge.Audio.AudioService.MasterPercent == master && CourseMapPresentation.MinimapVisible == minimap &&
+                LocalPresentationSettings.MousePercent == mouse && LocalPresentationSettings.EffectPercent == effects &&
+                Screen.fullScreen == fullscreen, "tutorial history resets and all local settings survive");
             if (Environment.GetCommandLineArgs().Contains("-twinAudioTrace"))
                 Check(courseTrack?.Contains("WaitingForPlayers") == true && courseTrack.Contains(" Menu "), "rematch returned to menu music");
             Check(Vector3.Distance(player.transform.position, spawn.position) < .5f &&

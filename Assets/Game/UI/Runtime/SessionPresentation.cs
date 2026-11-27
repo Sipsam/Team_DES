@@ -9,6 +9,7 @@ using static MultiplayerSessionManager;
 
 namespace TwinEdge.Presentation
 {
+    [DefaultExecutionOrder(-100)]
     public sealed partial class SessionPresentation : MonoBehaviour
     {
         const string NicknamePreference = "TwinEdge.Nickname";
@@ -58,6 +59,7 @@ namespace TwinEdge.Presentation
             BuildLobby();
             BuildLoading();
             BuildQuitModal();
+            BuildLocalMenus();
             BuildResult();
             gameplay = gameObject.AddComponent<GameplayPresentation>();
             gameplay.Initialize(game, ui);
@@ -86,7 +88,13 @@ namespace TwinEdge.Presentation
             else if (peers[0] && peers[1]) hadPartner = true;
             ScreenView desired = DesiredView();
             if (desired != ScreenView.Match) gameplay.Refresh(false, peers);
-            if (visible != desired && !root.IsTransitioning) Show(desired);
+            if (visible != desired && !root.IsTransitioning)
+            {
+                CloseLocalDialog();
+                root.CloseModal();
+                Show(desired);
+            }
+            else if (!root.IsTransitioning) UpdateLocalMenus(desired);
             if (desired == ScreenView.Match)
             {
                 bool matchVisible = visible == ScreenView.Match && !root.IsTransitioning;
@@ -198,7 +206,14 @@ namespace TwinEdge.Presentation
             }
         }
 
-        GameObject CurrentPanel() => visible switch
+        GameObject CurrentPanel()
+        {
+            if (settingsPage && settingsPage.activeSelf) return settingsPage;
+            if (escapePage && escapePage.activeSelf) return escapePage;
+            return BasePanel();
+        }
+
+        GameObject BasePanel() => visible switch
         {
             ScreenView.Landing => landing,
             ScreenView.Join => join,
@@ -273,8 +288,6 @@ namespace TwinEdge.Presentation
             }
 
         }
-
-        internal void ShowControls() => gameplay.ShowControls();
 
         static void SetText(Text label, string value)
         {
@@ -425,7 +438,7 @@ namespace TwinEdge.Presentation
         void BuildLanding()
         {
             landing = Page("Main Menu", 25);
-            var panel = Panel(landing, new Vector2(.28f, .5f), new Vector2(540, 595));
+            var panel = Panel(landing, new Vector2(.28f, .5f), new Vector2(540, 665));
             ui.Brand(panel);
             Label(panel, "닉네임", PresentationTheme.CaptionSize, 36, PresentationTheme.SecondaryText);
             nickname = ui.Field(panel, "닉네임 입력 (2~12자)", 128);
@@ -436,6 +449,7 @@ namespace TwinEdge.Presentation
             create = ui.Button(panel, "방 생성", () => _ = Submit(true));
             joinPage = ui.Button(panel, "방 참여", OpenJoin);
             ui.Button(panel, "게임 종료", () => root.ShowModal(quitModal, cancelQuit.gameObject));
+            ui.Button(panel, "설정", OpenSettings);
             landingStatus = Label(panel, "", PresentationTheme.CaptionSize, 75, PresentationTheme.Parchment);
         }
 
@@ -547,6 +561,7 @@ namespace TwinEdge.Presentation
 
         void OnDestroy()
         {
+            cancelDialog?.Invoke();
             ClearResult();
             foreach (var slot in slots) slot.Clear();
             if (menuListener) menuListener.enabled = false;
