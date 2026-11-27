@@ -283,6 +283,7 @@ Unity 6000.3.27f1의 Windows x64 Development Player와 D3D11에서 확인했다.
 - 최초 `Run-KeypadCandidate-20261128-035011`은 네 단계 완료와 실제 E, 지도·Esc·닫기를 통과했다. 렌더 타깃 캡처 후 화면 클릭과 숫자 패드 입력의 합산 검사는 실패했다. 실패 로그를 보존하고 렌더 타깃에서 실제 창으로 복귀하는 테스트의 Canvas 갱신 타이밍을 수정했다.
 - `Run-KeypadVerified-20261128-040656`의 두 피어는 실제 E 승인, 화면 클릭과 숫자열·숫자 패드, 두 삭제 경로, 네 자리 제한, 오답·승인과 입력자 전용 효과음, HUD 복귀와 입력 가드, 문 통과 및 재입장을 통과했다. 네 고정 렌더 타깃의 한국어와 버튼 배치를 검사했으며 실제 Relay Player 창은 1600×900이었다. `Run-UnityChecks-20261128-040212`의 Foundation, Castle 및 Presentation Editor 검사도 통과했다.
 - PRES-08 후반 다리 최초 착지 실패와 PRES-09 왕로 8번째 목재 운반 최초 실패는 기존 격리 통과와 함께 보존한다. 막대 착지에서 정지 자세로 전환할 때의 최대 17.4cm 손 오차는 남아 있다. 실제 2560×1440 창은 1920×1080 테스트 바탕 화면에서 제한되며 고정 렌더 타깃은 별도로 검증한다.
+- 실제 원격 `main`에 푸시된 `1ca281b`에서 공식 지도 14장과 키패드 4장의 게시 영수증을 확인했다. 후속 작업에서 18장 및 이전 캡처 198장의 SHA-256을 재대조했다. 선택적 로컬 영수증은 `Docs/Development/Presentation/V3-PRES-10/publication.txt`다.
 - 2차 사람 플레이테스트 패키지는 `2079709`의 프레젠테이션 적용 전 배포본으로 유지한다. 최신 표현의 가독성, 실제 IME와 포커스, 음악·환경음·경고의 청취 및 모션·효과 품질은 사람이 별도로 평가해야 한다. 전체 월드, 전체 경기, 전체 E2E Relay와 최종 배포 Player 검증은 V3-INTEGRATION으로 보류한다.
 
 ### 대표 자원과 성능
@@ -316,3 +317,11 @@ Unity 6000.3.27f1 Windows 11 D3D11 Development Player 두 개를 같은 데스�
 | 08 | 공통 설정과 Esc 우선순위. 최신 설정 Relay와 일반 Player 확인 | 2560×1440 실제 데스크톱 |
 | 09 | 팀 모션, 그립, 이벤트 VFX, 효과 강도. PRES-09 로그와 해시가 일치한 공식 이미지, 최신 연출 강도 확인 | 17.4cm 전환 오차와 사람 시각 평가 |
 | 10 | 성채 uGUI, 일반 V3 IMGUI 정리, 집중 Relay·Editor와 일반 Player 검사 통과 | 게시 영수증과 원격 해시는 [현재 작업](../Workflow/CURRENT_TASK.md) 절차에 따라 기록 |
+
+## V3-PLAYTEST-03 · 3차 사람 플레이테스트 준비
+
+- 소스는 당시 실제 원격 `main`과 일치한 `1ca281bfd4a2bccfd2f751f4e9c903184794bffa`다. Unity 6000.3.27f1의 Windows x64 일반 Mono Player(`BuildOptions.None`)로 빌드했다. 패킹 로그에서 `V3Gameplay`, `LevelBlockoutV3`, 승인된 DeepGullies의 `ConnectedRidgeline` 및 FinalPolish의 `MountainBlend`를 확인했다. 기존 Authentication 및 Relay 설정으로 접속했으며 시작 옵션을 생략한 Player에서도 D3D11을 확인했다.
+- **일반 Player 스모크 통과.** 한 Windows PC의 1280×720 D3D11 인스턴스 두 개에서 한글 메뉴, 한글 닉네임 입력란 붙여넣기와 재실행 후 저장, Relay 생성·참여, 두 캐릭터 대기실, 참가자 준비, 방장 시작, 3→2→1과 왕로 안내, 산악 최초 스폰, 이름표와 HUD, 미니맵과 전체 지도, 이동과 스태미나, Esc와 설정, 양쪽의 정상 퇴장 및 참가자의 같은 방 수동 재입장을 확인했다. WASAPI 루프백에서 메뉴·왕로 BGM과 시작 확인음을 원본 큐와 대조했다. F3는 진단을 표시하지 않았고 일반 Player 어셈블리에 진단·Relay 드라이버·Showcase가 없음을 확인했다.
+- 선택적 로컬 Player는 `Builds/V3Playtest-03-20261128-1ca281b/V3Gameplay.exe`다. 빌드 폴더는 230,367,685바이트, 배포 ZIP은 123,772,983바이트다. `Builds/V3Playtest-03-20261128-1ca281b.zip`의 SHA-256은 `8AFDAC3647728C9DD44A2F3ABEA535BD1EF82F98AF956538F07ECCD1BB09808F`다. 213개 멤버를 원본과 SHA-256으로 대조했다. 한국어 안내와 체크리스트, 2차 피드백 참고 항목, Noto Sans KR OFL, 오디오 출처 및 CC0 전문을 포함했다.
+- 1차 Player 208개 파일과 2차 `2079709` Player 208개 파일 및 ZIP이 기존 해시와 일치했다. 2차 테스트 제출 기록은 확인되지 않아 기존 대기 상태를 유지한다. 3차도 별도 PC의 두 사람을 기다린다. 실제 한국어 IME, 플레이 경험 및 성능·품질 평가는 [3차 체크리스트](ThirdHumanPlaytest.md)에 남겼다. 기존 다리 간헐 실패와 막대 전환 오차를 별도 확인 항목으로 유지한다. 전체 경기, 월드 회귀, 전체 E2E Relay 및 최종 배포는 계속 보류한다.
+- 선택적 로컬 증거는 Git에서 무시하는 `Docs/Development/ThirdHumanPlaytest/V1/`의 빌드 로그, Player 로그와 UI 캡처, 오디오 대조, 보존 및 ZIP 검증 기록이다. [재현 절차](PlaytestGuide.md#v3-playtest-03--3차-사람-플레이테스트-준비)

@@ -1,27 +1,14 @@
 # Current task
 
-**V3-PRES-10** · Presentation Integration and Legacy UI Cleanup
+**V3-PLAYTEST-03** · Third Human Playtest Build
 
-**Checkpoint** `READY_TO_COMMIT` · **Base** `04b92d13dfa7040aed0e3fff37ec84c1e341455e`
+**Checkpoint** `READY_TO_COMMIT` · **Base** `1ca281bfd4a2bccfd2f751f4e9c903184794bffa`
 
-HEAD, origin/main and live main matched at entry. PRES-09 is pushed and 38 official images match its publication manifest. Keep the rejected first map and concurrent transition attempts. The pre-existing untracked design PDF is outside scope.
+Standard · Workflow, Gameplay, UI and Network. Local HEAD, origin/main and live remote main matched at entry. The index was empty. Preserve the pre-existing untracked design PDF.
 
-Complex · UI, Gameplay, Network, Audio and Rendering · Lightweight Task-Centric Orchestration V2. Use isolated evidence and builds, preserve the second human playtest Player and ZIP, and leave V3-INTEGRATION deferred.
+PRES-10 is closed. Its local publication receipt records the verified push, 14 map and four keypad captures. All 18 current and 198 earlier capture hashes match. The second human playtest is awaiting tester reports.
 
-| Scope | Worker and dependency | State and exit |
-| --- | --- | --- |
-| 10-A | Explore and Plan · active UI, GUIDs, approval and historical evidence | COMPLETED · V3 keypad was the remaining player-facing IMGUI, with F3 and old prototype components retained |
-| 10-B | Implement and Validate · server open and submit plus root modal | COMPLETED · keypad input, server approval, door and reconnect passed |
-| 10-C | Implement and Review · active V3 legacy callers | COMPLETED · keypad IMGUI removed and F3 method development-gated |
-| 10-D | Validate · 10-B/C and previous evidence | COMPLETED · Relay, normal smoke and three Editor checks passed |
-| 10-E | Validate · isolated representative windows and lifecycle | COMPLETED · six sampled views and keypad/rematch counts, unavailable counters recorded |
-| 10-F | Finalize · required focused checks | IN_PROGRESS · exact stage review, verified push and official capture |
-
-Ignored evidence is under `Docs/Development/Presentation/V3-PRES-10/`. `Run-Audit-20261128-034248` records prior official image hashes, protected distribution hashes and serialized GUID references. `Run-KeypadCandidate-20261128-035011` reached the actual keypad through all four stages and passed Escape, map and close checks. It failed the combined digit assertion after fixed-size capture. Preserve that run. The retry lets the window canvas layout settle before the next pointer event and checks mouse and keyboard separately.
-
-Development Player 035102 passed `presentation`, `settings`, `transition` and `rematch`. The retry build 035812 changed the keypad test capture path and passed both peers in `Run-KeypadVerified-20261128-040656`. The four fixed-size captures preserve readable text and mask the private HUD number. Normal Player `Run-NormalSmoke-20261128-035856` passed actual 1280×720 menu, settings and F3/non-inclusion checks. Foundation, saved Castle and Presentation checks all exited 0 in `Run-UnityChecks-20261128-040212`. Representative measurements and limits are in [Validation Summary](../Playtest/ValidationSummary.md#v3-pres-10--프레젠테이션-통합과-성채-키패드).
-
-The official checkout is `D:/TwinEdge-Pres10-Capture`, currently at the base. After exact stage review and push, pin it to the verified commit for D3D11 shader warm-up, map publication and keypad replay. Record the resulting hash and capture receipt in ignored PRES-10 evidence. The original 198 screenshots, 208 second playtest Player files and ZIP match the preservation manifest.
+Built and verified the normal Player at `Builds/V3Playtest-03-20261128-1ca281b`. Same-PC D3D11 Relay smoke, manual re-entry, package member verification and protected Player hashes passed. Evidence is under ignored `Docs/Development/ThirdHumanPlaytest/V1/`. See the [package and scope](../Playtest/ValidationSummary.md#v3-playtest-03--3차-사람-플레이테스트-준비) and [tester checklist](../Playtest/ThirdHumanPlaytest.md). Next action is exact documentation review, commit and verified push. Both human playtests await reports. V3-INTEGRATION is deferred.
 
 ## State and handoff
 

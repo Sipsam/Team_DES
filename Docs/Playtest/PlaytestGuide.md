@@ -302,3 +302,12 @@ Use a unique Development build and evidence run for each Windows D3D11 pair.
 - Run the separate `presentation`, `settings`, `transition` and `rematch` cases for the session, controls, approved seal and pickup, result and fresh lobby boundaries. The transition and rematch cases stage positions or setup progress and use production approval for the reported shared seal, acquisition or finish. Keep that distinction in evidence.
 - Use `-PresentationMetrics` in `presentation`, `castleKeypad` or `rematch` to sample their scoped views and record resource counts. Review the two processes separately and retain frame count, elapsed time, window, FPS cap, minimap preference and effect intensity. A Unity counter with no samples is `NOT_RUN`. Scope the results to the Development fixture and machine.
 - Build the normal Player with `BuildPlaytestPlayer` into a separate smoke directory. Exercise its menu and check development drivers, F3 and Showcase boundaries independently of test playback. Keep the published second human playtest as the pre-Presentation build. Follow [official screenshots](#official-screenshots) for the post-push map set and the open, entered, rejected and dismissed keypad views.
+
+## V3-PLAYTEST-03 · 3차 사람 플레이테스트 준비
+
+테스터에게 [3차 플레이테스트 안내와 체크리스트](ThirdHumanPlaytest.md)가 포함된 같은 ZIP을 전달한다. 2차 테스트는 `2079709`의 별도 패키지를 사용한다. 각 회차의 소스와 패키지 식별자는 [검증 요약](ValidationSummary.md#v3-playtest-03--3차-사람-플레이테스트-준비)에 기록한다.
+
+1. 실제 원격 `main`과 소스 커밋을 대조한다. 이전 Player, ZIP 및 공식 캡처 매니페스트를 보존한다. Unity 6000.3.27f1의 `BuildPlaytestPlayer`를 `TWIN_EDGE_V3_BUILD=Builds/V3Playtest-03-YYYYMMDD-COMMIT`으로 실행한다. 패킹 로그에서 두 승인 씬과 산악 메시·재질을 확인한다.
+2. 같은 일반 Player를 두 인스턴스로 실행한다. `-force-d3d11 -screen-fullscreen 0 -screen-width 1280 -screen-height 720` 및 서로 다른 `-logFile`을 사용한다. 실제 UI로 한글 메뉴와 닉네임 저장, Relay 생성·참여, 두 캐릭터와 준비, 시작과 카운트다운, 왕로 스폰·HUD·지도·이동·스태미나, 오디오, 설정·Esc 및 퇴장을 확인한다. 가능한 경우 참가자 수동 재입장을 확인한다. F3 입력과 Player 어셈블리의 개발 전용 코드 제외도 확인한다.
+3. 실행 파일, 런타임 폴더, 빌더가 동봉한 폰트 라이선스와 오디오 출처·CC0 전문, 3차 안내 및 2차 피드백 참고 항목을 ZIP 루트에 넣는다. `*_DoNotShip`, 로그와 내부 자료는 제외한다. ZIP 멤버를 원본과 SHA-256으로 대조하고 파일 수, 바이트 수 및 ZIP SHA-256을 기록한다.
+4. 일반 Player 스모크와 별도 PC 두 사람의 테스트를 독립적으로 기록한다. 전체 경기, 전체 월드 및 전체 E2E Relay는 최종 통합 범위다. 로컬 증거는 선택적으로 `Docs/Development/ThirdHumanPlaytest/V1/`에 보관한다.
