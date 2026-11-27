@@ -10,7 +10,7 @@ using UnityEngine;
 
 public sealed class MultiplayerSessionManager : MonoBehaviour
 {
-    internal enum RoomIssue { None, InvalidCode, NotFound, Full, InvalidNickname, Connection, HostLeft }
+    internal enum RoomIssue { None, InvalidCode, NotFound, Full, InvalidNickname, Connection, HostLeft, Rebuilding }
     const string HostLeftReason = "Host closed the room.";
     [SerializeField] private NetworkManager networkManager;
 
@@ -227,6 +227,7 @@ public sealed class MultiplayerSessionManager : MonoBehaviour
     private static RoomIssue ClassifyIssue(Exception exception, string disconnectReason)
     {
         if (disconnectReason == NetworkSpawnCoordinator.RoomFullReason) return RoomIssue.Full;
+        if (disconnectReason == NetworkSpawnCoordinator.RebuildingReason) return RoomIssue.Rebuilding;
         if (disconnectReason == NetworkSpawnCoordinator.InvalidNicknameReason) return RoomIssue.InvalidNickname;
         for (var cause = exception; cause != null; cause = cause.InnerException)
         {

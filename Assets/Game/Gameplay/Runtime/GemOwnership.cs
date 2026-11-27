@@ -61,6 +61,7 @@ namespace TwinEdge.Gameplay
             lowerDock = lower;
             bigSummit = summit;
             bound = true;
+            if (IsSpawned && IsServer && State == GemState.Sealed) position.Value = home;
         }
 
         internal void BindFinish(BoxCollider collider, TwinEdge.Levels.MountainConfigV3 mountain)
@@ -229,7 +230,7 @@ namespace TwinEdge.Gameplay
 
         void LateUpdate()
         {
-            if (!bound) return;
+            if (!bound || !underground.IsBound) return;
             Vector3 point = IsSpawned && State != GemState.Sealed ? Position : home;
             bool visible = true;
             bool carried = IsSpawned && State == GemState.Carried;

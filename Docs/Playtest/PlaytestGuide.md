@@ -256,3 +256,13 @@ Unity 6000.3.27f1에서 D3D11 Development Player를 격리 경로 `Builds/V3Pres
 `presentation`은 Ready 및 Host 승인, 60/30 목표 FPS에서 서버 카운트다운과 첫 획득 재생을 검사한다. 이 케이스의 보석은 격리 배치와 SealPending 설정을 사용하며 획득은 실제 서버 RPC를 사용한다. `transition`은 지하 입구에 격리 배치하고 실제 여덟 번의 발판 교대, 봉인과 획득을 진행해 양쪽 제한과 이전 요청의 거부를 확인한다. `transitionRecovery`는 실제 봉인 및 복로 구간 중 Client가 나갔다가 수동 재입장하는 경로를 추가한다. `MATCH_TRANSITION`에서 서버 승인, 각 피어 표시 및 해제 시각을 구분하고 카운트다운 종료 시각을 0초로 계산한다. 봉인과 복로 연출 중 경기 시계는 계속 흐른다.
 
 1280×720, 1600×900, 1920×1080, 2560×1440 고정 렌더 타깃 캡처와 실제 Player 창 확인을 구분한다. `AUDIO_PLAY` 및 `AUDIO_COURSE`의 시각과 건수를 승인 기록 및 짧은 WASAPI 캡처와 비교한다. 공식 캡처는 푸시된 깨끗한 소스에서 같은 케이스를 사용하며 경기 장면에 필요한 캡처만 선택한다. 전체 경기, 전체 월드 회귀, 전체 E2E 및 2차 사람 플레이테스트는 보류한다.
+
+### Result screen and same-room rematch
+
+Build into a fresh direct child of `Builds/`. Run the focused fixture with separate immutable output for each attempt:
+
+```powershell
+./Tools/Playtest/Run-Relay.ps1 -Build Builds/V3Presentation07Review/V3Gameplay.exe -Case rematch -EvidenceRoot Docs/Development/Presentation/V3-PRES-07 -Run ("Run-" + (Get-Date -Format "yyyyMMdd-HHmmss")) -Screenshots -AudioTrace -Width 1600
+```
+
+The fixture uses two Windows D3D11 Relay Players. It stages the gem and players at an isolated station, then uses the production acquisition, Return and finish paths with the server's ownership, ground and dwell checks. The separate contest case exercises live combat and a dropped-gem pickup before the same finish gate. Bridge, castle, sewer and underground progress may be seeded for reset checks. Review the per-peer receipts, actual Player window size, and fixed render target sizes independently. Publish matching result, consent, lobby and start views only from the verified pushed source, with the room code hidden. The second human playtest, whole-course and final integration remain deferred.

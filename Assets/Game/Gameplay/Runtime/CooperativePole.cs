@@ -50,7 +50,9 @@ namespace TwinEdge.Gameplay
             // Equal-height placement preserves a rigid length even on the slightly uneven summit.
             float rise = homeB.y - homeA.y;
             homeB = homeA + new Vector3(Mathf.Sqrt(Mathf.Max(0,length*length-rise*rise)), rise, 0);
-            Render(new PoleSnapshot { a = homeA, b = homeB, left = ulong.MaxValue, right = ulong.MaxValue });
+            var initial = Home(default);
+            if (IsSpawned && IsServer) snapshot.Value = initial;
+            Render(IsSpawned && !IsServer ? snapshot.Value : initial);
         }
         public override void OnNetworkSpawn()
         {

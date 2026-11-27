@@ -1,17 +1,103 @@
+using System.Collections;
 using System.Collections.Generic;
+using TwinEdge.Gameplay;
 using Unity.Netcode;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 public sealed class NetworkSpawnCoordinator : MonoBehaviour
 {
     internal const string RoomFullReason = "This prototype supports two players.";
     internal const string InvalidNicknameReason = "Invalid player nickname.";
+    internal const string RebuildingReason = "A new match is loading.";
     [SerializeField] private NetworkManager networkManager;
     [SerializeField] private Transform[] spawnPoints;
 
     private readonly Dictionary<ulong, int> clientSpawnSlots = new Dictionary<ulong, int>();
     private readonly Dictionary<ulong, (Pose Pose, string Checkpoint)> approvedV3Spawns = new();
     private readonly Dictionary<ulong, string> approvedNicknames = new();
+    private bool rebuilding;
+
+    internal void BindFoundationSpawns(Transform[] points) => spawnPoints = points;
+
+    internal bool TryRebuildMatch(V3GameplayBootstrap game)
+    {
+        if (rebuilding || !game || !networkManager.IsServer || networkManager.ShutdownInProgress) return false;
+
+        var scenes = networkManager.SceneManager;
+        string matchScene = game.gameObject.scene.name;
+        string levelScene = game.levelScene;
+        bool matchLoaded = false, levelLoaded = false;
+        void Completed(string scene, LoadSceneMode mode, List<ulong> completed, List<ulong> timedOut)
+        {
+            if (scene != matchScene && scene != levelScene) return;
+            foreach (ulong client in timedOut)
+                if (client != NetworkManager.ServerClientId && networkManager.ConnectedClients.ContainsKey(client))
+                    networkManager.DisconnectClient(client);
+            if (!completed.Contains(NetworkManager.ServerClientId)) return;
+            if (scene == matchScene) matchLoaded = true;
+            if (scene == levelScene) levelLoaded = true;
+        }
+
+        scenes.OnLoadEventCompleted += Completed;
+        rebuilding = true;
+        var previousPlayers = new List<NetworkObject>(2);
+        foreach (var client in networkManager.ConnectedClientsList) previousPlayers.Add(client.PlayerObject);
+        var status = scenes.LoadScene(matchScene, LoadSceneMode.Single);
+        if (status != SceneEventProgressStatus.Started)
+        {
+            rebuilding = false;
+            scenes.OnLoadEventCompleted -= Completed;
+            Debug.LogWarning($"Rematch scene load rejected: {status}");
+            return false;
+        }
+
+        // NGO preserves ordinary dynamically spawned players across a single-mode scene load.
+        // Retire them explicitly, including their player-owned movement and interaction streams.
+        foreach (var player in previousPlayers)
+            if (player && player.IsSpawned) player.Despawn();
+        StartCoroutine(Rebuild());
+        return true;
+
+        IEnumerator Rebuild()
+        {
+            bool Succeeded() => networkManager.IsServer && !networkManager.ShutdownInProgress;
+            try
+            {
+                float deadline = Time.realtimeSinceStartup + networkManager.NetworkConfig.LoadSceneTimeOut + 5;
+                while (Succeeded() && !matchLoaded && Time.realtimeSinceStartup < deadline) yield return null;
+                if (!Succeeded()) yield break;
+                if (matchLoaded && scenes.LoadScene(levelScene, LoadSceneMode.Additive) == SceneEventProgressStatus.Started)
+                {
+                    deadline = Time.realtimeSinceStartup + networkManager.NetworkConfig.LoadSceneTimeOut + 5;
+                    while (Succeeded() && Time.realtimeSinceStartup < deadline &&
+                        (!levelLoaded || V3GameplayBootstrap.Current?.ReadyForNetworkPlay != true))
+                        yield return null;
+                    if (!Succeeded()) yield break;
+                    if (levelLoaded && V3GameplayBootstrap.Current?.ReadyForNetworkPlay == true)
+                    {
+                        foreach (var client in networkManager.ConnectedClientsList)
+                        {
+                            if (!TryGetSlot(client.ClientId, out int slot)) continue;
+                            Transform point = spawnPoints[slot];
+                            var player = Instantiate(networkManager.NetworkConfig.PlayerPrefab, point.position, point.rotation);
+                            player.GetComponent<NetworkObject>().SpawnAsPlayerObject(client.ClientId, destroyWithScene: true);
+                            PlaceConnectedPlayer(client.ClientId);
+                        }
+                        yield break;
+                    }
+                }
+
+                Debug.LogError("Rematch reconstruction failed. Closing the room.");
+                _ = GetComponent<MultiplayerSessionManager>().LeaveRoomAsync();
+            }
+            finally
+            {
+                scenes.OnLoadEventCompleted -= Completed;
+                rebuilding = false;
+            }
+        }
+    }
 
     private void Awake()
     {
@@ -49,6 +135,11 @@ public sealed class NetworkSpawnCoordinator : MonoBehaviour
         NetworkManager.ConnectionApprovalRequest request,
         NetworkManager.ConnectionApprovalResponse response)
     {
+        if (rebuilding)
+        {
+            response.Reason = RebuildingReason;
+            return;
+        }
         int spawnIndex = FindAvailableSpawnIndex(request.ClientNetworkId);
         if (spawnIndex < 0)
         {

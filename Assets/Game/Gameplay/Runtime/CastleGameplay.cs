@@ -204,7 +204,7 @@ namespace TwinEdge.Gameplay
 
         void Update()
         {
-            if (!ready) return;
+            if (!ready || !boundScene.isLoaded) return;
             if (pendingKeypad >= 0 && (!game.CanPlay || Returning ||
                 UnityEngine.InputSystem.Keyboard.current?.escapeKey.wasPressedThisFrame == true))
                 pendingKeypad = -1;

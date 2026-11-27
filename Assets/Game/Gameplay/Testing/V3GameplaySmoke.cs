@@ -32,6 +32,7 @@ public sealed partial class V3GameplaySmoke : MonoBehaviour
     }
     IEnumerator Start()
     {
+        if (RematchTest) DontDestroyOnLoad(gameObject);
         Application.runInBackground = true; Application.targetFrameRate = 60;
         // This opt-in process owns a runtime settings clone; hidden-window focus must not discard injected keys.
         InputSystem.settings = Instantiate(InputSystem.settings);
@@ -41,7 +42,8 @@ public sealed partial class V3GameplaySmoke : MonoBehaviour
         yield return Until(() => FindObjectsByType<Checkpoint>(FindObjectsSortMode.None).Length >= 4, "V3 load / checkpoint setup");
         if (host)
         {
-            var task = sessions.CreateRoomAsync(); yield return Until(() => task.IsCompleted, "Relay create", 80);
+            var task = sessions.CreateRoomAsync(RematchTest ? "가나다라마바사아자차카타" : null);
+            yield return Until(() => task.IsCompleted, "Relay create", 80);
             Check(sessions.HasSession, "Host Relay session exists");
             File.WriteAllText(evidence + "/join-code.tmp", sessions.CurrentJoinCode);
             File.Move(evidence + "/join-code.tmp", evidence + "/join-code.txt");
@@ -49,10 +51,11 @@ public sealed partial class V3GameplaySmoke : MonoBehaviour
         else
         {
             yield return Until(() => File.Exists(evidence + "/join-code.txt"), "Room code available", 100);
-            var task = sessions.JoinRoomAsync(File.ReadAllText(evidence + "/join-code.txt"));
+            var task = sessions.JoinRoomAsync(File.ReadAllText(evidence + "/join-code.txt"), RematchTest ? "파하가나다라마바사아자차" : null);
             yield return Until(() => task.IsCompleted, "Relay join", 80); Check(sessions.HasSession, "Joined Relay code");
         }
         var game = FindFirstObjectByType<GameStateManager>();
+        if (RematchTest) yield return RecordInitialLobby(game);
         yield return TwinEdge.Gameplay.RelayMatchStart.Run(game);
         yield return Until(() => game.IsGameReady && manager.LocalClient?.PlayerObject != null, "Two players spawned", 80);
         yield return Until(() => FindObjectsByType<PlayerMovement>(FindObjectsSortMode.None).Length == 2, "Two visible players");
@@ -98,6 +101,13 @@ public sealed partial class V3GameplaySmoke : MonoBehaviour
             File.AppendAllText(Path.Combine(evidence, peer + "-impairment.txt"), $"\nAfter RTT: {afterRtt} ms.");
             // The idle client may still report its last reliable-send RTT until movement starts.
             if (host) Check(afterRtt > beforeRtt + 30, "Measured Relay RTT increased with packet simulation");
+        }
+        if (RematchTest)
+        {
+            yield return FinishNewMatch(game);
+            yield return RunRematches(game);
+            Application.Quit(failed ? 2 : 0);
+            yield break;
         }
         if (Environment.GetCommandLineArgs().Contains("-v3Contest"))
         {
@@ -194,6 +204,7 @@ public sealed partial class V3GameplaySmoke : MonoBehaviour
     }
     void Log(string message, string stack, LogType type)
     {
+        if (RematchTest) ObserveRematchAudio(message);
         if (failed || (type != LogType.Error && type != LogType.Exception && type != LogType.Assert)) return;
         failed = true;
         File.WriteAllText(evidence + (host ? "/host-failure.txt" : "/client-failure.txt"), message + "\n" + stack);

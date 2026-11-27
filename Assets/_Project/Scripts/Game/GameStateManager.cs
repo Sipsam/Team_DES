@@ -139,7 +139,30 @@ public sealed class GameStateManager : NetworkBehaviour
 
     byte firstCape, secondCape;
     readonly NetworkVariable<bool> clientReady = new();
+    readonly NetworkVariable<byte> rematchVotes = new();
+    readonly NetworkVariable<bool> rematchLoadFailed = new();
+    readonly NetworkVariable<int> winnerSlot = new(-1);
     ulong readyClientId = ulong.MaxValue;
+
+    // This object is replaced at every rematch. The V3 transport never recycles its object ID.
+    internal ulong MatchIdentity => NetworkObjectId;
+    internal bool RematchLoadFailed => rematchLoadFailed.Value;
+    internal bool HasRematchVote(int slot) => slot is 0 or 1 && (rematchVotes.Value & (1 << slot)) != 0;
+    internal bool Won(int slot) => HasWinner && slot >= 0 && winnerSlot.Value == slot;
+
+    [Rpc(SendTo.Server, InvokePermission = RpcInvokePermission.Everyone)]
+    internal void SetRematchConsentRpc(ulong match, bool consent, RpcParams rpc = default)
+    {
+        if (!IsServer || !foundationMode || Phase != FoundationPhase.Finished || match != MatchIdentity ||
+            !HasWinner || rematchVotes.Value == 3) return;
+        ulong sender = rpc.Receive.SenderClientId;
+        var coordinator = NetworkManager.GetComponent<NetworkSpawnCoordinator>();
+        if (!coordinator.TryGetSlot(sender, out int slot) || slot is < 0 or > 1 ||
+            !IsConnectedSlot(sender, slot) || HasRematchVote(slot) == consent) return;
+        if (NetworkManager.ConnectedClientsList.Count != 2 || !IsGameReady) return;
+        rematchLoadFailed.Value = false;
+        rematchVotes.Value ^= (byte)(1 << slot);
+    }
 
     public bool ClientReady => IsSpawned && clientReady.Value;
     public bool HostCanStart => IsHost && Phase == FoundationPhase.WaitingForPlayers &&
@@ -217,7 +240,10 @@ public sealed class GameStateManager : NetworkBehaviour
             !NetworkManager.ConnectedClients.TryGetValue(player.OwnerClientId, out var peer) || peer.PlayerObject != player.NetworkObject ||
             finish == null || !finish.enabled || !finish.gameObject.activeInHierarchy ||
             !finish.bounds.Contains(player.transform.position + Vector3.up * .3f) || !player.HasGround()) return false;
+        if (!NetworkManager.GetComponent<NetworkSpawnCoordinator>().TryGetSlot(player.OwnerClientId, out int slot))
+            return false;
         courseFinishedAt.Value = NetworkManager.ServerTime.Time;
+        winnerSlot.Value = slot;
         winnerClientId.Value = player.OwnerClientId;
         currentState.Value = GameState.Finished;
         foundationPhase.Value = FoundationPhase.Finished;
@@ -332,6 +358,14 @@ public sealed class GameStateManager : NetworkBehaviour
         connectedPlayerCount.Value = count;
         if (foundationMode)
         {
+            if (rematchVotes.Value == 3 && Phase == FoundationPhase.Finished)
+            {
+                if (initialized == 2 && count == 2 &&
+                    NetworkManager.GetComponent<NetworkSpawnCoordinator>().TryRebuildMatch(TwinEdge.Gameplay.V3GameplayBootstrap.Current))
+                    return;
+                rematchVotes.Value = 0;
+                rematchLoadFailed.Value = count == 2;
+            }
             if (clientReady.Value && !IsConnectedSlot(readyClientId, 1))
             {
                 CancelCountdown();
@@ -363,6 +397,9 @@ public sealed class GameStateManager : NetworkBehaviour
             arrivedClientIds.Clear();
             turnPointArrivalCount.Value = 0;
             winnerClientId.Value = ulong.MaxValue;
+            winnerSlot.Value = -1;
+            rematchVotes.Value = 0;
+            rematchLoadFailed.Value = false;
             currentState.Value = GameState.Cooperation;
             foundationPhase.Value = FoundationPhase.WaitingForPlayers;
             developmentReturnRequested.Value = false;
@@ -463,6 +500,7 @@ public sealed class GameStateManager : NetworkBehaviour
 
     private void HandleClientDisconnected(ulong clientId)
     {
+        if (Phase == FoundationPhase.Finished) rematchVotes.Value = 0;
         if (clientId == readyClientId)
         {
             CancelCountdown();

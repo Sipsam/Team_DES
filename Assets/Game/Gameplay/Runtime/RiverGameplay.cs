@@ -112,6 +112,7 @@ namespace TwinEdge.Gameplay
             BuildDock(channel.UpperDock, true);
             for (int i = 0; i < hulls.Length; i++) BuildHull(i);
             BuildHazards();
+            if (IsSpawned && IsServer) ResetServer();
         }
 
         public override void OnNetworkSpawn()
@@ -351,7 +352,7 @@ namespace TwinEdge.Gameplay
 
         void Update()
         {
-            if (!IsSpawned || channel == null) return;
+            if (!IsSpawned || !presentation) return;
             RenderRiver();
             if (!IsClient || Time.unscaledTime < nextSend ||
                 !TrySeat(NetworkManager.LocalClientId, out int index, out _, out var state) ||
@@ -383,7 +384,7 @@ namespace TwinEdge.Gameplay
 
         void FixedUpdate()
         {
-            if (!IsSpawned || !IsServer || channel == null) return;
+            if (!IsSpawned || !IsServer || !presentation) return;
             if (hulls[0].State.Voyage == 0) ResetServer();
             RegisterNewPlayers();
             if (Outbound && Read(0).Status == RiverRaftStatus.Hidden && !split.Value) ResetHull(0, RiverRaftStatus.Docked);

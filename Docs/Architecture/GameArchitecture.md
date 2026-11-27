@@ -66,3 +66,9 @@ DeepGullies의 정상 림과 암반 기저 접합부를 좁은 범위에서 둥�
 `CourseMapBake.Bake`는 저장된 `LevelBlockoutV3`의 승인 DeepGullies 산악, 다리, 협곡 계단, 강과 부두, 성채 외벽과 기반, 지하 계단 및 동굴 지형을 선택한다. 지정 메시의 월드 좌표 삼각형을 +X 오른쪽, +Z 위쪽으로 래스터화한다. 실내는 FortressConfig의 공개 방 평면을 사용한다. 하수도 지오메트리와 함정, 장애물, 이동 발판 순서, 경로 그래프는 입력 목록에서 제외한다. 월드 렌더러, 저장 씬과 Collider에는 쓰지 않는다.
 
 Unity에서 **Tools > Twin Edge > Presentation > Bake Public Course Map** 또는 `-executeMethod TwinEdge.Presentation.Editor.CourseMapBake.Bake`를 실행한다. 저장된 메시, 공개 공간의 구성 또는 마커 위치가 변경되면 재생성한다. `Assets/Game/UI/Resources/V3CourseMap.asset`에 월드 X/Z 범위, 확대 기준과 마커가 기록된다. 외부 아틀라스는 목표 1.6 m/px, 실내·지하 별도 시트는 0.65 m/px로 생성한다. 구간별 반경은 산악 150m, 다리 60m, 협곡·강 120m, 성채 외부 60m, 성채 내부 40m, 지하 계단·공동 50m, 결승 120m다. 구간 전환은 0.32초 안정화 뒤 반영한다. 화면에는 사전 생성 지도와 재사용 아이콘을 합성한다.
+
+## 결과 화면과 새 경기 수명
+
+`SessionPresentation`은 확정된 경기 결과에 전용 uGUI 화면을 표시한다. 결과와 로비의 캐릭터 미리보기에는 렌더러와 Animator, 미리보기 카메라와 조명만 사용한다. 화면을 닫을 때 PlayableGraph, 렌더 텍스처와 미리보기 오브젝트를 해제한다.
+
+재경기에서는 NGO가 `V3Gameplay`를 Single로 다시 열고 `LevelBlockoutV3`를 Additive로 다시 연다. 저장된 레벨을 기반으로 기믹의 런타임 바인딩과 초기 스폰을 다시 구성한다. 세션 루트는 NGO의 DontDestroyOnLoad 수명을 사용하며, 새 부트스트랩이 기존 루트에 연결한다. 로컬 닉네임, Master 음량, 미니맵 표시 설정은 기존 PlayerPrefs를 통해 유지한다. [서버 동의 및 복구](Multiplayer.md#결과와-재경기)

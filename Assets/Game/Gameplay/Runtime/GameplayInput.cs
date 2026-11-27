@@ -36,6 +36,7 @@ namespace TwinEdge.Gameplay
         }
         internal bool TransitionLocked => V3GameplayBootstrap.Current?.state?.TransitionBlocksInput == true;
         public bool AcceptsInput => !TransitionLocked && CapturedCursor && !Presentation.PresentationRoot.BlocksGameplay && !DoorPuzzleUI.IsPanelVisible &&
+            V3GameplayBootstrap.Current?.state?.Phase != FoundationPhase.Finished &&
             LaunchCancel?.WasPressedThisFrame() != true;
 
         public bool TryConsumeInteract()

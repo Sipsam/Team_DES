@@ -49,7 +49,7 @@ namespace TwinEdge.Gameplay
         double recoveryGraceUntil;
 
         public static UndergroundGameplay Current { get; private set; }
-        internal bool IsBound => layout != null;
+        internal bool IsBound => layout != null && boundScene.isLoaded;
         internal bool Returning => IsSpawned && game.Phase == FoundationPhase.Return;
         internal int Step => step.Value;
         internal UndergroundSeal Seal => seal.Value;

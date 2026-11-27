@@ -90,7 +90,7 @@ namespace TwinEdge.Gameplay
             collapsed.OnListChanged -= OnCollapse;
             warning.OnListChanged -= OnWarning;
             if (Current == this) Current = null;
-            if (planks != null)
+            if (planks != null && levelScene.isLoaded)
                 for (int i = 0; i < PlankCount; i++) SetSupport(i, false);
         }
 

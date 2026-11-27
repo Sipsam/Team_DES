@@ -169,7 +169,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!114 &319947986
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -259,7 +259,7 @@ MonoBehaviour:
     EnsureNetworkVariableLengthSafety: 0
     EnableSceneManagement: 1
     ForceSamePrefabs: 1
-    RecycleNetworkIds: 1
+    RecycleNetworkIds: 0
     NetworkIdRecycleDelay: 120
     RpcHashSize: 0
     LoadSceneTimeOut: 120
@@ -955,6 +955,8 @@ MonoBehaviour:
   cooperativePole: {fileID: 545838639}
   presentationFont: {fileID: 12800000, guid: 4e591886664381448997f7c05e80ef7f, type: 3}
   presentationEmblem: {fileID: 21300000, guid: 146a62dc28524244b11061fbd44fc313, type: 3}
+  victory: {fileID: 5008348457023331957, guid: d67a42efa169aa44cb9d1554c2e35542, type: 3}
+  defeat: {fileID: 1132547922023742953, guid: d67a42efa169aa44cb9d1554c2e35542, type: 3}
 --- !u!1 &2040233503
 GameObject:
   m_ObjectHideFlags: 0

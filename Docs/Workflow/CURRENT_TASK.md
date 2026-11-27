@@ -1,21 +1,21 @@
 # Current task
 
-**V3-PRES-06** ? Match Start, Seal and Return Transition
+**V3-PRES-07** · Result Screen and Rematch
 
-**Checkpoint** `READY_TO_COMMIT` ? **Base** `e49ce54d5e020f7ad7fa4eb69fab58deba5f667b`
+**Checkpoint** `READY_TO_COMMIT` · **Base** `8a80a39cda5083e442659ebbd7ad138576b31308`
 
-Live main matched HEAD at entry. The untracked `Docs/GameDesign/TwinEdge_Level_UI_Design.pdf` predates this work.
+HEAD, origin/main and live main matched at entry. V3-PRES-06 is complete. All 21 local official images match the receipt for that commit. The untracked `Docs/GameDesign/TwinEdge_Level_UI_Design.pdf` predates this task.
 
 | Subtask | State | Scope and next check |
 | --- | --- | --- |
-| 06-A | COMPLETED | Existing phase, spawn camera, owner movement, readiness and audio contracts reviewed. |
-| 06-B | COMPLETED | Server window and request revision gates passed direct Relay probes. |
-| 06-C | COMPLETED | Build 05 passed 3-second start, countdown cancellation, timer and input recovery. |
-| 06-D | COMPLETED | Build 06 passed real joint seal and in-range pickup rejection. |
-| 06-E | COMPLETED | Build 06 passed first pickup, role copy, input deadline and rejoin. Build 05 covered later gem events. |
-| 06-F | IN_PROGRESS | Builds 05/06 passed focused Relay and Master output. Confirm capture fixture compile, then commit and push on live main. Publish the official map and runtime views from the verified clean source. |
+| 07-A | COMPLETED | Audited finish, winner ID and slot, confirmed timer, scene lifetime, player and course initialization, result audio, UI input, and imported animation assets. |
+| 07-B | COMPLETED | Korean uGUI result, input ownership, frozen server time and four fixed D3D11 layouts passed. Actual window requests reached 1280, 1600 and 1920 widths. The desktop limited 2560 to 1920. |
+| 07-C | COMPLETED | Both original clips visibly animate the copied rig. Result music and one-shot cues passed per peer, including Finished rejoin. |
+| 07-D | COMPLETED | Run-017 passed independent consent, cancellation, duplicate and stale requests, disconnect clearing, and explicit Ready and Start after reset. |
+| 07-E | COMPLETED | Run-017 passed two same-room resets, including a peer disconnect during reconstruction and subsequent Outbound rejoin. Round-one and round-two resource totals matched. |
+| 07-F | IN_PROGRESS | Run-020 passed final D3D11 Relay result, same-room reset, recovery, and resource checks. Run-021 passed existing real seal and Return recovery. Runs 003, 008 and 015 passed contest, presentation and transition regressions. Commit and push after live main and exact staged scope review. Official map and runtime captures follow from the clean pushed checkout. |
 
-Evidence is optionally available in ignored `Docs/Development/Presentation/V4/` and scoped `pres06-*` Relay run folders. Initial failed attempts and the diagnosed timing differences are in `RunSummary.md`. The four fixed layouts passed. This desktop confirmed three actual window sizes and limited the 2560×1440 request. Second human playtest and final integration remain deferred.
+Unique ignored evidence root `Docs/Development/Presentation/V3-PRES-07/`. Run-001 contains the Unity clip import and first build logs. Use a new run directory on each attempt. Second human playtest and final integration remain deferred.
 
 ## State and handoff
 

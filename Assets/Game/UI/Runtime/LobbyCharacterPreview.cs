@@ -2,6 +2,8 @@
 using System;
 using TwinEdge.Gameplay;
 using UnityEngine;
+using UnityEngine.Animations;
+using UnityEngine.Playables;
 using UnityEngine.Rendering;
 using UnityEngine.Rendering.Universal;
 using UnityEngine.UI;
@@ -18,16 +20,32 @@ namespace TwinEdge.Presentation
         readonly MaterialPropertyBlock capeProperties = new();
         byte capeIndex = byte.MaxValue;
         bool disposed;
+        PlayableGraph resultGraph;
+        AnimationClipPlayable resultMotion;
+        float resultDuration, resultTime;
 
-        public LobbyCharacterPreview(RawImage image, Transform source, int slot)
+        public LobbyCharacterPreview(RawImage image, Transform source, int slot, AnimationClip result = null)
         {
             this.image = image;
             int layer = LayerMask.NameToLayer("Lobby Preview");
             int mask = 1 << layer;
-            stage = new GameObject("Lobby character preview " + slot);
+            stage = new GameObject(result ? "Result character preview" : "Lobby character preview " + slot);
             stage.transform.position = new Vector3(slot * 32, 10000, 0);
-            var model = CopyVisual(source, stage.transform, layer, out cape);
-            model.localRotation = Quaternion.Euler(0, slot == 0 ? -20 : 20, 0);
+            var model = CopyVisual(source, stage.transform, layer, out cape, out var animator);
+            model.localRotation = Quaternion.Euler(0, result ? -10 : slot == 0 ? -20 : 20, 0);
+            if (result)
+            {
+                animator.runtimeAnimatorController = null;
+                animator.cullingMode = AnimatorCullingMode.AlwaysAnimate;
+                resultGraph = PlayableGraph.Create(result.name);
+                resultGraph.SetTimeUpdateMode(DirectorUpdateMode.Manual);
+                resultMotion = AnimationClipPlayable.Create(resultGraph, result);
+                var output = AnimationPlayableOutput.Create(resultGraph, "Result portrait", animator);
+                output.SetSourcePlayable(resultMotion);
+                resultDuration = Mathf.Max(0, result.length - 1 / result.frameRate);
+                resultGraph.Play();
+                resultGraph.Evaluate(0);
+            }
             ApplyUnassignedCape();
 
             camera = new GameObject("Portrait Camera", typeof(Camera)).GetComponent<Camera>();
@@ -43,7 +61,7 @@ namespace TwinEdge.Presentation
             camera.GetUniversalAdditionalCameraData().renderShadows = false;
             Bounds bounds = new(model.position, Vector3.zero);
             foreach (var render in model.GetComponentsInChildren<Renderer>()) bounds.Encapsulate(render.bounds);
-            camera.orthographicSize = Mathf.Max(bounds.extents.y, bounds.extents.x) * 1.25f;
+            camera.orthographicSize = Mathf.Max(bounds.extents.y, bounds.extents.x) * (result ? 1.48f : 1.25f);
             camera.transform.SetPositionAndRotation(bounds.center + new Vector3(0, .03f, 5),
                 Quaternion.Euler(0, 180, 0));
 
@@ -56,10 +74,19 @@ namespace TwinEdge.Presentation
             light.color = new Color32(255, 232, 200, 255);
             light.intensity = 8f;
 
-            texture = new RenderTexture(320, 320, 16) { name = "Lobby Portrait " + slot };
+            int size = result ? 512 : 320;
+            texture = new RenderTexture(size, size, 16) { name = result ? "Result Portrait" : "Lobby Portrait " + slot };
             camera.targetTexture = texture;
             image.texture = texture;
             image.enabled = true;
+        }
+
+        internal void TickResult()
+        {
+            if (!resultGraph.IsValid() || resultTime >= resultDuration) return;
+            resultTime = Mathf.Min(resultTime + Time.unscaledDeltaTime, resultDuration);
+            resultMotion.SetTime(resultTime);
+            resultGraph.Evaluate(0);
         }
 
         public void SetCape(byte index)
@@ -81,6 +108,7 @@ namespace TwinEdge.Presentation
         {
             if (disposed) return;
             disposed = true;
+            if (resultGraph.IsValid()) resultGraph.Destroy();
             if (image)
             {
                 image.texture = null;
@@ -97,11 +125,12 @@ namespace TwinEdge.Presentation
             UnityEngine.Object.Destroy(stage);
         }
 
-        static Transform CopyVisual(Transform source, Transform parent, int layer, out MeshRenderer cape)
+        static Transform CopyVisual(Transform source, Transform parent, int layer, out MeshRenderer cape, out Animator animator)
         {
             var nodes = new Dictionary<Transform, Transform>();
             var root = CopyTransforms(source, parent, layer, nodes);
             cape = null;
+            animator = null;
             foreach (var pair in nodes)
             {
                 var original = pair.Key;
@@ -126,7 +155,7 @@ namespace TwinEdge.Presentation
                 }
                 if (original.TryGetComponent(out Animator animation))
                 {
-                    var animator = copy.AddComponent<Animator>();
+                    animator = copy.AddComponent<Animator>();
                     animator.avatar = animation.avatar;
                     animator.runtimeAnimatorController = animation.runtimeAnimatorController;
                     animator.applyRootMotion = false;

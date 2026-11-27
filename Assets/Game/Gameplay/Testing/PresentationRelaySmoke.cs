@@ -588,7 +588,7 @@ namespace TwinEdge.Gameplay
             }
         }
 
-        sealed class CaptureTarget : IDisposable
+        internal sealed class CaptureTarget : IDisposable
         {
             readonly Canvas canvas;
             readonly Camera camera;

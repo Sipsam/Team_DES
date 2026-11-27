@@ -22,12 +22,15 @@ namespace TwinEdge.Gameplay
         public CooperativePole cooperativePole;
         [SerializeField] Font presentationFont;
         [SerializeField] Sprite presentationEmblem;
+        [SerializeField] internal AnimationClip victory;
+        [SerializeField] internal AnimationClip defeat;
         [SerializeField, Min(1)] float finishWidth = 4.5f;
         [SerializeField, Min(.1f)] float finishDwell = .35f;
         BoxCollider finish;
         ulong finishCandidate = ulong.MaxValue;
         double finishEnteredAt;
         bool ready;
+        bool networkReload;
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
         bool debug;
 #endif
@@ -37,6 +40,20 @@ namespace TwinEdge.Gameplay
 
         public PresentationRoot Presentation { get; private set; }
         public SessionPresentation SessionUI { get; private set; }
+
+        void Awake()
+        {
+            // The authored session root starts inactive. NGO keeps the first instance across loads.
+            if (NetworkManager.Singleton && NetworkManager.Singleton != manager)
+            {
+                Destroy(manager.gameObject);
+                manager = NetworkManager.Singleton;
+                sessions = manager.GetComponent<MultiplayerSessionManager>();
+                networkReload = manager.IsListening;
+            }
+            else manager.gameObject.SetActive(true);
+            manager.GetComponent<NetworkSpawnCoordinator>().BindFoundationSpawns(spawnPoints);
+        }
 
         void OnEnable()
         {
@@ -76,6 +93,8 @@ namespace TwinEdge.Gameplay
 
         IEnumerator Start()
         {
+            while (networkReload && manager.IsListening && !SceneManager.GetSceneByName(levelScene).isLoaded)
+                yield return null;
             if (!SceneManager.GetSceneByName(levelScene).isLoaded)
                 yield return SceneManager.LoadSceneAsync(levelScene, LoadSceneMode.Additive);
             DisableLevelPreview(SceneManager.GetSceneByName(levelScene), LoadSceneMode.Additive);
@@ -248,13 +267,8 @@ namespace TwinEdge.Gameplay
         {
             if (MenuVisible) DrawMatchMenu();
             var player = manager.LocalClient?.PlayerObject;
-            if (player != null && state.Phase == FoundationPhase.Finished && state.HasWinner && !PresentationRoot.BlocksGameplay)
-            {
-                GUILayout.BeginArea(new Rect(12, 12, 380, 64), GUI.skin.box);
-                GUILayout.Label((player.OwnerClientId == state.WinnerClientId ? "VICTORY" : "DEFEAT") + $"  /  {state.ElapsedSeconds:F1}s");
-                GUILayout.EndArea();
-            }
-            if (player != null && CastleGameplay.Current?.IsKeypadOpen == true && !PresentationRoot.BlocksGameplay)
+            if (player != null && state.Phase != FoundationPhase.Finished &&
+                CastleGameplay.Current?.IsKeypadOpen == true && !PresentationRoot.BlocksGameplay)
             {
                 GUILayout.BeginArea(HudArea, GUI.skin.box);
                 CastleGameplay.Current.DrawKeypad(player);
@@ -265,7 +279,7 @@ namespace TwinEdge.Gameplay
 #endif
         }
 
-        bool InMatch => manager.IsListening && (state.Phase >= FoundationPhase.Outbound ||
+        bool InMatch => manager.IsListening && (state.Phase is >= FoundationPhase.Outbound and < FoundationPhase.Finished ||
             state.Phase == FoundationPhase.Preparing && state.Transition.Kind == MatchTransition.Countdown);
         bool MenuVisible => InMatch && !PresentationRoot.BlocksGameplay && Cursor.lockState != CursorLockMode.Locked &&
             CastleGameplay.Current?.IsKeypadOpen != true;
@@ -287,7 +301,7 @@ namespace TwinEdge.Gameplay
             }
             GUILayout.Label($"Players {state.ConnectedPlayerCount}/2");
             GUI.enabled = !sessions.IsBusy && sessions.HasSession;
-            if (GUILayout.Button(state.Phase == FoundationPhase.Finished ? "Return to main menu" : "Leave room"))
+            if (GUILayout.Button("Leave room"))
                 _ = SessionUI.Leave();
             GUI.enabled = true;
             if (GUILayout.Button("조작법 다시 보기")) SessionUI.ShowControls();

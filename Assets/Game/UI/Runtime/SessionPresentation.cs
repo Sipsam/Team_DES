@@ -9,10 +9,10 @@ using static MultiplayerSessionManager;
 
 namespace TwinEdge.Presentation
 {
-    public sealed class SessionPresentation : MonoBehaviour
+    public sealed partial class SessionPresentation : MonoBehaviour
     {
         const string NicknamePreference = "TwinEdge.Nickname";
-        enum ScreenView { WorldLoading, Landing, Join, Connecting, Lobby, Preparing, Match }
+        enum ScreenView { WorldLoading, Landing, Join, Connecting, Lobby, Preparing, Match, Result }
 
         V3GameplayBootstrap game;
         PresentationRoot root;
@@ -58,6 +58,7 @@ namespace TwinEdge.Presentation
             BuildLobby();
             BuildLoading();
             BuildQuitModal();
+            BuildResult();
             gameplay = gameObject.AddComponent<GameplayPresentation>();
             gameplay.Initialize(game, ui);
             root.ShowScreen(loading);
@@ -157,7 +158,8 @@ namespace TwinEdge.Presentation
 
             var phase = game.state.Phase;
 
-            if (phase == FoundationPhase.Finished) return ScreenView.Match;
+            if (phase == FoundationPhase.Finished)
+                return game.state.HasWinner && peers[game.manager.IsHost ? 0 : 1] ? ScreenView.Result : ScreenView.Connecting;
             if ((phase >= FoundationPhase.Outbound || phase == FoundationPhase.Preparing &&
                 game.state.Transition.Kind == MatchTransition.Countdown) && game.state.IsGameReady &&
                 game.manager.LocalClient?.PlayerObject is { } local &&
@@ -176,6 +178,7 @@ namespace TwinEdge.Presentation
                 ScreenView.Landing => landing,
                 ScreenView.Join => join,
                 ScreenView.Lobby => lobby,
+                ScreenView.Result => result,
                 ScreenView.Match => null,
                 _ => loading
             };
@@ -188,9 +191,9 @@ namespace TwinEdge.Presentation
             }
             visible = view;
             captureCountdownCursor = view == ScreenView.Match && game.state.Phase == FoundationPhase.Preparing;
-            if (view == ScreenView.Match && rejoining)
+            if (view is ScreenView.Match or ScreenView.Result && rejoining)
             {
-                gameplay.QueueRejoinNotice();
+                if (view == ScreenView.Match) gameplay.QueueRejoinNotice();
                 rejoining = false;
             }
         }
@@ -200,6 +203,7 @@ namespace TwinEdge.Presentation
             ScreenView.Landing => landing,
             ScreenView.Join => join,
             ScreenView.Lobby => lobby,
+            ScreenView.Result => result,
             ScreenView.Match => null,
             _ => loading
         };
@@ -251,6 +255,7 @@ namespace TwinEdge.Presentation
                     slots[i].Update(peers[i], game.manager.LocalClientId, visual, i, ready, waiting);
             }
             else foreach (var slot in slots) slot.Clear();
+            RefreshResult(busy);
 
             if (loading.activeSelf)
             {
@@ -343,6 +348,7 @@ namespace TwinEdge.Presentation
             RoomIssue.NotFound when rejoin => "기존 방이 종료되었습니다. 새 방을 만들어 주세요.",
             RoomIssue.NotFound => "방을 찾을 수 없습니다. 코드를 다시 확인해 주세요.",
             RoomIssue.Full => "방에 이미 두 명이 참여하고 있습니다.",
+            RoomIssue.Rebuilding => "새 경기를 준비 중입니다. 잠시 후 같은 방 코드로 다시 참여해 주세요.",
             RoomIssue.InvalidNickname => "닉네임을 확인해 주세요. 메인 메뉴에서 수정할 수 있습니다.",
             _ when host => "방을 만들지 못했습니다. 연결 상태를 확인하고 다시 시도해 주세요.",
             _ => "방에 연결하지 못했습니다. 네트워크 상태를 확인하고 다시 시도해 주세요."
@@ -541,6 +547,7 @@ namespace TwinEdge.Presentation
 
         void OnDestroy()
         {
+            ClearResult();
             foreach (var slot in slots) slot.Clear();
             if (menuListener) menuListener.enabled = false;
             if (standbyListener)

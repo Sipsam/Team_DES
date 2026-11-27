@@ -1,14 +1,15 @@
 param(
     [Parameter(Mandatory)][string]$Build,
     [Parameter(Mandatory)][string]$Run,
-    [ValidateSet('presentation','transition','transitionRecovery','foundation','foundationImpaired','cameraControls','poleRecovery','bridge','bridgeContact','bridgeDisconnect','river','riverRecovery','castleUnderground','castleReconnect','cavernHazards','cavernReconnect','contest','contestRegions','contestLifecycle','return','returnInput','returnReconnect','mountain','mountainFromSpawn','mountainEntry','full','canyon','approach','summit','castle','castleWalk','riverLink','middle','finish')]
+    [ValidateSet('rematch','presentation','transition','transitionRecovery','foundation','foundationImpaired','cameraControls','poleRecovery','bridge','bridgeContact','bridgeDisconnect','river','riverRecovery','castleUnderground','castleReconnect','cavernHazards','cavernReconnect','contest','contestRegions','contestLifecycle','return','returnInput','returnReconnect','mountain','mountainFromSpawn','mountainEntry','full','canyon','approach','summit','castle','castleWalk','riverLink','middle','finish')]
     [string]$Case = 'foundation',
     [string]$PolePlan = 'Docs/Development/Gameplay/V1/MountainPole/ContinuousPlan.json',
     [string]$ReturnPlan = 'Docs/Development/Gameplay/V1/MountainReturn/Route.json',
     [switch]$Headless,
     [switch]$Screenshots,
     [switch]$AudioTrace,
-    [ValidateSet(1024,1280,1600,1920,2560)][int]$Width = 1024
+    [ValidateSet(1024,1280,1600,1920,2560)][int]$Width = 1024,
+    [string]$EvidenceRoot = 'Docs/Development/Gameplay/V1/RelayRuns'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -16,6 +17,7 @@ if ($Run -notmatch '^[a-zA-Z0-9][a-zA-Z0-9_-]*$') { throw 'Use a single director
 $project = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '../..')).Path
 Push-Location -LiteralPath $project
 $players = @()
+$createdOutput = $false
 try {
     $exe = (Resolve-Path -LiteralPath $Build).Path
     $dll = Join-Path (Split-Path $exe) 'V3Gameplay_Data/Managed/Assembly-CSharp.dll'
@@ -28,6 +30,12 @@ try {
     $marker = 'pass'
 
     switch -Regex ($Case) {
+        '^rematch$' {
+            $extra = @('-v3Rematch')
+            $captureFlag = '-v3RematchScreenshots'
+            $marker = 'rematch-pass'
+            $timeout = 510
+        }
         '^presentation$' {
             $mode = 'presentationSmoke'; $evidence = 'presentationEvidence'; $timeout = 330
             $captureFlag = '-presentationScreenshots'
@@ -92,9 +100,10 @@ try {
         }
     }
 
-    $output = Join-Path $project "Docs/Development/Gameplay/V1/RelayRuns/$Run"
+    $output = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath((Join-Path $EvidenceRoot $Run))
     if (Test-Path -LiteralPath $output) { throw "Evidence already exists: $output" }
     New-Item -ItemType Directory -Path $output -Force | Out-Null
+    $createdOutput = $true
     $hash | Set-Content -LiteralPath "$output/assembly-sha256.txt"
     (Get-FileHash -LiteralPath $exe).Hash | Set-Content -LiteralPath "$output/player-sha256.txt"
     $graphics = if ($Headless) { @('-batchmode','-nographics') } else {
@@ -130,5 +139,11 @@ try {
 }
 finally {
     $players | Where-Object { !$_.HasExited } | Stop-Process
+    if ($Case -eq 'rematch' -and $createdOutput) {
+        foreach ($name in 'join-code.txt', 'join-code.tmp') {
+            $codeFile = Join-Path $output $name
+            if (Test-Path -LiteralPath $codeFile) { Remove-Item -LiteralPath $codeFile }
+        }
+    }
     Pop-Location
 }

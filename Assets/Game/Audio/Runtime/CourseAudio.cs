@@ -51,7 +51,7 @@ namespace TwinEdge.Audio
             }
             else if (local) UpdateZone(feet, Time.unscaledTime);
 
-            bool won = local && state.HasWinner && state.WinnerClientId == local.OwnerClientId;
+            bool won = local && state.Won(local.GetComponent<GameplayCharacter>().LobbySlot);
             var nextTheme = ThemeFor(phase, zone, won);
             bool inCourse = local && phase < FoundationPhase.Finished;
             var nextBed = inCourse ? BedFor(zone) : AmbientBed.None;

@@ -44,6 +44,7 @@ namespace TwinEdge.Presentation
         MatchTransitionPresentation transitions;
         GameplayCharacter local;
         string roomId;
+        ulong matchIdentity;
         uint seenLessons;
         Lesson showingLesson;
         FoundationPhase previousPhase;
@@ -130,9 +131,10 @@ namespace TwinEdge.Presentation
             if (local != peer)
             {
                 local = peer;
-                if (roomId != game.sessions.MatchRoomId)
+                if (roomId != game.sessions.MatchRoomId || matchIdentity != game.state.MatchIdentity)
                 {
                     roomId = game.sessions.MatchRoomId;
+                    matchIdentity = game.state.MatchIdentity;
                     seenLessons = 0;
                 }
                 checkpoint = peer.CheckpointName.Value;
