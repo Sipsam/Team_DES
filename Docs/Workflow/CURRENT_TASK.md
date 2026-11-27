@@ -1,14 +1,16 @@
 # Current task
 
-**V3-PLAYTEST-03** · Third Human Playtest Build
+**V3-QA-AUDIT** · Technical Quality and Stability Audit
 
-**Checkpoint** `READY_TO_COMMIT` · **Base** `1ca281bfd4a2bccfd2f751f4e9c903184794bffa`
+**Checkpoint** `READY_TO_COMMIT` · **Base** `48d03add26e080fab81b02f12df528d20c212982`
 
-Standard · Workflow, Gameplay, UI and Network. Local HEAD, origin/main and live remote main matched at entry. The index was empty. Preserve the pre-existing untracked design PDF.
+Complex · Gameplay, Network, Rendering, UI, Audio and Workflow. HEAD, origin/main and live main matched. Preserve the untracked design PDF and all earlier builds, packages, logs and captures. PRES-10 and PLAYTEST-03 are closed. Both human playtests await reports and V3-INTEGRATION is deferred.
 
-PRES-10 is closed. Its local publication receipt records the verified push, 14 map and four keypad captures. All 18 current and 198 earlier capture hashes match. The second human playtest is awaiting tester reports.
+QA-A through QA-G are complete for the scoped audit. The [shared audit](../Architecture/TechnicalQualityAudit.md) records the source review, observed costs, open measurement gaps and planned follow-up criteria. The tracked scope is this checkpoint, the audit, ROADMAP and Validation Summary. Local probes, Players and raw records are ignored under `Docs/Development/QualityAudit/V1/`.
 
-Built and verified the normal Player at `Builds/V3Playtest-03-20261128-1ca281b`. Same-PC D3D11 Relay smoke, manual re-entry, package member verification and protected Player hashes passed. Evidence is under ignored `Docs/Development/ThirdHumanPlaytest/V1/`. See the [package and scope](../Playtest/ValidationSummary.md#v3-playtest-03--3차-사람-플레이테스트-준비) and [tester checklist](../Playtest/ThirdHumanPlaytest.md). Next action is exact documentation review, commit and verified push. Both human playtests await reports. V3-INTEGRATION is deferred.
+Artifacts and protected capture hashes passed. `Dependencies-20261128-050646263` passed the read-only Unity audit with the same 11 historical URP GUID pairs. Both scoped Relay runs passed. `MapMenuRelay-20261128-050138163` measured cold/warm allocation and stationary map states. `RenderRelay-20261128-051259914` returned valid D3D11 GPU/draw data after reapplying the window size. The fixed-camera culling-mask comparison identified visible world rendering as the dominant cost for the tested two-window setup. Both first-attempt limitations and the successful retries are in the ignored run records.
+
+Next action is exact staged documentation review, commit, push and full-hash verification against live main. Record the outcome separately in ignored evidence. Official screenshots are skipped for the nonvisual audit. The two tester-report waits and the final integration hold continue.
 
 ## State and handoff
 

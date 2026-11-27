@@ -325,3 +325,11 @@ Unity 6000.3.27f1 Windows 11 D3D11 Development Player 두 개를 같은 데스�
 - 선택적 로컬 Player는 `Builds/V3Playtest-03-20261128-1ca281b/V3Gameplay.exe`다. 빌드 폴더는 230,367,685바이트, 배포 ZIP은 123,772,983바이트다. `Builds/V3Playtest-03-20261128-1ca281b.zip`의 SHA-256은 `8AFDAC3647728C9DD44A2F3ABEA535BD1EF82F98AF956538F07ECCD1BB09808F`다. 213개 멤버를 원본과 SHA-256으로 대조했다. 한국어 안내와 체크리스트, 2차 피드백 참고 항목, Noto Sans KR OFL, 오디오 출처 및 CC0 전문을 포함했다.
 - 1차 Player 208개 파일과 2차 `2079709` Player 208개 파일 및 ZIP이 기존 해시와 일치했다. 2차 테스트 제출 기록은 확인되지 않아 기존 대기 상태를 유지한다. 3차도 별도 PC의 두 사람을 기다린다. 실제 한국어 IME, 플레이 경험 및 성능·품질 평가는 [3차 체크리스트](ThirdHumanPlaytest.md)에 남겼다. 기존 다리 간헐 실패와 막대 전환 오차를 별도 확인 항목으로 유지한다. 전체 경기, 월드 회귀, 전체 E2E Relay 및 최종 배포는 계속 보류한다.
 - 선택적 로컬 증거는 Git에서 무시하는 `Docs/Development/ThirdHumanPlaytest/V1/`의 빌드 로그, Player 로그와 UI 캡처, 오디오 대조, 보존 및 ZIP 검증 기록이다. [재현 절차](PlaytestGuide.md#v3-playtest-03--3차-사람-플레이테스트-준비)
+
+## V3-QA-AUDIT · 기술 품질·안정성 감사
+
+- 소스 `48d03add26e080fab81b02f12df528d20c212982`의 활성 경로와 이전 자료를 대조했다. 기존 1·2차 Player 매니페스트, 2·3차 ZIP 및 216개 보호·공식 캡처 해시를 재확인했다. 1차 ZIP은 로컬과 GitHub 릴리스 목록에서 찾을 수 없었다. Unity 6000.3.27f1 AssetDatabase 검사에서 V3 두 씬의 누락 스크립트는 0개이고 기존 URP GUID 11쌍은 동일했다.
+- 별도 계측용 Development Player의 D3D11 두 피어 Relay에서 최초 메뉴 할당 205,171 B/프레임을 관측했다. 예열 후 600프레임은 120 B/프레임이었고 설정 세 번 왕복 뒤에도 같았다. 새 산악 HUD 표본은 Host 2,232 B/프레임이었다. 최초 로드 단계별 할당과 UI 비용 귀속은 후속 작업에서 다룬다.
+- 기존 PRES-10 전체 지도 28.61ms와 24.56ms GPU, 7,810 draws/batches는 당시의 월드 포함 표본이다. 실제 창 1600×900 두 피어의 고정 산악 카메라 600프레임 비교에서 Host GPU 평균은 지도 닫힘 32.09ms, 전체 지도 33.25ms, 전체 지도를 유지하고 양쪽 가시 월드를 제외한 경우 3.38ms였다. 이 표본에서 월드 렌더링이 비용을 지배했다. 개별 렌더 패스와 별도 PC 실측은 남아 있다. 다리 착지·목재 운반의 간헐 실패와 막대 손 오차 17.4cm는 잔여 Findings로 보존했다.
+- 감사의 RTT 순간값은 같은 PC 실제 Relay에서 얻었다. 전체 트래픽·RPC/변수 갱신량, 실제 손실, 음향 DSP/스트리밍 CPU는 미계측이다. 2차와 3차 사람 플레이테스트는 제출 대기다. 전체 경기·전체 월드·전체 E2E Relay·최종 배포는 계속 보류한다.
+- 선택적 로컬 증거는 Git 무시 경로 `Docs/Development/QualityAudit/V1/`에 있다. 공유 결과는 과거 테스트의 출처와 한계를 보존하며 최신 일반 Player의 전체 검증으로 승격하지 않는다. [감사 결과와 후속 작업](../Architecture/TechnicalQualityAudit.md)
