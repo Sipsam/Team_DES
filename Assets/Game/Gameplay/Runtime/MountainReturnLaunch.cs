@@ -205,7 +205,7 @@ namespace TwinEdge.Gameplay
                 preparePending = true; prepareDeadline = Time.unscaledTime + 2;
                 PrepareRpc(Revision.Value);
             }
-            if (preparePending && input.LaunchCancel.WasPressedThisFrame()) { preparePending = false; CancelRpc(Revision.Value); }
+            if (preparePending && !Presentation.PresentationRoot.BlocksGameplay && input.LaunchCancel.WasPressedThisFrame()) { preparePending = false; CancelRpc(Revision.Value); }
         }
         void FixedUpdate()
         {
@@ -248,31 +248,23 @@ namespace TwinEdge.Gameplay
             return candidate;
         }
         void OnControllerColliderHit(ControllerColliderHit hit) { if (flight) collision = hit.collider.name; }
-        internal void DrawPlaytestHud()
+        internal bool HasLaunchInput => preparePending || State.Value == LaunchState.Charging;
+
+        internal string PresentationHint()
         {
-            if (!ReturnEnabled || !IsOwner) return;
+            if (!ReturnEnabled || !IsOwner) return null;
             if (Time.unscaledTime >= nextLaunchHint)
             {
                 nextLaunchHint = Time.unscaledTime + .15f;
                 launchAvailable = Supported(out _);
             }
-            if (!ControlsMovement && !launchAvailable) return;
-            GUILayout.Label($"Mountain / {(preparePending ? "Preparing launch" : State.Value.ToString())}");
-            GUILayout.Label("Hold R to charge, release to launch\nMouse aim | W/S angle | Esc cancel");
-            if (State.Value == LaunchState.Charging && !chargeEndedLocally)
-            {
-                GUILayout.Label($"Charge {Charge:P0} | Angle {pitch:F0}°");
-                GUILayout.Label(Prediction.HasContact
-                    ? (Prediction.Summit != null ? "Landing preview: supported" : "Landing preview: risky")
-                    : "No reliable landing preview");
-            }
-#if UNITY_EDITOR || DEVELOPMENT_BUILD
-            if (debug)
-            {
-                var predicted = InFlight ? velocity : config.Velocity(yaw, pitch, Charge);
-                GUILayout.Label($"Candidate {EstimateCandidate(config, CooperativePole.Current?.mountain, transform.position, predicted, controller.radius + .25f)}\nTicket {Revision.Value} | Collision {collision} | Recovery {Failure.Value}");
-            }
-#endif
+            if (!ControlsMovement && !launchAvailable) return null;
+            if (InFlight) return "발사 중 · 착지 지점을 확인하세요.";
+            if (State.Value != LaunchState.Charging || chargeEndedLocally)
+                return "R을 길게 눌러 충전하고 떼어 발사하세요.";
+            string landing = !Prediction.HasContact ? "착지점 미확인" :
+                Prediction.Summit != null ? "봉우리 착지 예상" : "불안정한 착지 예상";
+            return $"충전 {Charge:P0} · 고도 {pitch:F0}° · {landing}\n마우스 방향 · W/S 각도 · Esc 취소";
         }
     }
 }

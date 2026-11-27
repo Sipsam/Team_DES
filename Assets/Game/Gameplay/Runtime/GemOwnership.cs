@@ -258,13 +258,5 @@ namespace TwinEdge.Gameplay
             pickup.gameObject.SetActive(IsSpawned && CanAcquire);
         }
 
-        internal void DrawHud()
-        {
-            if (!IsSpawned || State == GemState.Sealed) return;
-            GUILayout.Label(State == GemState.Carried
-                ? Owner == NetworkManager.LocalClientId ? "Gem: you carry it" : "Gem: partner carries it"
-                : State == GemState.Relocated ? "Gem respawned at a return checkpoint" :
-                    State == GemState.Dropped ? "Gem dropped | E to pick up" : "Gem available");
-        }
     }
 }

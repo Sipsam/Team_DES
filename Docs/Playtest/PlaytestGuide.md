@@ -13,7 +13,7 @@ Use this command to reproduce the windowed Direct3D 11 setup used for the Window
 ```
 
 1. Host selects **Create room**, selects **Copy** beside the code, then sends it to Client.
-2. Client pastes the code and selects **Join room**. When both peers finish loading and their spawn and camera are ready, the server starts the match automatically. Follow the foothill trail to the starting summit, where the 32 m cooperative pole is stored.
+2. Client pastes the code and selects **Join room**. The Client selects **준비** and the Host selects **게임 시작**. The server starts the match after it approves the request and both peers finish world, spawn and camera initialization. Follow the foothill trail to the starting summit, where the 32 m cooperative pole is stored.
 3. Click the world to capture the mouse. Press Esc to open the room menu and release the pointer. The first world click after release captures the mouse. The following click can attack.
 4. Select **Leave room** to disconnect or leave after the result. Client can try the same code while Host keeps the session alive. Play waits for a second player. Check the restored position and puzzle state after rejoining. After Host leaves, both players return to the room menu and use a new code.
 5. Select **Quit game** from the disconnected menu. If a connection fails, record the on-screen message, whether Host is still connected, and which build each tester used.
@@ -128,9 +128,21 @@ Use the same Editor check with `-twinPresentationOutput Docs/Development/Present
 Build a scoped Windows Player in a separate direct child of `Builds/`, such as `Builds/V3Presentation02`. Launch two copies with `-force-d3d11 -screen-fullscreen 0 -screen-width 1280 -screen-height 720` and separate log paths. Save the player build hashes and record which inputs came through onscreen controls.
 
 1. Type distinct nicknames. With the Windows Korean IME and physical keyboard, compose, backspace, commit and paste Hangul in the nickname field. Restart a Player to check the last submitted nickname. Inspect blank and overlong input.
-2. Create a room from the Host menu and copy the code from the waiting room. On the Client, check malformed and unknown codes, then use the paste button and join. Record both names, readiness, visible previews and cape state. Wait for the normal automatic start and verify spawn, camera and in-game HUD.
+2. Create a room from the Host menu and copy the code from the waiting room. On the Client, check malformed and unknown codes, then use the paste button and join. Record both names, readiness, visible previews and cape state. Verify Ready and cancel, then select Host Start and check spawn, camera and in-game HUD.
 3. Interrupt or leave the Client, check the Host waiting screen, then manually rejoin with the original code and nickname. Confirm the original slot and cape. Close the room from the Host Esc menu, check the Client's new-room message, then create and leave a fresh room.
 4. Save the six requested view types from the verified pushed source, including a frame while both previews are visible. Keep live room codes out of published images and logs. Record any sanitization and any view captured with an Editor fixture.
+
+### Gameplay presentation and lobby start
+
+Build a separate Development Player such as `Builds/V3Presentation03`, then run:
+
+```powershell
+./Tools/Playtest/Run-Relay.ps1 -Build Builds/V3Presentation03/V3Gameplay.exe -Case presentation -Run pres03-review -Screenshots
+```
+
+This check exercises the production Client Ready and Host Start handlers, validates rejected requests, cancellation, pre-start reconnect, match restoration and fresh room creation on two Windows D3D11 Players. Room creation and join use the existing session methods. Map input uses Input System keyboard events. The four layout sizes are 1280×720, 1600×900, 1920×1080 and 2560×1440. The additional zone views use test placement, and the gem fixture advances to SealPending before using the production pickup RPC. Count these as presentation and state checks. Route traversal, physical operation and competitive balance remain human-playtest items.
+
+Keep captures in ignored Relay output until push. The capture fixture hides the lobby code label and renders the camera and uGUI to a fixed target. Legacy IMGUI is outside the camera target. After verifying the pushed source, run the official map procedure and capture the live UI from the matching Player. Keep the build and run SHA-256 receipts and identify fixture views when publishing. Test the actual saved atlas again whenever public terrain, room plans or marker locations change.
 
 ## Development build and automated Relay checks
 

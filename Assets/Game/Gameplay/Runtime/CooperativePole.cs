@@ -32,7 +32,9 @@ namespace TwinEdge.Gameplay
         bool orbitAirborne;
         string candidate;
         string pivotSummit;
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
         bool debug;
+#endif
         float nextSend;
         public bool CanInteract => IsSpawned && snapshot.Value.phase != PolePhase.Failed;
         public bool IsAttached(ulong id) => IsSpawned && snapshot.Value.Has(id);
@@ -170,7 +172,8 @@ namespace TwinEdge.Gameplay
             if (local != null && s.Has(local.OwnerClientId))
             {
                 var input = local.GetComponent<GameplayInput>();
-                if (keyboard != null && keyboard.escapeKey.wasPressedThisFrame) CancelRpc(s.revision);
+                if (!Presentation.PresentationRoot.BlocksGameplay && keyboard?.escapeKey.wasPressedThisFrame == true)
+                    CancelRpc(s.revision);
                 else if (input.TryConsumeInteract()) UseRpc(s.revision);
                 if (Time.unscaledTime >= nextSend && s.Paired)
                 {
@@ -342,29 +345,27 @@ namespace TwinEdge.Gameplay
                 foreach (var cc in FindObjectsByType<CharacterController>(FindObjectsSortMode.None))
                     Physics.IgnoreCollision(supportCollider, cc, cc.GetComponent<NetworkObject>()?.OwnerClientId != s.Orbit);
         }
-        internal bool DrawPlaytestHud(NetworkObject local)
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+        internal void DrawDiagnostics()
         {
-            if (!Outbound || local == null) return false;
+            if (!debug || !IsSpawned) return;
             var s = snapshot.Value;
-            bool attached = s.Has(local.OwnerClientId);
+            GUILayout.Label($"Pole {s.phase} / rev {s.revision} · {s.yaw:F1}°, {s.pitch:F1}°\nLanding {s.surface} | Candidate {candidate} | Failure {s.failure}");
+        }
+#endif
+
+        internal string PresentationHint(NetworkObject local)
+        {
+            if (!IsSpawned || V3GameplayBootstrap.Current?.state.Phase != FoundationPhase.Outbound) return null;
+            var s = snapshot.Value;
             var feet = local.transform.position;
             var span = s.b - s.a;
             float along = Mathf.Clamp01(Vector3.Dot(feet - s.a, span) / Mathf.Max(.01f, span.sqrMagnitude));
-            if (!attached && (feet - (s.a + span * along)).sqrMagnitude > 64) return false;
-            int count = (s.left != ulong.MaxValue ? 1 : 0) + (s.right != ulong.MaxValue ? 1 : 0);
-            GUILayout.Label($"Mountain / Cooperative pole {count}/2");
-            if (!attached) GUILayout.Label("Approach one end and press E to grab");
-            else
-            {
-                GUILayout.Label(s.Pivot == local.OwnerClientId
-                    ? "Pivot: WASD to move on the summit | Shift to sprint"
-                    : "Orbit: A/D turn relative to camera, W/S raise or lower the pole");
-                GUILayout.Label("Land on the next summit, then E to swap roles | Esc to release");
-            }
-#if UNITY_EDITOR || DEVELOPMENT_BUILD
-            if (debug) GUILayout.Label($"Pole {s.phase} / rev {s.revision} | {s.yaw:F1}°, {s.pitch:F1}°\nLanding {s.surface} | Candidate {candidate} | Failure {s.failure}");
-#endif
-            return true;
+            if (!s.Has(local.OwnerClientId))
+                return (feet - (s.a + span * along)).sqrMagnitude <= 64 ? "막대 끝을 잡으세요." : null;
+            return s.Pivot == local.OwnerClientId
+                ? "중심 · WASD 이동 · Shift 달리기\n상대가 착지하면 E로 역할 교대 · Esc 놓기"
+                : "회전 · A/D 회전 · W/S 높이 조절\n봉우리에 착지한 뒤 E로 역할 교대 · Esc 놓기";
         }
     }
 }

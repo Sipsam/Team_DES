@@ -30,7 +30,9 @@ namespace TwinEdge.Gameplay {
    yield return Until(()=>FindObjectsByType<Checkpoint>(FindObjectsSortMode.None).Length>=4,"V3 loaded",90);
    if(host){var t=sessions.CreateRoomAsync();yield return Until(()=>t.IsCompleted,"Relay create",90);Check(sessions.HasSession,"Relay created");File.WriteAllText(output+"/room.tmp",sessions.CurrentJoinCode);File.Move(output+"/room.tmp",output+"/room.txt");}
    else{yield return Until(()=>File.Exists(output+"/room.txt"),"Host published session",120);var t=sessions.JoinRoomAsync(File.ReadAllText(output+"/room.txt"));yield return Until(()=>t.IsCompleted,"Relay join",90);Check(sessions.HasSession,"Relay joined");}
-   var game=FindFirstObjectByType<GameStateManager>();yield return Until(()=>game.IsGameReady&&manager.LocalClient?.PlayerObject&&CooperativePole.Current,"Both players spawned",90);
+   var game=FindFirstObjectByType<GameStateManager>();
+   yield return RelayMatchStart.Run(game);
+   yield return Until(()=>game.IsGameReady&&manager.LocalClient?.PlayerObject&&CooperativePole.Current,"Both players spawned",90);
    yield return Until(()=>game.CanPlay,"Outbound",30);pole=CooperativePole.Current;Check(Mathf.Abs(plan.length-pole.length)<.0001f&&FindFirstObjectByType<TwinEdge.Levels.MountainSectionV3>().generationAssets==plan.generationAssets,"Plan matches saved terrain / length");
    if(host)pole.CollisionRejected+=(pivot,from,to)=>{
     float ground=-10000;

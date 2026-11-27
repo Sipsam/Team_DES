@@ -66,6 +66,15 @@ namespace TwinEdge.Gameplay
             retryPositionsReady = true;
         }
 
+        internal bool NearbyWarning(Vector3 feet)
+        {
+            if (!ReturnActive) return false;
+            int current = Mathf.RoundToInt(Vector3.Dot(feet - StartPoint, Forward) / Pitch);
+            for (int i = 0; i < warning.Count; i++)
+                if (Mathf.Abs(warning[i] - current) <= TriggerReach) return true;
+            return false;
+        }
+
         public float BridgeJumpSpeed(bool sprint) => sprint ? sprintJumpSpeed : walkJumpSpeed;
 
         public bool UsesBridgeJump(Vector3 feet) =>

@@ -23,21 +23,19 @@ namespace TwinEdge.Presentation
         ScreenView disconnectedView = ScreenView.Landing;
         GameObject landing, join, lobby, loading, quitModal;
         UiTextField nickname, roomCode;
-        UiButton create, joinPage, connect, joinBack, paste, copy, leave, cancelQuit;
+        UiButton create, joinPage, connect, joinBack, paste, copy, leave, cancelQuit, lobbyAction;
         Text landingStatus, joinStatus, lobbyStatus, lobbyCode, lobbyCount, loadingStatus, loadingDetail;
         RectTransform activity;
         readonly LobbySlot[] slots = { new(), new() };
         readonly GameplayCharacter[] peers = new GameplayCharacter[2];
-        string landingMessage = "", joinMessage = "", lobbyMessage = "", matchMessage = "";
+        string landingMessage = "", joinMessage = "", lobbyMessage = "";
         string operationText, pendingJoinCode, previousClientRoom;
         bool rejoining, attempting, departing;
         bool usedDisconnectNotice;
-        bool hadPartner;
+        bool hadPartner, watchedLobby;
+        float startNoticeUntil;
         float copiedUntil;
-        float matchMessageUntil;
-        GameObject notice;
-        Text matchNotice;
-        bool noticeVisible;
+        GameplayPresentation gameplay;
 
         // The Editor component showcase temporarily borrows the live screen layer.
         public void ResumeScreens()
@@ -58,7 +56,8 @@ namespace TwinEdge.Presentation
             BuildLobby();
             BuildLoading();
             BuildQuitModal();
-            BuildMatchNotice();
+            gameplay = gameObject.AddComponent<GameplayPresentation>();
+            gameplay.Initialize(game, ui);
             root.ShowScreen(loading);
         }
 
@@ -82,7 +81,9 @@ namespace TwinEdge.Presentation
             if (!session.HasSession) hadPartner = false;
             else if (peers[0] && peers[1]) hadPartner = true;
             ScreenView desired = DesiredView();
+            if (desired != ScreenView.Match) gameplay.Refresh(false, peers);
             if (visible != desired && !root.IsTransitioning) Show(desired);
+            if (desired == ScreenView.Match) gameplay.Refresh(visible == ScreenView.Match && !root.IsTransitioning, peers);
             UpdateWorldCamera();
             RefreshControls(desired);
         }
@@ -131,17 +132,30 @@ namespace TwinEdge.Presentation
             if (attempting)
                 return !string.IsNullOrEmpty(pendingJoinCode) && game.manager.IsListening
                     ? ScreenView.Lobby : ScreenView.Connecting;
-            if (!session.HasSession) return disconnectedView;
+            if (!session.HasSession)
+            {
+                watchedLobby = false;
+                startNoticeUntil = 0;
+                return disconnectedView;
+            }
             if (!game.manager.IsConnectedClient || !game.state.IsSpawned) return ScreenView.Connecting;
 
             var phase = game.state.Phase;
+            if (phase < FoundationPhase.Outbound) watchedLobby = true;
             if (phase == FoundationPhase.Finished) return ScreenView.Match;
             if (phase >= FoundationPhase.Outbound && game.state.IsGameReady &&
                 game.manager.LocalClient?.PlayerObject is { } local &&
                 local.TryGetComponent(out GameplayCharacter character) && character.FoundationReady)
-                return ScreenView.Match;
-            if (visible != ScreenView.Lobby && (peers[game.manager.IsHost ? 0 : 1] == null ||
-                (!game.manager.IsHost && phase >= FoundationPhase.Outbound)))
+            {
+                if (watchedLobby)
+                {
+                    watchedLobby = false;
+                    startNoticeUntil = Time.unscaledTime + .38f;
+                }
+                return Time.unscaledTime < startNoticeUntil ? ScreenView.Preparing : ScreenView.Match;
+            }
+            if (phase == FoundationPhase.Preparing ||
+                (!game.manager.IsHost && phase >= FoundationPhase.Outbound))
                 return ScreenView.Preparing;
             return ScreenView.Lobby;
         }
@@ -156,18 +170,17 @@ namespace TwinEdge.Presentation
                 ScreenView.Match => null,
                 _ => loading
             };
-            if (view == ScreenView.Match && rejoining)
-            {
-                matchMessage = "방에 다시 참여했습니다.";
-                matchMessageUntil = Time.unscaledTime + 4;
-                rejoining = false;
-            }
             if (panel != CurrentPanel())
             {
                 var focus = view == ScreenView.Join ? roomCode.gameObject : null;
                 if (!root.FadeTo(panel, panel != null, focus)) return;
             }
             visible = view;
+            if (view == ScreenView.Match && rejoining)
+            {
+                gameplay.QueueRejoinNotice();
+                rejoining = false;
+            }
         }
 
         GameObject CurrentPanel() => visible switch
@@ -203,15 +216,24 @@ namespace TwinEdge.Presentation
                 int connected = game.state.IsSpawned ? game.state.ConnectedPlayerCount : 0;
                 SetText(lobbyCode, string.IsNullOrEmpty(session.CurrentJoinCode) ? pendingJoinCode : session.CurrentJoinCode);
                 SetText(lobbyCount, $"연결된 플레이어  {connected} / 2");
+                bool host = game.manager.IsHost;
+                bool waiting = game.state.IsSpawned && game.state.Phase == FoundationPhase.WaitingForPlayers;
+                bool ready = game.state.ClientReady;
+                lobbyAction.gameObject.SetActive(waiting);
+                lobbyAction.interactable = !busy && (host ? game.state.HostCanStart : peers[1] != null);
+                lobbyAction.SetCaption(host ? "게임 시작" : ready ? "준비 취소" : "준비");
                 SetText(lobbyStatus, Time.unscaledTime < copiedUntil ? "방 코드를 복사했습니다." :
                     attempting ? "방에 연결 중입니다." :
                     !string.IsNullOrEmpty(lobbyMessage) ? lobbyMessage :
                     hadPartner && connected < 2 ?
                         "상대 플레이어의 재입장을 기다리는 중입니다." :
-                        connected < 2 ? "상대 플레이어를 기다리는 중입니다." : "두 플레이어의 경기 준비를 확인하는 중입니다.");
+                        connected < 2 ? "상대 플레이어를 기다리는 중입니다." :
+                        !waiting ? "두 플레이어의 복원을 확인하는 중입니다." :
+                        ready ? (host ? "상대가 준비했습니다. 게임을 시작할 수 있습니다." : "준비 완료 · 방장의 시작을 기다리는 중입니다.") :
+                        host ? "상대가 준비하면 시작할 수 있습니다." : "준비 버튼을 눌러 주세요.");
                 var visual = game.manager.NetworkConfig.PlayerPrefab.transform.Find("VisualRoot");
                 for (int i = 0; i < slots.Length; i++)
-                    slots[i].Update(peers[i], game.manager.LocalClientId, visual, i);
+                    slots[i].Update(peers[i], game.manager.LocalClientId, visual, i, ready, waiting);
             }
             else foreach (var slot in slots) slot.Clear();
 
@@ -230,15 +252,9 @@ namespace TwinEdge.Presentation
                 activity.anchorMax = new Vector2(offset + .25f, 1);
             }
 
-            bool showNotice = visible == ScreenView.Match && !root.IsTransitioning &&
-                Time.unscaledTime < matchMessageUntil;
-            if (showNotice != noticeVisible)
-            {
-                noticeVisible = showNotice;
-                SetText(matchNotice, matchMessage);
-                root.ShowOverlay(showNotice ? notice : null);
-            }
         }
+
+        internal void ShowControls() => gameplay.ShowControls();
 
         static void SetText(Text label, string value)
         {
@@ -455,7 +471,14 @@ namespace TwinEdge.Presentation
                 slot.Status = Label(card.transform, "", PresentationTheme.CaptionSize, 68, PresentationTheme.SecondaryText, TextAnchor.MiddleCenter);
             }
             lobbyStatus = Label(panel, "", PresentationTheme.CaptionSize, 51, PresentationTheme.Parchment);
-            leave = ui.Button(panel, "방 나가기", () => _ = Leave());
+            var actions = Row(panel, 58);
+            lobbyAction = ui.Button(actions, "준비", () =>
+            {
+                if (!game.state.IsSpawned || game.state.Phase != FoundationPhase.WaitingForPlayers) return;
+                if (game.manager.IsHost) game.state.RequestMatchStartRpc();
+                else game.state.SetLobbyReadyRpc(!game.state.ClientReady);
+            });
+            leave = ui.Button(actions, "방 나가기", () => _ = Leave());
         }
 
         void BuildLoading()
@@ -483,18 +506,6 @@ namespace TwinEdge.Presentation
             quitModal.SetActive(false);
         }
 
-        void BuildMatchNotice()
-        {
-            var message = ui.Panel(root.Overlays, PresentationTheme.Accent);
-            var frame = (RectTransform)message.parent;
-            frame.anchorMin = frame.anchorMax = new Vector2(.5f, .16f);
-            frame.sizeDelta = new Vector2(460, 88);
-            matchNotice = ui.Text(message, "", PresentationTheme.CaptionSize, PresentationTheme.PrimaryText, TextAnchor.MiddleCenter);
-            UiKit.Stretch(matchNotice.rectTransform);
-            notice = frame.gameObject;
-            notice.SetActive(false);
-        }
-
         static RectTransform Row(Transform parent, int height)
         {
             var row = UiKit.Rect(parent, "Row");
@@ -519,7 +530,7 @@ namespace TwinEdge.Presentation
             internal RawImage Image;
             LobbyCharacterPreview preview;
 
-            internal void Update(GameplayCharacter peer, ulong localClient, Transform visual, int slot)
+            internal void Update(GameplayCharacter peer, ulong localClient, Transform visual, int slot, bool ready, bool waiting)
             {
                 if (peer == null)
                 {
@@ -530,7 +541,7 @@ namespace TwinEdge.Presentation
                 }
                 string name = peer.OwnerClientId == localClient ? peer.Nickname + " (나)" : peer.Nickname;
                 SetText(Name, name);
-                string state = peer.FoundationReady ? "준비 완료" : "연결됨 · 준비 중";
+                string state = !waiting ? "연결됨" : slot == 0 ? "방장" : ready ? "준비 완료" : "준비 대기";
                 bool assigned = peer.CapeColorIndex < GameplayCharacter.CapeColorCount;
                 SetText(Status, assigned ? state : state + "\n망토 배정 대기");
                 preview ??= new LobbyCharacterPreview(Image, visual, slot);

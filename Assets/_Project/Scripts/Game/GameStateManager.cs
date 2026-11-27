@@ -34,16 +34,57 @@ public sealed class GameStateManager : NetworkBehaviour
     public string FoundationPhaseLabel => foundationMode ? foundationPhase.Value.ToString() : CurrentState.ToString();
     public event Action<FoundationPhase, FoundationPhase> FoundationPhaseChanged;
     byte firstCape, secondCape;
+    readonly NetworkVariable<bool> clientReady = new();
+    ulong readyClientId = ulong.MaxValue;
+
+    public bool ClientReady => IsSpawned && clientReady.Value;
+    public bool HostCanStart => IsHost && Phase == FoundationPhase.WaitingForPlayers &&
+        ConnectedPlayerCount == 2 && ClientReady;
+
+    bool IsConnectedSlot(ulong id, int slot) =>
+        NetworkManager.ConnectedClients.TryGetValue(id, out var client) &&
+        client.PlayerObject != null && client.PlayerObject.IsSpawned &&
+        NetworkManager.GetComponent<NetworkSpawnCoordinator>().TryGetSlot(id, out int assigned) &&
+        assigned == slot;
+
+    [Rpc(SendTo.Server, InvokePermission = RpcInvokePermission.Everyone)]
+    internal void SetLobbyReadyRpc(bool ready, RpcParams rpc = default)
+    {
+        ulong sender = rpc.Receive.SenderClientId;
+        if (!IsServer || !foundationMode || Phase != FoundationPhase.WaitingForPlayers ||
+            sender == Unity.Netcode.NetworkManager.ServerClientId || !IsConnectedSlot(sender, 1)) return;
+        readyClientId = ready ? sender : ulong.MaxValue;
+        clientReady.Value = ready;
+    }
+
+    [Rpc(SendTo.Server, InvokePermission = RpcInvokePermission.Everyone)]
+    internal void RequestMatchStartRpc(RpcParams rpc = default)
+    {
+        ulong sender = rpc.Receive.SenderClientId;
+        if (!IsServer || !foundationMode || Phase != FoundationPhase.WaitingForPlayers ||
+            sender != Unity.Netcode.NetworkManager.ServerClientId || !IsConnectedSlot(sender, 0) ||
+            !clientReady.Value || !IsConnectedSlot(readyClientId, 1)) return;
+        foundationPhase.Value = FoundationPhase.Preparing;
+    }
+
+    void ClearLobbyReady()
+    {
+        readyClientId = ulong.MaxValue;
+        clientReady.Value = false;
+    }
 
     void StartFoundation()
     {
         if (!IsServer || !foundationMode || !IsGameReady || Phase != FoundationPhase.Preparing) return;
+        if (!IsConnectedSlot(Unity.Netcode.NetworkManager.ServerClientId, 0) ||
+            !IsConnectedSlot(readyClientId, 1)) return;
         int count = TwinEdge.Gameplay.GameplayCharacter.CapeColorCount;
         firstCape = (byte)UnityEngine.Random.Range(0, count);
         secondCape = (byte)((firstCape + UnityEngine.Random.Range(1, count)) % count);
         foreach (var client in NetworkManager.ConnectedClientsList)
             AssignFoundationCape(client.PlayerObject.GetComponent<TwinEdge.Gameplay.GameplayCharacter>());
         courseStartedAt.Value = NetworkManager.ServerTime.Time;
+        ClearLobbyReady();
         foundationPhase.Value = FoundationPhase.Outbound;
     }
     // Trusted server hook. SealPending stays cooperative until GemOwnership commits acquisition.
@@ -143,8 +184,11 @@ public sealed class GameStateManager : NetworkBehaviour
         connectedPlayerCount.Value = count;
         if (foundationMode)
         {
-            if (count < 2 && foundationPhase.Value < FoundationPhase.Outbound) foundationPhase.Value = FoundationPhase.WaitingForPlayers;
-            else if (count == 2 && foundationPhase.Value == FoundationPhase.WaitingForPlayers) foundationPhase.Value = FoundationPhase.Preparing;
+            if (clientReady.Value && !IsConnectedSlot(readyClientId, 1))
+            {
+                ClearLobbyReady();
+                foundationPhase.Value = FoundationPhase.WaitingForPlayers;
+            }
             readyFoundationCount.Value = initialized;
             if (TwinEdge.Gameplay.V3GameplayBootstrap.Current?.ReadyForNetworkPlay == true) StartFoundation();
         }
@@ -171,6 +215,7 @@ public sealed class GameStateManager : NetworkBehaviour
             foundationPhase.Value = FoundationPhase.WaitingForPlayers;
             developmentReturnRequested.Value = false;
             connectedPlayerCount.Value = 0;
+            ClearLobbyReady();
             readyFoundationPeers.Clear();
             readyFoundationCount.Value = 0;
             courseStartedAt.Value = -1d;
@@ -261,6 +306,11 @@ public sealed class GameStateManager : NetworkBehaviour
 
     private void HandleClientDisconnected(ulong clientId)
     {
+        if (clientId == readyClientId)
+        {
+            ClearLobbyReady();
+            if (Phase == FoundationPhase.Preparing) foundationPhase.Value = FoundationPhase.WaitingForPlayers;
+        }
         if (readyFoundationPeers.Remove(clientId)) readyFoundationCount.Value = readyFoundationPeers.Count;
         if (arrivedClientIds.Remove(clientId))
         {

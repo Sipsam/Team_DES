@@ -51,6 +51,7 @@ namespace TwinEdge.Gameplay
                 Check(sessions.HasSession, "Relay joined");
             }
             var game = FindFirstObjectByType<GameStateManager>();
+            yield return RelayMatchStart.Run(game);
             yield return Until(() => game.IsGameReady && manager.LocalClient?.PlayerObject != null, "Two players", 90);
             launch = manager.LocalClient.PlayerObject.GetComponent<MountainReturnLaunch>();
             launch.DevelopmentInputDriver = true;

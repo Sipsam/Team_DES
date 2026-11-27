@@ -15,8 +15,9 @@ public sealed class PlayerInteraction : NetworkBehaviour
 
     private void Update()
     {
-        if (IsSpawned && !IsOwner)
+        if (IsSpawned && (!IsOwner || TwinEdge.Presentation.PresentationRoot.BlocksGameplay))
         {
+            CurrentTarget = null;
             return;
         }
 

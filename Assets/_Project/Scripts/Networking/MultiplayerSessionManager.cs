@@ -15,6 +15,7 @@ public sealed class MultiplayerSessionManager : MonoBehaviour
     [SerializeField] private NetworkManager networkManager;
 
     private ISession activeSession;
+    internal string MatchRoomId => activeSession?.Id;
     private Task initializationTask;
     private bool operationInProgress;
     private bool leaving;

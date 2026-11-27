@@ -48,7 +48,10 @@ namespace TwinEdge.Gameplay
         public readonly NetworkVariable<Unity.Collections.FixedString64Bytes> CheckpointName = new();
         public readonly NetworkVariable<int> RespawnCount = new();
         Vector3 previous;
-        Transform visualRoot;
+        Transform visualRoot, head;
+        internal Vector3 NameplateAnchor => head ? head.position + Vector3.up * 1.05f :
+            (visualRoot ? visualRoot.position : transform.position) + Vector3.up * 2.2f;
+        internal Unity.Collections.FixedString64Bytes ApprovedNickname => nickname.Value;
         Pose visualRest;
         Transform leftArm, rightArm;
         Quaternion leftArmRest, rightArmRest;
@@ -89,6 +92,12 @@ namespace TwinEdge.Gameplay
             if (IsOwner) GetComponent<GameplayInput>().Activate();
             visualRoot = transform.Find("VisualRoot");
             visualRest = new Pose(visualRoot.localPosition, visualRoot.localRotation);
+            head = animator.isHuman ? animator.GetBoneTransform(HumanBodyBones.Head) : null;
+            if (!head)
+            {
+                foreach (var bone in visualRoot.GetComponentsInChildren<Transform>(true))
+                    if (bone.name == "Head") { head = bone; break; }
+            }
             BindContestPose();
             capeProperties ??= new MaterialPropertyBlock();
             capeColor.OnValueChanged += ApplyCapeColor;

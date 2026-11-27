@@ -114,8 +114,9 @@ namespace TwinEdge.Gameplay
                 Require(bootstrap.sessions.HasSession, "Client joined Relay");
             }
 
+            yield return RelayMatchStart.Run(Game);
             yield return Until(() => Manager.LocalClient?.PlayerObject != null && Game.CanPlay &&
-                Game.Phase == FoundationPhase.Outbound && CooperativePole.Current != null, "both peers ready and automatically started", 90);
+                Game.Phase == FoundationPhase.Outbound && CooperativePole.Current != null, "both peers ready and the host started the match", 90);
             Player = Manager.LocalClient.PlayerObject.GetComponent<PlayerMovement>();
             character = Player.GetComponent<GameplayCharacter>();
             Player.GetComponent<GameplayInput>().SimulateCapturedCursor = true;

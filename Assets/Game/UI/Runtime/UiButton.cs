@@ -8,6 +8,11 @@ namespace TwinEdge.Presentation
         Image marker;
         Text caption;
 
+        internal void SetCaption(string value)
+        {
+            if (caption && caption.text != value) caption.text = value;
+        }
+
         internal void SetStyle(Image stateMarker, Text label)
         {
             marker = stateMarker;

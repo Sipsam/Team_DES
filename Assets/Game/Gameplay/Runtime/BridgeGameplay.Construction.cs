@@ -322,6 +322,9 @@ namespace TwinEdge.Gameplay
         bool NearGrip(NetworkObject player, LoadState current, bool right) =>
             player != null && Vector3.Distance(player.transform.position, current.Grip(right, gripHalfWidth)) < .85f;
 
+        internal bool CanConfirmTimber(ulong id) => load.Value.Has(id) && load.Value.Paired &&
+            AtSocket(load.Value) && (load.Value.approvals & (load.Value.left == id ? 1 : 2)) == 0;
+
         bool AtSocket(LoadState current) =>
             Vector3.ProjectOnPlane(current.center - SocketPoint, Vector3.up).sqrMagnitude <= socketRadius * socketRadius &&
             Mathf.Abs(Mathf.DeltaAngle(current.yaw, BridgeYaw)) <= socketAngle;

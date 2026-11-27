@@ -424,48 +424,42 @@ namespace TwinEdge.Gameplay
         static string ReadGlyphs(int code) => string.Join("  ", Enumerable.Range(0, SignalLength(code))
             .Select(i => Glyphs[((code >> (i * 2)) & 3) - 1]));
 
-        internal void DrawHud(NetworkObject player)
+        internal string PresentationHint(NetworkObject player)
         {
-            if (!ready) return;
+            if (!IsSpawned || !Contains(player.transform.position)) return null;
             int slot = Slot(player.OwnerClientId);
-            if (slot < 0 || !Contains(player.transform.position))
+            if (slot < 0) return null;
+            var p = Progress(slot);
+            if (Returning)
+            {
+                if (NearSewer(player.transform.position)) return SewerOpen ? "하수도 문이 열렸습니다." :
+                    $"하수도 문양 입력 {p.SewerLength}/{answer.Length}";
+                return p.Injured ? "부상 · 이동이 느려지고 달릴 수 없습니다." : "성채 회랑을 통과하세요.";
+            }
+            if (Stage < Stages)
+                return $"문양 협동 {Stage + 1}/{Stages} · 발판 {p.Steps}/3" +
+                    (p.Feedback < 0 ? " · 입력 초기화" : p.Steps == 3 ? " · 상대 대기" : "");
+            if (DoorOpen) return "두 플레이어 모두 지하 입구를 통과하세요.";
+            return (accepted.Value & (1 << slot)) != 0 ? "번호 확인 · 상대 입력 대기" :
+                localNumber >= 0 ? $"내 번호 {localNumber:D4} · 키패드에 입력하세요." : "내 방의 번호를 확인하세요.";
+        }
+
+        internal void DrawKeypad(NetworkObject player)
+        {
+            if (pendingKeypad < 0) return;
+            int slot = Slot(player.OwnerClientId);
+            if (!ready || slot != pendingKeypad || Returning || DoorOpen || (accepted.Value & (1 << slot)) != 0 ||
+                !Near(player, keypads[slot]) || Keyboard.current?.escapeKey.wasPressedThisFrame == true ||
+                Cursor.lockState == CursorLockMode.Locked)
             {
                 pendingKeypad = -1;
                 return;
             }
-
             var p = Progress(slot);
-            if (Returning)
-            {
-                GUILayout.Label(p.Injured ? "Castle / Injured · slowed · sprint locked" : "Castle / Return corridor");
-                if (SewerOpen) GUILayout.Label("Sewer open");
-                else if (NearSewer(player.transform.position))
-                    GUILayout.Label($"Sewer symbols {p.SewerLength}/{answer.Length}");
-            }
-            else
-            {
-                string feedback = p.Feedback < 0 ? " · reset" : p.Steps == 3 ? " · partner pending" : "";
-                if (Stage < Stages)
-                {
-                    Vector3 feet = player.transform.position - config.origin;
-                    var room = config.rooms.FirstOrDefault(candidate => candidate.plan.Contains(new Vector2(feet.x, feet.z)));
-                    GUILayout.Label($"{room?.id ?? "Keep hall"} / Path {Lane(slot)} / Stage {Stage + 1} / {p.Steps}/3{feedback}");
-                }
-                else GUILayout.Label(DoorOpen ? "Basement open: both cross the threshold" :
-                    (accepted.Value & (1 << slot)) != 0 ? "Number accepted, waiting for partner" : "Castle / Submit both numbers");
-                if (localNumber >= 0) GUILayout.Label($"Your number {localNumber:D4}");
-                if (pendingKeypad == slot && !DoorOpen && (accepted.Value & (1 << slot)) == 0 &&
-                    Near(player, keypads[slot]) && Keyboard.current?.escapeKey.wasPressedThisFrame != true &&
-                    Cursor.lockState != CursorLockMode.Locked)
-                {
-                    GUILayout.Label(p.Feedback < 0 ? "Number rejected" : "Enter four digits");
-                    numberEntry = new string(GUILayout.TextField(numberEntry, 4).Where(c => c >= '0' && c <= '9').ToArray());
-                    if (GUILayout.Button("Submit") && numberEntry.Length == 4 && int.TryParse(numberEntry, out int value))
-                        SubmitNumberRpc(value, p.Revision);
-                }
-                else pendingKeypad = -1;
-            }
-
+            GUILayout.Label(p.Feedback < 0 ? "번호가 일치하지 않습니다." : "네 자리 숫자를 입력하세요.");
+            numberEntry = new string(GUILayout.TextField(numberEntry, 4).Where(c => c >= '0' && c <= '9').ToArray());
+            if (GUILayout.Button("입력") && numberEntry.Length == 4 && int.TryParse(numberEntry, out int value))
+                SubmitNumberRpc(value, p.Revision);
         }
 
 #if UNITY_EDITOR || DEVELOPMENT_BUILD

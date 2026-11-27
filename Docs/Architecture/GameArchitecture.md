@@ -59,3 +59,10 @@ DeepGullies의 정상 림과 암반 기저 접합부를 좁은 범위에서 둥�
 성채의 평평한 안뜰과 지하문 뒤 연결부에는 기단의 석재 바닥을 사용한다. 지하 계단의 수평 데크는 같은 높이에서 겹치는 면을 잘라 한 번씩 렌더링한다. 기존 계단과 안뜰 Collider는 저장 씬에 그대로 있고, 계단탑 남쪽 벽과 안쪽 천장·바닥은 지하 입구를 남기고 외부를 가린다. 계단탑과 내부에서 보이는 북동쪽 성벽은 기존 벽 텍스처를 트라이플래너 방식으로 투영한다.
 
 **Tools > Twin Edge > Audit project dependencies (read only)**는 Unity 의존성, GUID 및 미리보기 씬 로드를 검사한다. 내부 결과는 무시된 `Docs/Development/Architecture/V1/Audit/`에 생성된다. V1/V2 씬과 프로토타입은 Git에서 열 수 있다. [과거 프로젝트 복원 절차](../Archive/Prototype_v1.md)
+
+
+## V3 공개 지도 아틀라스
+
+`CourseMapBake.Bake`는 저장된 `LevelBlockoutV3`의 승인 DeepGullies 산악, 다리, 협곡 계단, 강과 부두, 성채 외벽과 기반, 지하 계단 및 동굴 지형을 선택한다. 지정 메시의 월드 좌표 삼각형을 +X 오른쪽, +Z 위쪽으로 래스터화한다. 실내는 FortressConfig의 공개 방 평면을 사용한다. 하수도 지오메트리와 함정, 장애물, 이동 발판 순서, 경로 그래프는 입력 목록에서 제외한다. 월드 렌더러, 저장 씬과 Collider에는 쓰지 않는다.
+
+Unity에서 **Tools > Twin Edge > Presentation > Bake Public Course Map** 또는 `-executeMethod TwinEdge.Presentation.Editor.CourseMapBake.Bake`를 실행한다. 저장된 메시, 공개 공간의 구성 또는 마커 위치가 변경되면 재생성한다. `Assets/Game/UI/Resources/V3CourseMap.asset`에 월드 X/Z 범위, 확대 기준과 마커가 기록된다. 외부 아틀라스는 목표 1.6 m/px, 실내·지하 별도 시트는 0.65 m/px로 생성한다. 구간별 반경은 산악 150m, 다리 60m, 협곡·강 120m, 성채 외부 60m, 성채 내부 40m, 지하 계단·공동 50m, 결승 120m다. 구간 전환은 0.32초 안정화 뒤 반영한다. 화면에는 사전 생성 지도와 재사용 아이콘을 합성한다.

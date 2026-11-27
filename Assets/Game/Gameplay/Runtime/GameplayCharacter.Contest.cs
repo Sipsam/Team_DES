@@ -520,11 +520,18 @@ namespace TwinEdge.Gameplay
 
         float Charge => held.Value == NoPlayer ? 0 : Mathf.Clamp01((float)(Now - holdBegan.Value) / chargeSeconds);
 
-        internal void DrawContestHud()
+        internal bool HasContestPose => holder.Value != NoPlayer || held.Value != NoPlayer;
+
+        internal string ContestPresentation(GameplayCharacter other)
         {
-            GUILayout.Label($"Stamina {stamina.Value:F0}/{maximumStamina:F0} | Hit {Mathf.Max(0, (float)(attackAt.Value - Now)):F1}s | Grab {Mathf.Max(0, (float)(grabAt.Value - Now)):F1}s");
-            if (holder.Value != NoPlayer) GUILayout.Label($"Held | Tap F to escape ({resistance.Value}/{resistancePresses})");
-            if (held.Value != NoPlayer) GUILayout.Label($"F: throw | Charge {Charge:P0}");
+            if (holder.Value != NoPlayer) return $"F 연타로 저항 ({resistance.Value}/{resistancePresses})";
+            if (held.Value != NoPlayer) return $"F 던지기 · 충전 {Charge:P0}";
+            if (other == null || SpecialMovement ||
+                (other.transform.position - transform.position).sqrMagnitude > 25f) return null;
+            float attack = Mathf.Max(0, (float)(attackAt.Value - Now));
+            float grab = Mathf.Max(0, (float)(grabAt.Value - Now));
+            return attack > 0 || grab > 0 ? $"공격 {attack:F1}초 · 잡기 {grab:F1}초" :
+                HasGem ? "좌클릭 공격" : "좌클릭 공격 · F 잡기";
         }
     }
 }

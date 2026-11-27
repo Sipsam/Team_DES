@@ -100,7 +100,10 @@ namespace TwinEdge.Gameplay
                 Require(player.OwnerClientId != firstId, "rejoin has a new NGO connection ID");
                 yield return Wait(() => Vector3.Distance(player.transform.position, river.Landing(true, 1).position) < 5,
                     "rejoin placed the new owner at the upper dock");
-                player.GetComponent<GameplayInput>().SimulateCapturedCursor = true;
+                var input = player.GetComponent<GameplayInput>();
+                input.SimulateCapturedCursor = true;
+                yield return Wait(() => input.AcceptsInput && river.Read(2).Status == RiverRaftStatus.Docked,
+                    "rejoin screen returned gameplay input and the vacant raft is docked");
                 yield return Press(Key.E);
                 yield return Wait(() => river.TrySeat(player.OwnerClientId, out int slot, out _, out _) && slot == 2,
                     "rejoined owner can board their vacant slot");

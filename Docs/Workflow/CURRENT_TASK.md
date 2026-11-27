@@ -1,14 +1,15 @@
-﻿# Current task
+# Current task
 
-**V3-PRES-02** · Main Menu, Lobby, Nickname and Loading
+**V3-PRES-03** ? Gameplay HUD, Minimap, Onboarding and Lobby Readiness
 
-**Checkpoint** `READY_TO_COMMIT` · **Base** `fe1db9774fc41ebd85a4db1627aa91dd19bbba11` · **Updated** 2026-11-27 KST
+**Checkpoint** `READY_TO_COMMIT` ? **Base** `70584ece32f614ea0b296f29b3498f4041c47a6e` ? **Updated** 2026-11-27 KST
 
-- **Scope** Complex · UI, Network, Rendering. Logical Workers run sequentially in this session. Menu, nickname, Relay presentation, lobby previews, loading and manual rejoin.
-- **Inputs** Live main matches HEAD and origin/main. The untracked team UI PDF was reviewed at pp. 4–5 and remains outside the task diff. PRES-01's fix is pushed; its foundation check evidence remains in Presentation/V1.
-- **Open changes** Server-approved nickname, replica slot/readiness, session outcomes, V3 uGUI screens, camera and lobby previews, and shared contracts are in the working tree. `Builds/V3Presentation02/` is the isolated Development Player destination.
-- **Evidence** Optional ignored `Docs/Development/Presentation/V2/`. `check-03.log` passed the four-size UI and preview lifecycle checks. `build-05.log` and `verified05-run.txt` passed the Windows D3D11 Relay UI scope, including malformed, full and closed rooms, two live portraits and manual slot and cape restoration. The user confirmed Hangul composition, deletion, commit and clipboard paste with a physical keyboard on candidate 04. The nickname field inputs match candidate 05.
-- **Next** Commit the reviewed task paths, verify and push to live main, then publish map and six Player views from the verified source. Record capture and remote receipts independently. The second human playtest awaits testers and final integration remains deferred.
+- **Scope** Complex ? UI, Gameplay, Network, Level, Rendering. Sequential Worker roles in this session. The local team UI PDF remains outside the task.
+- **Validated paths** Production server Ready/Start gate, SessionPresentation, HUD, tutorial and map, saved public atlas, scoped Relay drivers, and shared contracts. 03-A through 03-F passed their focused acceptance checks.
+- **Evidence** Optional ignored `Docs/Development/Presentation/V3/` and `Docs/Development/Gameplay/V1/RelayRuns/`. `bake-01.log` and `build-07.log` passed. Build 07 Relay `pres03-relay-05` and `pres03-raft-02` passed on both peers. Build 06 control and PvP evidence `pres03-controls-02` and `pres03-contest-01` still matches the tested inputs. Resolution checks use fixed D3D11 targets. Region and gem setup views record fixture placement and authoritative events.
+- **Next** Complete 03-G by verifying remote main, committing and pushing the reviewed paths, then capturing the official map and UI from the verified source. Detailed result and publication receipts belong in ignored evidence.
+- **Deferrals** Second human playtest and final integration remain pending. Existing second human playtest Player and ZIP are outside this task. V3-PRES-04 awaits user initiation.
+
 ## State and handoff
 
 Use `PLANNED` for queued work, `IN_PROGRESS` for implementation, `VALIDATING` for scoped checks, `BLOCKED` for a prerequisite or unresolved failure, and `AWAITING_APPROVAL` for an explicit user gate. Once required checks and review pass, use `READY_TO_COMMIT`. Use `COMPLETED` after verifying commit and push, and `DEFERRED` for intentionally postponed work.

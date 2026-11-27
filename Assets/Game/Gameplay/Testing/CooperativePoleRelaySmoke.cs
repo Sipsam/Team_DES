@@ -48,6 +48,7 @@ namespace TwinEdge.Gameplay
                 Check(sessions.HasSession,"Relay joined");
             }
             var game = FindFirstObjectByType<GameStateManager>();
+            yield return RelayMatchStart.Run(game);
             yield return Until(()=>game.IsGameReady && manager.LocalClient?.PlayerObject != null && CooperativePole.Current != null,"Two players and pole spawned",90);
             yield return Until(()=>game.CanPlay,"Outbound started");
             pole = CooperativePole.Current;

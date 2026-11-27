@@ -66,6 +66,7 @@ namespace TwinEdge.Gameplay
                 yield return Until(() => room.IsCompleted, "Relay join", 90);
                 Check(sessions.HasSession, "Relay client");
             }
+            yield return RelayMatchStart.Run(game);
             yield return Until(() => game.IsGameReady && manager.LocalClient?.PlayerObject != null, "Two players", 90);
             yield return Until(() => game.CanPlay, "Outbound");
             planks = FindObjectsByType<BridgePlankV3>(FindObjectsSortMode.None).OrderBy(p => p.plankId).ToArray();

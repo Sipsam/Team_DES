@@ -311,25 +311,25 @@ namespace TwinEdge.Gameplay
             if (TrySeat(id, out int i, out int side, out var s))
             {
                 damaged = DamageFlashActive(s);
-                if (s.Status == RiverRaftStatus.Destroyed) return "Raft destroyed. Recovering at the departure dock.";
-                if (s.Status == RiverRaftStatus.Docked) return $"{(side == 0 ? "Left" : "Right")} oar | Waiting for partner | E / Esc: leave";
+                if (s.Status == RiverRaftStatus.Destroyed) return "뗏목이 파손되었습니다. 출발 부두에서 복구합니다.";
+                if (s.Status == RiverRaftStatus.Docked) return $"{(side == 0 ? "왼쪽" : "오른쪽")} 노 · 상대 대기 · E / Esc 내리기";
                 float stamina = side == 0 ? s.LeftStamina : s.RightStamina;
-                string control = i == 0 ? (side == 0 ? "Left oar" : "Right oar") : "Race raft | A/D steer";
-                return $"{control} | W/S row | Shift: strong stroke\nStamina {stamina:P0} | Hits {s.Hits}/{(i == 0 ? SharedLimit : SoloLimit)}";
+                string control = i == 0 ? (side == 0 ? "Left 노" : "Right 노") : "개인 뗏목 · A/D 조향";
+                return $"{control} · W/S 노젓기 · Shift 강하게\n노젓기 {stamina:P0} · 내구도 {(i == 0 ? SharedLimit : SoloLimit) - s.Hits}/{(i == 0 ? SharedLimit : SoloLimit)}";
             }
 
             Vector3 p = player.transform.position;
             if (Vector3.Distance(p, channel.UpperDock.bounds.center) <= 17 && split.Value)
-                return Returning ? "Upper dock | Separate race rafts. E to board at the water edge." :
-                    "Upper dock reached. The rafts have split.";
+                return Returning ? "상류 부두 · 물가에서 E로 개인 뗏목에 타세요." :
+                    "상류 부두에 도착했습니다.";
             if (Vector3.Distance(p, channel.LowerDock.bounds.center) <= 17)
             {
-                if (Outbound) return "Lower dock | E to board at the water edge.";
+                if (Outbound) return "하류 부두 · 물가에서 E로 공동 뗏목에 타세요.";
                 for (int slot = 1; slot < 3; slot++)
                 {
                     var result = Read(slot);
                     if (result.FinishPlace > 0 && result.Finisher == id)
-                        return $"Lower dock reached | Race place {result.FinishPlace}";
+                        return $"하류 부두 도착 · {result.FinishPlace}위";
                 }
             }
             return null;

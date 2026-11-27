@@ -205,21 +205,18 @@ namespace TwinEdge.Gameplay
             DrawHazards();
         }
 
-        internal void DrawHud(NetworkObject player)
+        internal string PresentationHint(NetworkObject player)
         {
-            if (!IsSpawned || !InCavern(player.transform.position)) return;
-            string title = Returning ? "Underground return | follow the permanent stones" :
-                !castle.PartitionsOpen ? "Underground | waiting for partner at the castle door" :
-                Step < SwitchOrder.Length ? $"Underground crossing {Step + 1}/{SwitchOrder.Length} | switch {(SwitchOrder[Step] == FinalSwitch ? "B altar" : SwitchName(SwitchOrder[Step]))}" :
-                "Underground | shared seal";
-            GUILayout.Label(title);
-            if (!Returning && Step < SwitchOrder.Length && GroupActive(Step))
-                GUILayout.Label($"Stones retract in {Math.Max(0, Deadline(Step) - Now):F1}s");
-            if (Arrivals != 0 && !Returning)
-                GUILayout.Label($"{Seal} | seal participants {((Participants & 1) + (Participants >> 1))}/2" +
-                    (Participants == 0 ? "" : " | Esc: cancel"));
-            if (RecoveryCount != 0 && !Returning) GUILayout.Label("Lava resets both routes at the underground start");
-            if (Returning) GUILayout.Label("Lava respawn: seal terrace");
+            if (!IsSpawned || !InCavern(player.transform.position)) return null;
+            if (Returning) return "고정 발판을 따라 돌아가세요.";
+            if (!castle.PartitionsOpen) return "성채 입구에서 상대를 기다리는 중입니다.";
+            if (Step < SwitchOrder.Length)
+            {
+                string steps = $"협동 건너기 {Step + 1}/{SwitchOrder.Length} · 상대의 발판을 여세요.";
+                return GroupActive(Step) ? steps + $"\n발판이 닫히기까지 {Math.Max(0, Deadline(Step) - Now):F1}초" : steps;
+            }
+            return $"공동 봉인 · 참여 {((Participants & 1) + (Participants >> 1))}/2" +
+                (Participants == 0 ? "" : " · Esc 취소");
         }
 
 #if UNITY_EDITOR || DEVELOPMENT_BUILD

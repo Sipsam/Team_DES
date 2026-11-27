@@ -7,6 +7,8 @@ namespace TwinEdge.Gameplay
     {
         UndergroundGameplay gameplay;
         int index;
+        internal bool IsGem => Prompt == "E: take gem";
+        internal bool IsSeal => Prompt == "E: join the shared seal";
         public string Prompt { get; private set; }
         public bool CanInteract => NetworkManager.Singleton != null && gameplay.CanUse(index, NetworkManager.Singleton.LocalClientId);
         public void Interact(PlayerInteraction player) => gameplay.Interact(index, player);

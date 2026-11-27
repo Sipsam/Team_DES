@@ -77,6 +77,7 @@ namespace TwinEdge.Gameplay
                 room = File.ReadAllText(roomFile);
                 yield return Join();
             }
+            yield return RelayMatchStart.Run(game);
             yield return Wait(() => game.IsGameReady, "two Relay players", 90);
             yield return Wait(() => game.Phase == FoundationPhase.Outbound, "foundation outbound");
             yield return BindPlayer();

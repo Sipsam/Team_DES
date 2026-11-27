@@ -244,15 +244,27 @@ namespace TwinEdge.Gameplay
         {
             if (MenuVisible) DrawMatchMenu();
             var player = manager.LocalClient?.PlayerObject;
-            if (player != null && state.Phase >= FoundationPhase.Outbound && !PresentationRoot.BlocksGameplay) DrawMatchHud(player);
+            if (player != null && state.Phase == FoundationPhase.Finished && state.HasWinner && !PresentationRoot.BlocksGameplay)
+            {
+                GUILayout.BeginArea(new Rect(12, 12, 380, 64), GUI.skin.box);
+                GUILayout.Label((player.OwnerClientId == state.WinnerClientId ? "VICTORY" : "DEFEAT") + $"  /  {state.ElapsedSeconds:F1}s");
+                GUILayout.EndArea();
+            }
+            if (player != null && CastleGameplay.Current?.IsKeypadOpen == true && !PresentationRoot.BlocksGameplay)
+            {
+                GUILayout.BeginArea(HudArea, GUI.skin.box);
+                CastleGameplay.Current.DrawKeypad(player);
+                GUILayout.EndArea();
+            }
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
             if (debug) DrawDiagnostics(player);
 #endif
         }
 
         bool InMatch => manager.IsListening && state.Phase >= FoundationPhase.Outbound;
-        bool MenuVisible => InMatch && !PresentationRoot.BlocksGameplay && Cursor.lockState != CursorLockMode.Locked;
-        Rect RoomArea => new(12, Screen.height - 184, Mathf.Min(360, Screen.width - 24), 172);
+        bool MenuVisible => InMatch && !PresentationRoot.BlocksGameplay && Cursor.lockState != CursorLockMode.Locked &&
+            CastleGameplay.Current?.IsKeypadOpen != true;
+        Rect RoomArea => new(12, 84, Mathf.Min(360, Screen.width - 24), 172);
         Rect HudArea => new(12, 12, Mathf.Min(390, Screen.width - 24), Mathf.Max(0, Screen.height - 202));
 
         void DrawMatchMenu()
@@ -273,70 +285,9 @@ namespace TwinEdge.Gameplay
             if (GUILayout.Button(state.Phase == FoundationPhase.Finished ? "Return to main menu" : "Leave room"))
                 _ = SessionUI.Leave();
             GUI.enabled = true;
-            GUILayout.Label("WASD move | Shift sprint | Space jump | E interact\nClick to capture / attack | F grab, throw or resist");
+            if (GUILayout.Button("조작법 다시 보기")) SessionUI.ShowControls();
             GUILayout.EndVertical();
             GUILayout.EndArea();
-        }
-
-        void DrawMatchHud(NetworkObject player)
-        {
-            var character = player.GetComponent<GameplayCharacter>();
-            bool finished = state.Phase == FoundationPhase.Finished && state.HasWinner;
-            GUILayout.BeginArea(HudArea);
-            GUILayout.BeginVertical(GUI.skin.box);
-            GUILayout.Label(finished
-                ? (player.OwnerClientId == state.WinnerClientId ? "VICTORY" : "DEFEAT") + $"  /  {state.ElapsedSeconds:F1}s"
-                : state.Phase switch
-                {
-                    FoundationPhase.Return => "RETURN  /  Race to the mountain trail with the gem",
-                    FoundationPhase.SealPending => "OUTBOUND  /  Unseal the gem together",
-                    _ => "OUTBOUND  /  Reach the underground altar together"
-                });
-            if (!finished)
-            {
-                if (state.ConnectedPlayerCount < 2) GUILayout.Label("Waiting for your partner to reconnect");
-                DrawCourseHud(player);
-                character.DrawContestHud();
-            }
-            GemOwnership.Current?.DrawHud();
-            GUILayout.Label($"Checkpoint {character.CheckpointName.Value} | Respawns {character.RespawnCount.Value}");
-            GUILayout.Label(Cursor.lockState == CursorLockMode.Locked ? "Esc: release mouse / cancel" : "Click the world to capture the mouse");
-            GUILayout.EndVertical();
-            GUILayout.EndArea();
-        }
-
-        void DrawCourseHud(NetworkObject player)
-        {
-            if (BridgeGameplay.Current is { } bridge && bridge.PlankCount > 0 &&
-                Vector3.Distance(player.transform.position, bridge.StartPoint) <= bridge.Length + 10 &&
-                Mathf.Abs(player.transform.position.x - bridge.StartPoint.x) < 12 &&
-                Mathf.Abs(player.transform.position.y - bridge.StartPoint.y) < 8 &&
-                player.transform.position.z >= bridge.StartPoint.z - 16)
-                GUILayout.Label(state.Phase == FoundationPhase.Return ? "Bridge / Jump the gaps" :
-                    $"Bridge / Timber deliveries {bridge.CompletedDeliveries}/{bridge.TotalDeliveries}");
-
-            string prompt = player.GetComponent<PlayerInteraction>().CurrentTarget switch
-            {
-                NetworkInteractionTarget target when target.transform != interactionSample => target.Prompt,
-                BridgeGameplay construction => construction.Prompt,
-                RiverDockInteraction dock => dock.Prompt,
-                CastleStation castle => castle.Prompt,
-                UndergroundStation station => station.Prompt,
-                _ => null
-            };
-            if (prompt != null) GUILayout.Label(prompt);
-            if (RiverGameplay.Current is { } river &&
-                river.Hud(player.GetComponent<PlayerMovement>(), out bool damaged) is { } riverHud)
-            {
-                var textColor = GUI.contentColor;
-                if (damaged) GUI.contentColor = new Color(1, .56f, .32f);
-                GUILayout.Label(riverHud);
-                GUI.contentColor = textColor;
-            }
-            cooperativePole?.DrawPlaytestHud(player);
-            player.GetComponent<MountainReturnLaunch>()?.DrawPlaytestHud();
-            CastleGameplay.Current?.DrawHud(player);
-            UndergroundGameplay.Current?.DrawHud(player);
         }
 
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
@@ -355,6 +306,7 @@ namespace TwinEdge.Gameplay
                 GUILayout.Label($"Position {player.transform.position:F2} | Grounded {movement.IsGrounded}");
                 var river = RiverGameplay.Current?.DebugHud(movement);
                 if (river != null) GUILayout.Label(river);
+                cooperativePole?.DrawDiagnostics();
                 CastleGameplay.Current?.DrawDiagnostics(player);
                 UndergroundGameplay.Current?.DrawDiagnostics(player);
             }

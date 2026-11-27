@@ -65,6 +65,7 @@ namespace TwinEdge.Gameplay
                 yield return Wait(() => task.IsCompleted, "Relay join", 90);
                 Require(sessions.HasSession, "Relay Client session");
             }
+            yield return RelayMatchStart.Run(game);
             yield return Wait(() => game.IsGameReady && manager.LocalClient?.PlayerObject != null, "two Relay peers", 90);
             if (host && recovery) river.EnableRecoveryFixture();
             yield return Wait(() => river.Read(0).Status == RiverRaftStatus.Docked, "linked raft docked");

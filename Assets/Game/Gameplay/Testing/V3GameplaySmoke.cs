@@ -53,6 +53,7 @@ public sealed partial class V3GameplaySmoke : MonoBehaviour
             yield return Until(() => task.IsCompleted, "Relay join", 80); Check(sessions.HasSession, "Joined Relay code");
         }
         var game = FindFirstObjectByType<GameStateManager>();
+        yield return TwinEdge.Gameplay.RelayMatchStart.Run(game);
         yield return Until(() => game.IsGameReady && manager.LocalClient?.PlayerObject != null, "Two players spawned", 80);
         yield return Until(() => FindObjectsByType<PlayerMovement>(FindObjectsSortMode.None).Length == 2, "Two visible players");
         player = manager.LocalClient.PlayerObject.GetComponent<PlayerMovement>();

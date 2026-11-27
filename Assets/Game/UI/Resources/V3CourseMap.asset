@@ -1,0 +1,293 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9cb0f7223df743eb80413caa00526cb2, type: 3}
+  m_Name: V3CourseMap
+  m_EditorClassIdentifier: Assembly-CSharp::TwinEdge.Presentation.CourseMapData
+  Overview:
+    Zone: 0
+    Bounds:
+      serializedVersion: 2
+      x: -506.83066
+      y: -509.17987
+      width: 1006.677
+      height: 2968.7139
+    TextureBounds:
+      serializedVersion: 2
+      x: -506.83066
+      y: -509.17987
+      width: 1006.677
+      height: 2968.7139
+    Texture: {fileID: 2800000, guid: 2dda4baec6e91274eb134743af1dd5ab, type: 3}
+    Radius: 120
+  Sheets:
+  - Zone: 0
+    Bounds:
+      serializedVersion: 2
+      x: -506.83066
+      y: -509.17987
+      width: 1006.677
+      height: 866.1799
+    TextureBounds:
+      serializedVersion: 2
+      x: -506.83066
+      y: -509.17987
+      width: 1006.677
+      height: 2968.7139
+    Texture: {fileID: 2800000, guid: 2dda4baec6e91274eb134743af1dd5ab, type: 3}
+    Radius: 150
+  - Zone: 1
+    Bounds:
+      serializedVersion: 2
+      x: -63
+      y: 312
+      width: 150
+      height: 372
+    TextureBounds:
+      serializedVersion: 2
+      x: -506.83066
+      y: -509.17987
+      width: 1006.677
+      height: 2968.7139
+    Texture: {fileID: 2800000, guid: 2dda4baec6e91274eb134743af1dd5ab, type: 3}
+    Radius: 60
+  - Zone: 2
+    Bounds:
+      serializedVersion: 2
+      x: -190
+      y: 622
+      width: 360
+      height: 554
+    TextureBounds:
+      serializedVersion: 2
+      x: -506.83066
+      y: -509.17987
+      width: 1006.677
+      height: 2968.7139
+    Texture: {fileID: 2800000, guid: 2dda4baec6e91274eb134743af1dd5ab, type: 3}
+    Radius: 120
+  - Zone: 3
+    Bounds:
+      serializedVersion: 2
+      x: -506.83066
+      y: 1040
+      width: 1006.677
+      height: 1114
+    TextureBounds:
+      serializedVersion: 2
+      x: -506.83066
+      y: -509.17987
+      width: 1006.677
+      height: 2968.7139
+    Texture: {fileID: 2800000, guid: 2dda4baec6e91274eb134743af1dd5ab, type: 3}
+    Radius: 120
+  - Zone: 4
+    Bounds:
+      serializedVersion: 2
+      x: -88
+      y: 2079
+      width: 276
+      height: 390
+    TextureBounds:
+      serializedVersion: 2
+      x: -506.83066
+      y: -509.17987
+      width: 1006.677
+      height: 2968.7139
+    Texture: {fileID: 2800000, guid: 2dda4baec6e91274eb134743af1dd5ab, type: 3}
+    Radius: 60
+  - Zone: 5
+    Bounds:
+      serializedVersion: 2
+      x: 5
+      y: 2176
+      width: 92
+      height: 226
+    TextureBounds:
+      serializedVersion: 2
+      x: 5
+      y: 2176
+      width: 92
+      height: 226
+    Texture: {fileID: 2800000, guid: fa8290ce63e19f241a24a0e74d0ff0ff, type: 3}
+    Radius: 40
+  - Zone: 6
+    Bounds:
+      serializedVersion: 2
+      x: 64
+      y: 2374
+      width: 60
+      height: 44
+    TextureBounds:
+      serializedVersion: 2
+      x: 64
+      y: 2374
+      width: 60
+      height: 44
+    Texture: {fileID: 2800000, guid: 5a06995b5649c8a48ac2554bed5fc1ad, type: 3}
+    Radius: 50
+  - Zone: 7
+    Bounds:
+      serializedVersion: 2
+      x: 3
+      y: 2165
+      width: 130
+      height: 255
+    TextureBounds:
+      serializedVersion: 2
+      x: 3
+      y: 2165
+      width: 130
+      height: 255
+    Texture: {fileID: 2800000, guid: fe6d312984b795e42ad33efd1d4ba715, type: 3}
+    Radius: 50
+  - Zone: 8
+    Bounds:
+      serializedVersion: 2
+      x: -113
+      y: -373
+      width: 230
+      height: 230
+    TextureBounds:
+      serializedVersion: 2
+      x: -506.83066
+      y: -509.17987
+      width: 1006.677
+      height: 2968.7139
+    Texture: {fileID: 2800000, guid: 2dda4baec6e91274eb134743af1dd5ab, type: 3}
+    Radius: 120
+  Pins:
+  - Id: finish
+    Kind: 7
+    Position: {x: 2, y: 132, z: -258}
+  - Id: pole
+    Kind: 5
+    Position: {x: 0, y: 132, z: -225}
+  - Id: timber
+    Kind: 5
+    Position: {x: 24, y: 190, z: 327}
+  - Id: lower-raft
+    Kind: 5
+    Position: {x: 25, y: 42, z: 1150}
+  - Id: upper-raft
+    Kind: 5
+    Position: {x: 76, y: 52, z: 1900}
+  - Id: castle
+    Kind: 5
+    Position: {x: 50, y: 58, z: 2189}
+  - Id: seal
+    Kind: 5
+    Position: {x: 64, y: 6, z: 2197}
+  - Id: cave-start
+    Kind: 4
+    Position: {x: 90, y: -2, z: 2384}
+  - Id: summit
+    Kind: 4
+    Position: {x: 12, y: 190, z: 285}
+  - Id: lower-dock
+    Kind: 4
+    Position: {x: 32, y: 42, z: 1168}
+  - Id: upper-dock
+    Kind: 4
+    Position: {x: 83, y: 52, z: 1882}
+  - Id: Mountain.V3.Peak_01
+    Kind: 6
+    Position: {x: -43, y: 134.5, z: -154.00002}
+  - Id: Mountain.V3.Peak_02
+    Kind: 6
+    Position: {x: 7.0000005, y: 139, z: -139}
+  - Id: Mountain.V3.Peak_03
+    Kind: 6
+    Position: {x: 49.999996, y: 136.1, z: -165}
+  - Id: Mountain.V3.Peak_04
+    Kind: 6
+    Position: {x: -93, y: 141.3, z: -115}
+  - Id: Mountain.V3.Peak_05
+    Kind: 6
+    Position: {x: -32, y: 143, z: -96}
+  - Id: Mountain.V3.Peak_06
+    Kind: 6
+    Position: {x: 62.000004, y: 142.7, z: -116}
+  - Id: Mountain.V3.Peak_07
+    Kind: 6
+    Position: {x: -77, y: 148.1, z: -58.000008}
+  - Id: Mountain.V3.Peak_08
+    Kind: 6
+    Position: {x: -19, y: 149, z: -42}
+  - Id: Mountain.V3.Peak_09
+    Kind: 6
+    Position: {x: 62.000004, y: 151.1, z: -67}
+  - Id: Mountain.V3.Peak_10
+    Kind: 6
+    Position: {x: -60.000004, y: 155, z: -5}
+  - Id: Mountain.V3.Peak_11
+    Kind: 6
+    Position: {x: 29.000002, y: 154.4, z: -15.000004}
+  - Id: Mountain.V3.Peak_12
+    Kind: 6
+    Position: {x: 92, y: 154.3, z: -22.000004}
+  - Id: Mountain.V3.Peak_13
+    Kind: 6
+    Position: {x: -60.000004, y: 163, z: 58}
+  - Id: Mountain.V3.Peak_14
+    Kind: 6
+    Position: {x: 1.9999999, y: 161, z: 41}
+  - Id: Mountain.V3.Peak_15
+    Kind: 6
+    Position: {x: 71, y: 161.9, z: 37}
+  - Id: Mountain.V3.Peak_16
+    Kind: 6
+    Position: {x: -80, y: 167.4, z: 115}
+  - Id: Mountain.V3.Peak_17
+    Kind: 6
+    Position: {x: -14.000001, y: 168.8, z: 99}
+  - Id: Mountain.V3.Peak_18
+    Kind: 6
+    Position: {x: 45, y: 166.8, z: 91}
+  - Id: Mountain.V3.Peak_19
+    Kind: 6
+    Position: {x: -92, y: 173.9, z: 169}
+  - Id: Mountain.V3.Peak_20
+    Kind: 6
+    Position: {x: -31.000002, y: 173.5, z: 156}
+  - Id: Mountain.V3.Peak_21
+    Kind: 6
+    Position: {x: 43, y: 174.7, z: 152}
+  - Id: Mountain.V3.Peak_22
+    Kind: 6
+    Position: {x: -51.000004, y: 179.7, z: 215}
+  - Id: Mountain.V3.Peak_23
+    Kind: 6
+    Position: {x: 7.0000005, y: 181, z: 205}
+  - Id: Mountain.V3.Peak_24
+    Kind: 6
+    Position: {x: 66, y: 182, z: 209}
+  - Id: Mountain.V3.Peak_25
+    Kind: 6
+    Position: {x: -126.00001, y: 145, z: -76}
+  - Id: Mountain.V3.Peak_26
+    Kind: 6
+    Position: {x: 122.00001, y: 159.8, z: 20}
+  - Id: Mountain.V3.Peak_27
+    Kind: 6
+    Position: {x: -132, y: 176.8, z: 120.00001}
+  BridgeStart: {x: 12, y: 190, z: 339}
+  BridgeEnd: {x: 12, y: 190, z: 650}
+  LowerDock: {x: 25, y: 42, z: 1150}
+  UpperDock: {x: 76, y: 52, z: 1900}
+  CastleGate: {x: 50, y: 58, z: 2144}
+  CaveStart: {x: 90, y: -2, z: 2384}
+  Seal: {x: 64, y: 6, z: 2197}
+  Finish: {x: 2, y: 132, z: -258}
+  FirstSummit: {x: 0, y: 132, z: -225}
+  LastSummit: {x: 12, y: 190, z: 285}
+  StairTop: {x: 50, y: 58, z: 2389}
+  CavernCeiling: 30
