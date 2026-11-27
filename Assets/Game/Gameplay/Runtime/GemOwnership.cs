@@ -32,6 +32,9 @@ namespace TwinEdge.Gameplay
         public static GemOwnership Current { get; private set; }
         public GemState State => status.Value;
         public ulong Owner => owner.Value;
+        internal bool IsFirstReturnPickup => game.Transition.Kind == MatchTransition.Return &&
+            game.Transition.GemRevision == revision.Value && State == GemState.Carried;
+        internal Material VisualMaterial => model ? model.GetComponentInChildren<Renderer>(true)?.sharedMaterial : null;
         internal Vector3 Position => position.Value;
         internal bool CanAcquire => State is GemState.Available or GemState.Dropped or GemState.Relocated;
 
@@ -97,14 +100,14 @@ namespace TwinEdge.Gameplay
         internal void RequestAcquire()
         {
             var character = NetworkManager.LocalClient?.PlayerObject?.GetComponent<GameplayCharacter>();
-            if (character != null) AcquireRpc(revision.Value, character.OwnerLife);
+            if (character != null) AcquireRpc(revision.Value, character.OwnerLife, game.ActionRevision);
         }
 
         [Rpc(SendTo.Server, InvokePermission = RpcInvokePermission.Everyone)]
-        void AcquireRpc(uint expectedRevision, int life, RpcParams rpc = default)
+        void AcquireRpc(uint expectedRevision, int life, uint action, RpcParams rpc = default)
         {
             ulong sender = rpc.Receive.SenderClientId;
-            if (!bound || !IsServer || !CanAcquire || !game.CanPlay || expectedRevision != revision.Value ||
+            if (!bound || !IsServer || !CanAcquire || !game.AcceptsAction(action) || expectedRevision != revision.Value ||
                 NetworkManager.ConnectedClientsList.Count != 2 || Time.frameCount == droppedFrame ||
                 game.Phase is not (FoundationPhase.SealPending or FoundationPhase.Return) ||
                 !NetworkManager.ConnectedClients.TryGetValue(sender, out var peer) || peer.PlayerObject == null ||
@@ -122,7 +125,7 @@ namespace TwinEdge.Gameplay
             status.Value = GemState.Carried;
             pickedUpAt = NetworkManager.ServerTime.Time;
             revision.Value++;
-            if (game.Phase == FoundationPhase.SealPending && !game.AdvanceFoundation(FoundationPhase.Return))
+            if (game.Phase == FoundationPhase.SealPending && !game.CommitFirstGemReturn(sender, CarrierPoint(character.transform), revision.Value))
             {
                 owner.Value = ulong.MaxValue;
                 status.Value = previous;
@@ -131,7 +134,7 @@ namespace TwinEdge.Gameplay
 
         internal bool TryDropServer(ulong carrier, Vector3 feet)
         {
-            if (!IsSpawned || !IsServer || State != GemState.Carried || Owner != carrier ||
+            if (!IsSpawned || !IsServer || game.TransitionBlocksInput || State != GemState.Carried || Owner != carrier ||
                 NetworkManager.ServerTime.Time < pickedUpAt + dropProtectionSeconds) return false;
             lastDroppedCarrier = carrier;
             droppedFrame = Time.frameCount;
@@ -222,6 +225,8 @@ namespace TwinEdge.Gameplay
             if ((point - Position).sqrMagnitude > .01f) Release(GemState.Dropped, point);
         }
 
+        static Vector3 CarrierPoint(Transform carrier) => carrier.TransformPoint(new Vector3(.46f, 1.32f, -.24f));
+
         void LateUpdate()
         {
             if (!bound) return;
@@ -239,7 +244,7 @@ namespace TwinEdge.Gameplay
                 visible = carrier != null;
                 if (carrier != null)
                 {
-                    point = carrier.TransformPoint(new Vector3(.46f, 1.32f, -.24f));
+                    point = CarrierPoint(carrier);
                     if (IsServer)
                     {
                         lastCarrierFeet = carrier.position;

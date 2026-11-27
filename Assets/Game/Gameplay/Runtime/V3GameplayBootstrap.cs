@@ -175,7 +175,7 @@ namespace TwinEdge.Gameplay
             if (!ready || !manager.IsServer || !state.IsSpawned) return;
             var gem = GemOwnership.Current;
             gem?.TickDroppedServer();
-            if (state.CanPlay && state.Phase == FoundationPhase.Return &&
+            if (state.AcceptsGameplay && state.Phase == FoundationPhase.Return &&
                 gem is { State: GemState.Carried } && manager.ConnectedClients.TryGetValue(gem.Owner, out var peer) &&
                 peer.PlayerObject != null && peer.PlayerObject.TryGetComponent<GameplayCharacter>(out var player) &&
                 player.CanContestFinish && finish.bounds.Contains(player.transform.position + Vector3.up * .3f) && player.HasGround())
@@ -265,7 +265,8 @@ namespace TwinEdge.Gameplay
 #endif
         }
 
-        bool InMatch => manager.IsListening && state.Phase >= FoundationPhase.Outbound;
+        bool InMatch => manager.IsListening && (state.Phase >= FoundationPhase.Outbound ||
+            state.Phase == FoundationPhase.Preparing && state.Transition.Kind == MatchTransition.Countdown);
         bool MenuVisible => InMatch && !PresentationRoot.BlocksGameplay && Cursor.lockState != CursorLockMode.Locked &&
             CastleGameplay.Current?.IsKeypadOpen != true;
         Rect RoomArea => new(12, 84, Mathf.Min(360, Screen.width - 24), 172);

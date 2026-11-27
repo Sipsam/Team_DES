@@ -193,14 +193,14 @@ namespace TwinEdge.Gameplay
         internal void Board(PlayerInteraction player, bool upper)
         {
             if (!player.IsOwner || !CanBoardAt(upper)) return;
-            BoardRpc(!upper, Read(upper ? 1 : 0).Voyage, upper ? Read(2).Voyage : 0);
+            BoardRpc(!upper, Read(upper ? 1 : 0).Voyage, upper ? Read(2).Voyage : 0, game.ActionRevision);
         }
 
         [Rpc(SendTo.Server, InvokePermission = RpcInvokePermission.Everyone)]
-        void BoardRpc(bool lower, uint firstVoyage, uint secondVoyage, RpcParams rpc = default)
+        void BoardRpc(bool lower, uint firstVoyage, uint secondVoyage, uint action, RpcParams rpc = default)
         {
             ulong id = rpc.Receive.SenderClientId;
-            if (!CanInteract || !game.CanPlay || !TryPlayer(id, out var player) ||
+            if (!CanInteract || !game.AcceptsAction(action) || !TryPlayer(id, out var player) ||
                 player.GetComponent<GameplayCharacter>()?.BlocksServerInteraction == true || TrySeat(id, out _, out _, out _) ||
                 CooperativePole.Current?.IsAttached(id) == true || BridgeGameplay.Current?.Holds(id) == true ||
                 player.GetComponent<MountainReturnLaunch>()?.ControlsMovement == true) return;
@@ -360,14 +360,14 @@ namespace TwinEdge.Gameplay
             Vector2 move = input?.AcceptsInput == true ? input.Move.ReadValue<Vector2>() : Vector2.zero;
             nextSend = Time.unscaledTime + .05f;
             PaddleRpc(index, state.Voyage, ++sequence, (sbyte)Mathf.RoundToInt(move.y * 100),
-                (sbyte)Mathf.RoundToInt(move.x * 100), input?.AcceptsInput == true && input.Sprint.IsPressed());
+                (sbyte)Mathf.RoundToInt(move.x * 100), input?.AcceptsInput == true && input.Sprint.IsPressed(), game.ActionRevision);
         }
 
         [Rpc(SendTo.Server, InvokePermission = RpcInvokePermission.Everyone, Delivery = RpcDelivery.Unreliable)]
-        void PaddleRpc(int index, uint voyage, uint serial, sbyte drive, sbyte steer, bool sprint, RpcParams rpc = default)
+        void PaddleRpc(int index, uint voyage, uint serial, sbyte drive, sbyte steer, bool sprint, uint action, RpcParams rpc = default)
         {
             ulong id = rpc.Receive.SenderClientId;
-            if (drive is < -100 or > 100 || steer is < -100 or > 100 ||
+            if (!game.AcceptsAction(action) || drive is < -100 or > 100 || steer is < -100 or > 100 ||
                 !TrySeat(id, out int actual, out int side, out var state) || actual != index || state.Voyage != voyage ||
                 state.Status != RiverRaftStatus.Sailing || (index == 0 ? !Outbound : !RaceActive) ||
                 !TryPlayer(id, out _)) return;

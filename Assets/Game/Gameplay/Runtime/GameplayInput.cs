@@ -34,7 +34,8 @@ namespace TwinEdge.Gameplay
                 return Cursor.lockState == CursorLockMode.Locked;
             }
         }
-        public bool AcceptsInput => CapturedCursor && !Presentation.PresentationRoot.BlocksGameplay && !DoorPuzzleUI.IsPanelVisible &&
+        internal bool TransitionLocked => V3GameplayBootstrap.Current?.state?.TransitionBlocksInput == true;
+        public bool AcceptsInput => !TransitionLocked && CapturedCursor && !Presentation.PresentationRoot.BlocksGameplay && !DoorPuzzleUI.IsPanelVisible &&
             LaunchCancel?.WasPressedThisFrame() != true;
 
         public bool TryConsumeInteract()

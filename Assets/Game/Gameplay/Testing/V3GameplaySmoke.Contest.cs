@@ -166,10 +166,12 @@ public sealed partial class V3GameplaySmoke
         }
         yield return Until(() => game.Phase == FoundationPhase.Return && gem.State == GemState.Carried &&
             gem.Owner == hitter.OwnerClientId, "real E pickup started Return");
+        double priorHit = hitter.ControlledUntilForTest;
         if (!host) yield return Click();
-        yield return Until(() => hitter.ControlledUntilForTest > 0, "pickup protection still allows hit reaction");
-        Check(gem.State == GemState.Carried && gem.Owner == hitter.OwnerClientId, "pickup protection retained the gem");
-        yield return new WaitForSeconds(1.65f);
+        yield return new WaitForSeconds(.35f);
+        Check(hitter.ControlledUntilForTest == priorHit && gem.State == GemState.Carried && gem.Owner == hitter.OwnerClientId,
+            "Return presentation blocks combat before pickup protection expires");
+        yield return Until(() => game.AcceptsGameplay, "Return presentation releases play");
         yield return PlacePair(arena, 1.65f, "gem-holder-ready");
         if (host) yield return Tap(Key.F);
         yield return new WaitForSeconds(.25f);

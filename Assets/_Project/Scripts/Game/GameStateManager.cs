@@ -13,6 +13,32 @@ public enum GameState
 
 public enum FoundationPhase { WaitingForPlayers, Preparing, Outbound, SealPending, Return, Finished }
 
+public enum MatchTransition : byte { None, Countdown, Seal, Return }
+
+public struct MatchTransitionWindow : INetworkSerializable, IEquatable<MatchTransitionWindow>
+{
+    public MatchTransition Kind;
+    public uint Sequence;
+    public double Start;
+    public double End;
+    public Vector3 Point;
+    public int CarrierSlot;
+    public uint GemRevision;
+
+    public bool Equals(MatchTransitionWindow other) => Sequence == other.Sequence && Kind == other.Kind;
+
+    public void NetworkSerialize<T>(BufferSerializer<T> serializer) where T : IReaderWriter
+    {
+        serializer.SerializeValue(ref Kind);
+        serializer.SerializeValue(ref Sequence);
+        serializer.SerializeValue(ref Start);
+        serializer.SerializeValue(ref End);
+        serializer.SerializeValue(ref Point);
+        serializer.SerializeValue(ref CarrierSlot);
+        serializer.SerializeValue(ref GemRevision);
+    }
+}
+
 [RequireComponent(typeof(NetworkObject))]
 public sealed class GameStateManager : NetworkBehaviour
 {
@@ -34,6 +60,83 @@ public sealed class GameStateManager : NetworkBehaviour
 #endif
     public string FoundationPhaseLabel => foundationMode ? foundationPhase.Value.ToString() : CurrentState.ToString();
     public event Action<FoundationPhase, FoundationPhase> FoundationPhaseChanged;
+    public const double CountdownSeconds = 3;
+    const double CountdownLeadSeconds = .75;
+    public const double SealPresentationSeconds = 1.5;
+    public const double ReturnPresentationSeconds = 2;
+    public const double OutboundNoticeSeconds = .85;
+    readonly NetworkVariable<MatchTransitionWindow> transition = new();
+
+    public MatchTransitionWindow Transition => IsSpawned ? transition.Value : default;
+    public double MatchServerTime => NetworkManager.ServerTime.Time;
+    public bool TransitionBlocksInput => IsSpawned && Transition.Kind != MatchTransition.None &&
+        MatchServerTime < Transition.End;
+
+    public bool AcceptsGameplay => CanPlay && !TransitionBlocksInput;
+    // A request made before or during a window cannot be applied after its deadline.
+    internal uint ActionRevision => Transition.Sequence * 2 + (AcceptsGameplay ? 1u : 0u);
+    internal bool AcceptsAction(uint revision) => AcceptsGameplay && revision == ActionRevision;
+
+    void BeginTransition(MatchTransition kind, double seconds, Vector3 point = default, int carrierSlot = -1, uint gemRevision = 0)
+    {
+        double start = MatchServerTime + (kind == MatchTransition.Countdown ? CountdownLeadSeconds : 0);
+        transition.Value = new MatchTransitionWindow
+        {
+            Kind = kind, Sequence = Transition.Sequence + 1, Start = start, End = start + seconds,
+            Point = point, CarrierSlot = carrierSlot, GemRevision = gemRevision
+        };
+        TraceTransition("approved");
+        if (kind != MatchTransition.Countdown)
+            foreach (var peer in NetworkManager.ConnectedClientsList)
+                peer.PlayerObject?.GetComponent<TwinEdge.Gameplay.GameplayCharacter>()?.ClearTransitionIntentServer();
+    }
+
+    [System.Diagnostics.Conditional("UNITY_EDITOR"), System.Diagnostics.Conditional("DEVELOPMENT_BUILD")]
+    void TraceTransition(string action) =>
+        Debug.Log($"MATCH_TRANSITION {action} kind={Transition.Kind} seq={Transition.Sequence} time={MatchServerTime:F3} start={Transition.Start:F3} end={Transition.End:F3}");
+
+    internal bool CommitFirstGemReturn(ulong carrier, Vector3 point, uint gemRevision)
+    {
+        if (!IsServer || !foundationMode || !AcceptsGameplay || Phase != FoundationPhase.SealPending ||
+            !NetworkManager.GetComponent<NetworkSpawnCoordinator>().TryGetSlot(carrier, out int slot)) return false;
+        BeginTransition(MatchTransition.Return, ReturnPresentationSeconds, point, slot, gemRevision);
+        bool advanced = AdvanceFoundation(FoundationPhase.Return);
+        if (advanced) EmitWorldCue(AudioCueId.GemPickup, point);
+        return advanced;
+    }
+
+    internal void PresentSealServer(Vector3 point)
+    {
+        if (IsServer && foundationMode && AcceptsGameplay && Phase == FoundationPhase.SealPending)
+            BeginTransition(MatchTransition.Seal, SealPresentationSeconds, point);
+    }
+
+    void CancelCountdown()
+    {
+        if (Transition.Kind == MatchTransition.Countdown)
+        {
+            TraceTransition("cancelled");
+            transition.Value = new MatchTransitionWindow { Sequence = Transition.Sequence };
+        }
+    }
+
+    uint countdownAudioSequence;
+    int countdownAudioBeat = -1;
+
+    void TickCountdownAudio()
+    {
+        var window = Transition;
+        if (window.Kind != MatchTransition.Countdown || !HasLiveAudio) return;
+        double age = MatchServerTime - window.Start;
+        if (age < 0 || age >= CountdownSeconds + OutboundNoticeSeconds) return;
+        int beat = (int)Math.Min(CountdownSeconds, Math.Floor(age));
+        if (beat == CountdownSeconds && Phase != FoundationPhase.Outbound) return;
+        if (countdownAudioSequence == window.Sequence && countdownAudioBeat == beat) return;
+        countdownAudioSequence = window.Sequence;
+        countdownAudioBeat = beat;
+        if (age - beat < .25) PlayLiveCue(beat < CountdownSeconds ? AudioCueId.Click : AudioCueId.Confirm);
+    }
+
     byte firstCape, secondCape;
     readonly NetworkVariable<bool> clientReady = new();
     ulong readyClientId = ulong.MaxValue;
@@ -79,12 +182,19 @@ public sealed class GameStateManager : NetworkBehaviour
         if (!IsServer || !foundationMode || !IsGameReady || Phase != FoundationPhase.Preparing) return;
         if (!IsConnectedSlot(Unity.Netcode.NetworkManager.ServerClientId, 0) ||
             !IsConnectedSlot(readyClientId, 1)) return;
+        if (Transition.Kind != MatchTransition.Countdown)
+        {
+            BeginTransition(MatchTransition.Countdown, CountdownSeconds);
+            return;
+        }
+        if (MatchServerTime < Transition.End) return;
         int count = TwinEdge.Gameplay.GameplayCharacter.CapeColorCount;
         firstCape = (byte)UnityEngine.Random.Range(0, count);
         secondCape = (byte)((firstCape + UnityEngine.Random.Range(1, count)) % count);
         foreach (var client in NetworkManager.ConnectedClientsList)
             AssignFoundationCape(client.PlayerObject.GetComponent<TwinEdge.Gameplay.GameplayCharacter>());
-        courseStartedAt.Value = NetworkManager.ServerTime.Time;
+        courseStartedAt.Value = Transition.End;
+        TraceTransition("outbound");
         ClearLobbyReady();
         foundationPhase.Value = FoundationPhase.Outbound;
     }
@@ -100,7 +210,7 @@ public sealed class GameStateManager : NetworkBehaviour
     }
     internal bool TryFinishFoundation(TwinEdge.Gameplay.GameplayCharacter player, BoxCollider finish)
     {
-        if (!IsServer || !foundationMode || !CanPlay || Phase != FoundationPhase.Return || HasWinner || NetworkManager.ConnectedClientsList.Count != 2 ||
+        if (!IsServer || !foundationMode || !AcceptsGameplay || Phase != FoundationPhase.Return || HasWinner || NetworkManager.ConnectedClientsList.Count != 2 ||
             player == null || !player.IsSpawned || !player.CanContestFinish ||
             TwinEdge.Gameplay.GemOwnership.Current is not { State: TwinEdge.Gameplay.GemState.Carried } gem ||
             gem.Owner != player.OwnerClientId ||
@@ -209,7 +319,9 @@ public sealed class GameStateManager : NetworkBehaviour
 
     private void Update()
     {
-        if (!IsSpawned || !IsServer) return;
+        if (!IsSpawned) return;
+        TickCountdownAudio();
+        if (!IsServer) return;
         int count = 0, initialized = 0;
         foreach (NetworkClient client in NetworkManager.ConnectedClientsList)
         {
@@ -222,6 +334,7 @@ public sealed class GameStateManager : NetworkBehaviour
         {
             if (clientReady.Value && !IsConnectedSlot(readyClientId, 1))
             {
+                CancelCountdown();
                 ClearLobbyReady();
                 foundationPhase.Value = FoundationPhase.WaitingForPlayers;
             }
@@ -237,6 +350,8 @@ public sealed class GameStateManager : NetworkBehaviour
 
     public override void OnNetworkSpawn()
     {
+        countdownAudioSequence = 0;
+        countdownAudioBeat = -1;
         foundationPhase.OnValueChanged += OnFoundationChanged;
         currentState.OnValueChanged += HandleStateChanged;
         winnerClientId.OnValueChanged += HandleWinnerChanged;
@@ -251,6 +366,7 @@ public sealed class GameStateManager : NetworkBehaviour
             currentState.Value = GameState.Cooperation;
             foundationPhase.Value = FoundationPhase.WaitingForPlayers;
             developmentReturnRequested.Value = false;
+            transition.Value = default;
             connectedPlayerCount.Value = 0;
             ClearLobbyReady();
             readyFoundationPeers.Clear();
@@ -349,6 +465,7 @@ public sealed class GameStateManager : NetworkBehaviour
     {
         if (clientId == readyClientId)
         {
+            CancelCountdown();
             ClearLobbyReady();
             if (Phase == FoundationPhase.Preparing) foundationPhase.Value = FoundationPhase.WaitingForPlayers;
         }

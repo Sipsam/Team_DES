@@ -388,6 +388,7 @@ namespace TwinEdge.Gameplay
             }
             yield return Until(() => Game.Phase == FoundationPhase.Return && gem.State == GemState.Carried,
                 "E took the fixture gem at Canyon");
+            yield return Until(() => Game.AcceptsGameplay, "Return presentation releases play");
             yield return Segment("isolated-bridge-return", bridge.ReplayReturn());
             yield return ReplayFinish(finish);
         }

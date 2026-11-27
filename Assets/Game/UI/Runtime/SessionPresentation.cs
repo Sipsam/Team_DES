@@ -34,8 +34,7 @@ namespace TwinEdge.Presentation
         string operationText, pendingJoinCode, previousClientRoom;
         bool rejoining, attempting, departing;
         bool usedDisconnectNotice;
-        bool hadPartner, watchedLobby;
-        float startNoticeUntil;
+        bool hadPartner, captureCountdownCursor;
         float copiedUntil;
         GameplayPresentation gameplay;
 
@@ -87,7 +86,21 @@ namespace TwinEdge.Presentation
             ScreenView desired = DesiredView();
             if (desired != ScreenView.Match) gameplay.Refresh(false, peers);
             if (visible != desired && !root.IsTransitioning) Show(desired);
-            if (desired == ScreenView.Match) gameplay.Refresh(visible == ScreenView.Match && !root.IsTransitioning, peers);
+            if (desired == ScreenView.Match)
+            {
+                bool matchVisible = visible == ScreenView.Match && !root.IsTransitioning;
+                if (matchVisible && captureCountdownCursor && !PresentationRoot.BlocksGameplay)
+                {
+                    captureCountdownCursor = false;
+                    if (Application.isFocused)
+                    {
+                        Cursor.lockState = CursorLockMode.Locked;
+                        Cursor.visible = false;
+                    }
+                }
+                gameplay.Refresh(matchVisible, peers);
+            }
+            else captureCountdownCursor = false;
             UpdateWorldCamera();
             RefreshControls(desired);
         }
@@ -138,26 +151,18 @@ namespace TwinEdge.Presentation
                     ? ScreenView.Lobby : ScreenView.Connecting;
             if (!session.HasSession)
             {
-                watchedLobby = false;
-                startNoticeUntil = 0;
                 return disconnectedView;
             }
             if (!game.manager.IsConnectedClient || !game.state.IsSpawned) return ScreenView.Connecting;
 
             var phase = game.state.Phase;
-            if (phase < FoundationPhase.Outbound) watchedLobby = true;
+
             if (phase == FoundationPhase.Finished) return ScreenView.Match;
-            if (phase >= FoundationPhase.Outbound && game.state.IsGameReady &&
+            if ((phase >= FoundationPhase.Outbound || phase == FoundationPhase.Preparing &&
+                game.state.Transition.Kind == MatchTransition.Countdown) && game.state.IsGameReady &&
                 game.manager.LocalClient?.PlayerObject is { } local &&
                 local.TryGetComponent(out GameplayCharacter character) && character.FoundationReady)
-            {
-                if (watchedLobby)
-                {
-                    watchedLobby = false;
-                    startNoticeUntil = Time.unscaledTime + .38f;
-                }
-                return Time.unscaledTime < startNoticeUntil ? ScreenView.Preparing : ScreenView.Match;
-            }
+                return ScreenView.Match;
             if (phase == FoundationPhase.Preparing ||
                 (!game.manager.IsHost && phase >= FoundationPhase.Outbound))
                 return ScreenView.Preparing;
@@ -177,9 +182,12 @@ namespace TwinEdge.Presentation
             if (panel != CurrentPanel())
             {
                 var focus = view == ScreenView.Join ? roomCode.gameObject : null;
-                if (!root.FadeTo(panel, panel != null, focus)) return;
+                if (view == ScreenView.Match && game.state.TransitionBlocksInput)
+                    root.ShowScreen(null, false);
+                else if (!root.FadeTo(panel, panel != null, focus)) return;
             }
             visible = view;
+            captureCountdownCursor = view == ScreenView.Match && game.state.Phase == FoundationPhase.Preparing;
             if (view == ScreenView.Match && rejoining)
             {
                 gameplay.QueueRejoinNotice();

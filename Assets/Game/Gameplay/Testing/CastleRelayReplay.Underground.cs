@@ -154,6 +154,9 @@ namespace TwinEdge.Gameplay
             yield return Wait(() => game.Phase == FoundationPhase.SealPending && cave.Seal == UndergroundSeal.ReadyForCooperation,
                 "both players at altar while still in Cooperation");
             var gem = GemOwnership.Current;
+            var arguments = Environment.GetCommandLineArgs();
+            bool transitionsOnly = isolated && Array.IndexOf(arguments, "-castleTransitionOnly") >= 0;
+            bool transitionReconnect = transitionsOnly && Array.IndexOf(arguments, "-castleTransitionReconnect") >= 0;
             bool testReconnect = isolated && Array.IndexOf(Environment.GetCommandLineArgs(), "-castleCavernReconnect") >= 0;
             if (fullMatch == null)
             {
@@ -189,23 +192,81 @@ namespace TwinEdge.Gameplay
                 yield return Rendezvous("seal-rejoined");
             }
             yield return UseUnderground(cave.SealPad(slot));
+            if (transitionsOnly)
+            {
+                // Stay within the pad's participation radius and the gem's acquire radius.
+                yield return WalkPoint(cave.Altar + Vector3.right * (host ? -2.05f : 2.05f));
+                FaceAltarForCapture(cave);
+            }
             yield return Wait(() => cave.Seal == UndergroundSeal.Unsealing || cave.Seal == UndergroundSeal.Unsealed,
                 "both peers joined the seal");
             yield return Wait(() => cave.Seal == UndergroundSeal.Unsealed && gem.State == GemState.Available,
                 "joint seal opens and exposes the gem");
             Require(game.Phase == FoundationPhase.SealPending, "unsealing leaves Return pending");
+            if (fullMatch == null)
+            {
+                var window = game.Transition;
+                Require(window.Kind == MatchTransition.Seal && window.End - window.Start == 1.5 && game.TransitionBlocksInput,
+                    "real unseal starts the shared seal window");
+                double attack = character.AttackReadyAtForTest;
+                character.ProbeTransitionActions(game.ActionRevision);
+                if (transitionsOnly)
+                {
+                    Require(Vector3.Distance(player.transform.position + Vector3.up, gem.Position) < 2.7f,
+                        "seal acquire probe uses the actual pickup radius");
+                    gem.RequestAcquire();
+                }
+                if (screenshots)
+                {
+                    yield return Wait(() => game.MatchServerTime >= window.Start + .25, "visible seal effect");
+                    yield return new WaitForEndOfFrame();
+                    PresentationRelaySmoke.CaptureTransition(V3GameplayBootstrap.Current, output, role + "-seal", true);
+                    if (host && transitionsOnly)
+                        CaptureView("seal-crystals", cave.Altar + new Vector3(4, 2.2f, 4), window.Point);
+                }
+                Require(gem.State == GemState.Available, "acquire request during seal did not reserve the gem");
+                if (transitionReconnect) yield return ReconnectDuringTransition(window);
+                yield return Wait(() => game.AcceptsGameplay, "seal window releases");
+                Require(character.AttackReadyAtForTest == attack, "server rejected attacks during real seal");
+            }
+            else yield return Wait(() => game.AcceptsGameplay, "seal window releases");
             Capture("altar-unsealed");
             CaptureView("altar-gem", cave.Altar + new Vector3(5, 3, 5), cave.Altar + Vector3.up);
 
             yield return WalkPoint(cave.Altar + Vector3.right * (host ? -1.1f : 1.1f));
             yield return Rendezvous("gem-ready");
-            if (host || (!testReconnect && fullMatch == null))
+            if (host || (!transitionReconnect && !testReconnect && fullMatch == null))
             {
                 SetKeys(Key.E);
                 yield return new WaitForSeconds(.16f);
                 SetKeys();
             }
             yield return Wait(() => game.Phase == FoundationPhase.Return && gem.State == GemState.Carried, "one server-approved E pickup starts Return");
+            if (fullMatch == null)
+            {
+                var window = game.Transition;
+                uint lockedRevision = game.ActionRevision;
+                Require(window.Kind == MatchTransition.Return && window.End - window.Start == 2 && game.TransitionBlocksInput,
+                    "real first pickup starts the shared Return window");
+                var rotation = Camera.main.transform.rotation;
+                double attack = character.AttackReadyAtForTest;
+                double grab = character.GrabReadyAtForTest;
+                character.ProbeTransitionActions(lockedRevision);
+                if (screenshots)
+                {
+                    yield return Wait(() => game.MatchServerTime >= window.Start + .25, "visible Return effect");
+                    yield return new WaitForEndOfFrame();
+                    PresentationRelaySmoke.CaptureTransition(V3GameplayBootstrap.Current, output, role + "-first-pickup", true);
+                }
+                Require(Quaternion.Angle(rotation, Camera.main.transform.rotation) < .1f, "transition retains camera rotation");
+                if (transitionReconnect) yield return ReconnectDuringTransition(window);
+                yield return Wait(() => game.AcceptsGameplay, "Return window releases");
+                character.ProbeTransitionActions(lockedRevision);
+                yield return new WaitForSeconds(.25f);
+                Require(character.AttackReadyAtForTest == attack && character.GrabReadyAtForTest == grab,
+                    "server rejected combat within the window and stale requests after it");
+            }
+            else yield return Wait(() => game.AcceptsGameplay, "Return window releases");
             if (fullMatch == null)
                 yield return Wait(() => System.Linq.Enumerable.Count(FindObjectsByType<GameplayCharacter>(FindObjectsSortMode.None),
                     c => c.CheckpointName.Value.ToString() == "Underground seal") == 2, "Gem pickup assigns both Return altar checkpoints");
@@ -215,6 +276,11 @@ namespace TwinEdge.Gameplay
             Require(File.ReadAllText(Path.Combine(output, "host-carrier.txt")) == File.ReadAllText(Path.Combine(output, "client-carrier.txt")),
                 "both Relay peers see the same carrier");
             Require(cave.AllGroupsPermanent, "all eight cooperative groups physically present in Return");
+            if (transitionsOnly)
+            {
+                if (screenshots && host) PresentationRelaySmoke.CaptureGameplayHud(V3GameplayBootstrap.Current, output);
+                yield break;
+            }
             if (fullMatch != null)
             {
                 fullMatch.Capture("altar-gem-carried");
@@ -303,6 +369,37 @@ namespace TwinEdge.Gameplay
             }
             yield return Walk(slot == 0 ? -17 : 47, 240);
             yield return Walk(slot == 0 ? 37.7f : 42.3f, 240);
+        }
+
+        void FaceAltarForCapture(UndergroundGameplay cave)
+        {
+            if (!screenshots) return;
+            Vector3 heading = Vector3.ProjectOnPlane(cave.Altar - player.transform.position, Vector3.up);
+            if (heading.sqrMagnitude > .01f)
+                Camera.main.GetComponent<ThirdPersonCamera>().FaceSpawn(
+                    Quaternion.LookRotation(Quaternion.Euler(0, host ? 16 : -16, 0) * heading));
+        }
+
+        IEnumerator ReconnectDuringTransition(MatchTransitionWindow window)
+        {
+            if (!host)
+            {
+                Require(game.TransitionBlocksInput, "Client initiates disconnect while the presentation is active");
+                Debug.Log($"MATCH_TRANSITION client-leave kind={window.Kind} time={game.MatchServerTime:F3} end={window.End:F3}");
+                yield return RejoinCavern();
+            }
+            else
+            {
+                yield return Wait(() => !game.IsGameReady, "server observes Client disconnect");
+                Debug.Log($"MATCH_TRANSITION server-disconnect kind={window.Kind} time={game.MatchServerTime:F3} end={window.End:F3}");
+            }
+            yield return Wait(() => game.IsGameReady, "Runtime Ready restored after transition disconnect", 90);
+            Require(game.Transition.Sequence == window.Sequence && game.Transition.End == window.End,
+                "same-room reconnect preserves the original transition and deadline");
+            yield return Wait(() => !game.TransitionBlocksInput, "completed presentation remains expired after rejoin");
+            var banner = V3GameplayBootstrap.Current.Presentation.GetComponentsInChildren<UnityEngine.CanvasGroup>(true);
+            Require(!Array.Exists(banner, item => item.name == "Match transition" && item.gameObject.activeInHierarchy),
+                "expired transition overlay is clear after rejoin");
         }
 
         IEnumerator RejoinCavern()

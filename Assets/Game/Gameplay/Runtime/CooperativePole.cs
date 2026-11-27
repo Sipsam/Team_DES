@@ -23,6 +23,7 @@ namespace TwinEdge.Gameplay
         public MountainConfigV3 mountain;
         readonly NetworkVariable<PoleSnapshot> snapshot = new();
         public PoleSnapshot Snapshot => snapshot.Value;
+        GameStateManager game;
         Vector3 homeA, homeB;
         Vector2 intent;
         Vector2 pivotIntent;
@@ -40,14 +41,8 @@ namespace TwinEdge.Gameplay
         public bool CanInteract => IsSpawned && snapshot.Value.phase != PolePhase.Failed;
         public bool IsAttached(ulong id) => IsSpawned && snapshot.Value.Has(id);
         internal bool IsPairedPivot(ulong id) => snapshot.Value.Paired && snapshot.Value.Pivot == id;
-        bool Outbound
-        {
-            get
-            {
-                var game = FindFirstObjectByType<GameStateManager>();
-                return game != null && game.CanPlay && game.CurrentState == GameState.Cooperation && (!game.foundationMode || game.FoundationPhaseLabel == "Outbound");
-            }
-        }
+        bool Outbound => game != null && game.CanPlay && game.CurrentState == GameState.Cooperation &&
+            (!game.foundationMode || game.Phase == FoundationPhase.Outbound);
         public void ConfigureHome(Vector3 start)
         {
             homeA = V3GameplayBootstrap.SafeGround(start - Vector3.right * length * .5f);
@@ -60,6 +55,7 @@ namespace TwinEdge.Gameplay
         public override void OnNetworkSpawn()
         {
             Current = this;
+            game = FindFirstObjectByType<GameStateManager>();
             if (IsServer)
             {
                 snapshot.Value = Home(default); orbitAirborne = false;
@@ -78,13 +74,18 @@ namespace TwinEdge.Gameplay
         {
             if (player != null && player.IsOwner) UseRpc(snapshot.Value.revision);
         }
+        public void UseRpc(uint revision)
+        {
+            if (IsSpawned && game != null) RequestPoleUseRpc(revision, game.ActionRevision);
+        }
+
         [Rpc(SendTo.Server, InvokePermission = RpcInvokePermission.Everyone)]
-        public void UseRpc(uint revision, RpcParams rpc = default)
+        void RequestPoleUseRpc(uint revision, uint action, RpcParams rpc = default)
         {
             var s = snapshot.Value;
             ulong sender = rpc.Receive.SenderClientId;
             var player = Player(sender);
-            if (!Outbound || revision != s.revision || player == null || !player.IsSpawned || player.GetComponent<PoleMotor>() == null) return;
+            if (!Outbound || !game.AcceptsAction(action) || revision != s.revision || player == null || !player.IsSpawned || player.GetComponent<PoleMotor>() == null) return;
             if (player.GetComponent<GameplayCharacter>()?.BlocksServerInteraction == true) return;
             if (s.Has(sender))
             {
@@ -121,11 +122,16 @@ namespace TwinEdge.Gameplay
             s.yaw = Mathf.Atan2(d.x, d.z) * Mathf.Rad2Deg;
             s.pitch = Mathf.Asin(Mathf.Clamp(d.y, -1, 1)) * Mathf.Rad2Deg;
         }
+        public void SteerRpc(uint revision, Vector2 value, bool sprint = false)
+        {
+            if (IsSpawned && game != null) RequestPoleSteerRpc(revision, value, sprint, game.ActionRevision);
+        }
+
         [Rpc(SendTo.Server, InvokePermission = RpcInvokePermission.Everyone)]
-        public void SteerRpc(uint revision, Vector2 value, bool sprint = false, RpcParams rpc = default)
+        void RequestPoleSteerRpc(uint revision, Vector2 value, bool sprint, uint action, RpcParams rpc = default)
         {
             var s = snapshot.Value;
-            if (!Outbound || revision != s.revision || !s.Paired || !s.Has(rpc.Receive.SenderClientId) || s.phase == PolePhase.Failed || !float.IsFinite(value.x) || !float.IsFinite(value.y)) return;
+            if (!Outbound || !game.AcceptsAction(action) || revision != s.revision || !s.Paired || !s.Has(rpc.Receive.SenderClientId) || s.phase == PolePhase.Failed || !float.IsFinite(value.x) || !float.IsFinite(value.y)) return;
             var character = Player(rpc.Receive.SenderClientId)?.GetComponent<GameplayCharacter>();
             if (character == null || character.BlocksServerInteraction) return;
             if (s.Pivot == rpc.Receive.SenderClientId)

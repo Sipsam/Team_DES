@@ -41,6 +41,7 @@ namespace TwinEdge.Presentation
         readonly Nameplate[] names = { new(), new() };
         readonly RaycastHit[] sightHits = new RaycastHit[16];
         CourseMapPresentation map;
+        MatchTransitionPresentation transitions;
         GameplayCharacter local;
         string roomId;
         uint seenLessons;
@@ -100,6 +101,7 @@ namespace TwinEdge.Presentation
 
             BuildControls(ui);
             map = new CourseMapPresentation(root, ui, overlay, CloseModal);
+            transitions = new MatchTransitionPresentation(ui, overlay, game.transform);
         }
 
         internal void Refresh(bool matchView, GameplayCharacter[] players)
@@ -109,6 +111,7 @@ namespace TwinEdge.Presentation
             if (!show)
             {
                 CloseModal();
+                transitions.Hide();
                 if (active)
                 {
                     root.ShowOverlay(null);
@@ -173,7 +176,15 @@ namespace TwinEdge.Presentation
 
             var gem = GemOwnership.Current;
             if (gem && gem.IsSpawned) ObserveGem(gem, players);
-            if (now >= sampleAt)
+            bool presenting = transitions.Refresh(game.state, game.manager.IsHost ? 0 : 1);
+            bool hideContext = presenting && game.state.TransitionBlocksInput;
+            if (hideContext)
+            {
+                contextPanel.SetActive(false);
+                tutorialUntil = 0;
+                sampleAt = 0;
+            }
+            else if (now >= sampleAt)
             {
                 sampleAt = now + .1f;
                 RefreshContext(players[game.manager.IsHost ? 1 : 0]);
@@ -191,7 +202,7 @@ namespace TwinEdge.Presentation
             track.color = ratio <= 0 ? new Color32(159, 79, 59, 255) : PresentationTheme.Stone;
             staminaPanel.SetActive(true);
             tutorialPanel.SetActive(now < tutorialUntil);
-            notificationPanel.SetActive(now < noticeUntil);
+            notificationPanel.SetActive(!presenting && now < noticeUntil);
             map.Refresh(game, peer, players, gem);
             for (int i = 0; i < names.Length; i++) names[i].Bind(players[i]);
         }
@@ -200,7 +211,9 @@ namespace TwinEdge.Presentation
 
         void ObserveGem(GemOwnership gem, GameplayCharacter[] peers)
         {
-            if (gemObserved && (gem.State != gemState || gem.Owner != gemOwner))
+            bool representedByTransition = gem.IsFirstReturnPickup ||
+                gem.State == GemState.Available && game.state.Transition.Kind == MatchTransition.Seal;
+            if (!representedByTransition && gemObserved && (gem.State != gemState || gem.Owner != gemOwner))
             {
                 if (gemState == GemState.Carried) formerCarrier = gemOwner;
                 bool stolen = formerCarrier != ulong.MaxValue && gem.Owner != formerCarrier &&
@@ -437,6 +450,7 @@ namespace TwinEdge.Presentation
 
         void OnDestroy()
         {
+            transitions?.Dispose();
             map?.Dispose();
             if (worldFeedback) Destroy(worldFeedback.gameObject);
         }

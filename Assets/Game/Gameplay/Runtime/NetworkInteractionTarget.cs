@@ -17,14 +17,18 @@ namespace TwinEdge.Gameplay
         public bool IsInteracting(PlayerInteraction player) => player != null && user.Value == player.OwnerClientId;
         public bool CanInteract => IsSpawned && user.Value == ulong.MaxValue;
         public string Prompt => user.Value != ulong.MaxValue ? "Interacting... Esc: cancel" : prompt + (activated.Value ? " [ON]" : " [OFF]");
-        public void Interact(PlayerInteraction player) { if (player != null && player.IsOwner) BeginRpc(player.NetworkObject); }
+        public void Interact(PlayerInteraction player)
+        {
+            var state = FindFirstObjectByType<GameStateManager>();
+            if (player != null && player.IsOwner && state != null) BeginRpc(player.NetworkObject, state.ActionRevision);
+        }
         [Rpc(SendTo.Server, InvokePermission = RpcInvokePermission.Everyone)]
-        void BeginRpc(NetworkObjectReference reference, RpcParams rpc = default)
+        void BeginRpc(NetworkObjectReference reference, uint action, RpcParams rpc = default)
         {
             if (!reference.TryGet(out var obj) || !obj.IsPlayerObject || !obj.IsSpawned || obj.OwnerClientId != rpc.Receive.SenderClientId || !CanInteract) return;
             if (obj.GetComponent<GameplayCharacter>()?.BlocksServerInteraction == true) return;
             var state = FindFirstObjectByType<GameStateManager>();
-            if (state == null || !state.CanPlay || !InRange(obj.transform.position)) return;
+            if (state == null || !state.AcceptsAction(action) || !InRange(obj.transform.position)) return;
             activePlayer = obj.GetComponent<PlayerInteraction>();
             if (activePlayer == null) return;
             user.Value = obj.OwnerClientId; endsAt = NetworkManager.ServerTime.Time + duration;

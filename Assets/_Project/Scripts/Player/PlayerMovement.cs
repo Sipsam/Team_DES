@@ -89,6 +89,7 @@ public sealed class PlayerMovement : NetworkBehaviour
         if (!characterController.enabled) return;
         if (IsSpawned && contest?.ApplyOwnerContestMovement() == true) return;
 
+        if (gameplayInput?.TransitionLocked == true) bufferedJumpUntil = float.NegativeInfinity;
         bool canReadInput = (gameplayInput == null || gameplayInput.AcceptsInput) && !puzzleUiInputBlocked && (!IsSpawned ||
             (gameStateManager != null && gameStateManager.CanPlay));
 

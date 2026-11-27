@@ -1,13 +1,14 @@
 param(
     [Parameter(Mandatory)][string]$Build,
     [Parameter(Mandatory)][string]$Run,
-    [ValidateSet('presentation','foundation','foundationImpaired','cameraControls','poleRecovery','bridge','bridgeContact','bridgeDisconnect','river','riverRecovery','castleUnderground','castleReconnect','cavernHazards','cavernReconnect','contest','contestRegions','contestLifecycle','return','returnInput','returnReconnect','mountain','mountainFromSpawn','mountainEntry','full','canyon','approach','summit','castle','castleWalk','riverLink','middle','finish')]
+    [ValidateSet('presentation','transition','transitionRecovery','foundation','foundationImpaired','cameraControls','poleRecovery','bridge','bridgeContact','bridgeDisconnect','river','riverRecovery','castleUnderground','castleReconnect','cavernHazards','cavernReconnect','contest','contestRegions','contestLifecycle','return','returnInput','returnReconnect','mountain','mountainFromSpawn','mountainEntry','full','canyon','approach','summit','castle','castleWalk','riverLink','middle','finish')]
     [string]$Case = 'foundation',
     [string]$PolePlan = 'Docs/Development/Gameplay/V1/MountainPole/ContinuousPlan.json',
     [string]$ReturnPlan = 'Docs/Development/Gameplay/V1/MountainReturn/Route.json',
     [switch]$Headless,
     [switch]$Screenshots,
-    [switch]$AudioTrace
+    [switch]$AudioTrace,
+    [ValidateSet(1024,1280,1600,1920,2560)][int]$Width = 1024
 )
 
 $ErrorActionPreference = 'Stop'
@@ -30,6 +31,12 @@ try {
         '^presentation$' {
             $mode = 'presentationSmoke'; $evidence = 'presentationEvidence'; $timeout = 330
             $captureFlag = '-presentationScreenshots'
+        }
+        '^transition(Recovery)?$' {
+            $mode = 'castleReplay'; $evidence = 'castleEvidence'; $timeout = 550; $captureFlag = '-castleScreenshots'
+            $extra = @('-castleCavernProbe', '-castleTransitionOnly')
+            if ($Case -eq 'transitionRecovery') { $extra += '-castleTransitionReconnect' }
+            $marker = 'cavern-pass'
         }
         '^foundationImpaired$' { $extra = @('-v3ImpairedRelay') }
         '^cameraControls$' { $extra = @('-v3CameraControls'); $captureFlag = '-v3ControlScreenshots' }
@@ -91,7 +98,8 @@ try {
     $hash | Set-Content -LiteralPath "$output/assembly-sha256.txt"
     (Get-FileHash -LiteralPath $exe).Hash | Set-Content -LiteralPath "$output/player-sha256.txt"
     $graphics = if ($Headless) { @('-batchmode','-nographics') } else {
-        @('-force-d3d11','-screen-fullscreen','0','-screen-width','1024','-screen-height','720')
+        $height = if ($Width -eq 1024) { 720 } else { [int]($Width * 9 / 16) }
+        @('-force-d3d11','-screen-fullscreen','0','-screen-width',"$Width",'-screen-height',"$height")
     }
     if ($Screenshots -and !$Headless -and $captureFlag) { $extra += $captureFlag }
     if ($AudioTrace) { $extra += '-twinAudioTrace' }

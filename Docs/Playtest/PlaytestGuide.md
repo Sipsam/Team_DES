@@ -242,3 +242,17 @@ Use the development build workflow with `TWIN_EDGE_V3_BUILD=Builds/V3Audio04` an
 Build a Development Windows Player at an isolated path such as `Builds/V3Audio05Candidate` using `TWIN_EDGE_V3_BUILD`. Launch with `-force-d3d11 -twinCourseAudioProbe -twinAudioTrace`. Use Windows WASAPI loopback as in the foundation check. The course probe timestamps menu playback, layered 100/50/0 percent output, interrupted crossfade, stream loop seam, and river water at 2 and 18 metres with `AUDIO_COURSE_SIGNAL`. Run `-twinAudioRestore` after the probe to check and restore Master persistence. Use `-twinAudioProbe` separately for the original one-shot pool, priority, gain and listener regression.
 
 Use `Run-Relay.ps1 -AudioTrace` for `presentation` and `castleUnderground` to check local zone choices, start, SealPending, approved first pickup, rejoin, teardown, private cues and the real seal transaction. Use representative `cameraControls`, `contest`, `bridge`, `riverRecovery`, and `returnInput` cases for the affected gameplay transitions. Review `AUDIO_COURSE`, `AUDIO_SPATIAL`, `AUDIO_CHARGE_LOOP` and `AUDIO_PLAY` against the same peer's approvals and movement. The camera-controls case checks walking, sprinting, held input against a wall and jump/landing cues within listener range. Keep raw output and short signal captures under ignored Audio/V2 evidence. Capture takes place without other playback on the same endpoint. Check music direction, speaking effort, loop audibility, and warning intelligibility by human listening separately. Full match and full E2E remain deferred.
+
+### 경기 시작, 공동 봉인 및 최초 복로
+
+Unity 6000.3.27f1에서 D3D11 Development Player를 격리 경로 `Builds/V3Presentation06`에 빌드한다.
+
+```powershell
+.\Tools\Playtest\Run-Relay.ps1 -Build Builds/V3Presentation06/V3Gameplay.exe -Case presentation -Run pres06-presentation -AudioTrace -Screenshots
+.\Tools\Playtest\Run-Relay.ps1 -Build Builds/V3Presentation06/V3Gameplay.exe -Case transition -Run pres06-seal-return -AudioTrace -Screenshots
+.\Tools\Playtest\Run-Relay.ps1 -Build Builds/V3Presentation06/V3Gameplay.exe -Case transitionRecovery -Run pres06-recovery -AudioTrace
+```
+
+`presentation`은 Ready 및 Host 승인, 60/30 목표 FPS에서 서버 카운트다운과 첫 획득 재생을 검사한다. 이 케이스의 보석은 격리 배치와 SealPending 설정을 사용하며 획득은 실제 서버 RPC를 사용한다. `transition`은 지하 입구에 격리 배치하고 실제 여덟 번의 발판 교대, 봉인과 획득을 진행해 양쪽 제한과 이전 요청의 거부를 확인한다. `transitionRecovery`는 실제 봉인 및 복로 구간 중 Client가 나갔다가 수동 재입장하는 경로를 추가한다. `MATCH_TRANSITION`에서 서버 승인, 각 피어 표시 및 해제 시각을 구분하고 카운트다운 종료 시각을 0초로 계산한다. 봉인과 복로 연출 중 경기 시계는 계속 흐른다.
+
+1280×720, 1600×900, 1920×1080, 2560×1440 고정 렌더 타깃 캡처와 실제 Player 창 확인을 구분한다. `AUDIO_PLAY` 및 `AUDIO_COURSE`의 시각과 건수를 승인 기록 및 짧은 WASAPI 캡처와 비교한다. 공식 캡처는 푸시된 깨끗한 소스에서 같은 케이스를 사용하며 경기 장면에 필요한 캡처만 선택한다. 전체 경기, 전체 월드 회귀, 전체 E2E 및 2차 사람 플레이테스트는 보류한다.

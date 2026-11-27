@@ -1,15 +1,21 @@
 # Current task
 
-**V3-PRES-05** · Dynamic Music, Ambience and Character Audio
+**V3-PRES-06** ? Match Start, Seal and Return Transition
 
-**Checkpoint** `READY_TO_COMMIT` · **Base** `32c51dda151a4b4f4629d884e923700094461e6a`
+**Checkpoint** `READY_TO_COMMIT` ? **Base** `e49ce54d5e020f7ad7fa4eb69fab58deba5f667b`
 
-- Build 06 D3D11 Development source and asset inputs verified. Managed-code comparison against Build 05 found only the 24 → 48 m lava range change. Packed audio data was unchanged.
-- Reused Build 05 WASAPI, Master persistence and hard mute, source limits, presentation, local zone choice, movement and session cleanup checks. Build 01 approved-action traces cover PvP, timber, bridge warnings, rowing and launch. Existing 37 cue entries and WAV files match the base.
-- Build 06 cavern-hazard and castle/underground Relay passed on both peers. Stair landing traces fell from 57/54 to 4/3. Joint seal, approved first pickup, trap and puzzle cues, rejoin, lava and fire playback passed. Both peers recorded one cue at the first approved pole exchange.
-- The incomplete Build 05 castle and Build 06 compilation logs are retained as shutdown records. Optional isolated finish traversal stopped when contest covered server outcomes. Human listening, DSP CPU capture, the second human playtest, full match, full-world and full E2E Relay remain deferred.
-- Evidence is optional locally under ignored `Docs/Development/Audio/V2/` and `Docs/Development/Gameplay/V1/RelayRuns/pres05-*`. The distribution playtest build and ZIP are outside these paths. Official screenshot publication is skipped.
-- Next · Verify live main, commit and push. Record the verified remote hash and `COMPLETED` receipt in ignored `Audio/V2/RunSummary.md`. Next gameplay work is V3-PRES-06 on user request.
+Live main matched HEAD at entry. The untracked `Docs/GameDesign/TwinEdge_Level_UI_Design.pdf` predates this work.
+
+| Subtask | State | Scope and next check |
+| --- | --- | --- |
+| 06-A | COMPLETED | Existing phase, spawn camera, owner movement, readiness and audio contracts reviewed. |
+| 06-B | COMPLETED | Server window and request revision gates passed direct Relay probes. |
+| 06-C | COMPLETED | Build 05 passed 3-second start, countdown cancellation, timer and input recovery. |
+| 06-D | COMPLETED | Build 06 passed real joint seal and in-range pickup rejection. |
+| 06-E | COMPLETED | Build 06 passed first pickup, role copy, input deadline and rejoin. Build 05 covered later gem events. |
+| 06-F | IN_PROGRESS | Builds 05/06 passed focused Relay and Master output. Confirm capture fixture compile, then commit and push on live main. Publish the official map and runtime views from the verified clean source. |
+
+Evidence is optionally available in ignored `Docs/Development/Presentation/V4/` and scoped `pres06-*` Relay run folders. Initial failed attempts and the diagnosed timing differences are in `RunSummary.md`. The four fixed layouts passed. This desktop confirmed three actual window sizes and limited the 2560×1440 request. Second human playtest and final integration remain deferred.
 
 ## State and handoff
 

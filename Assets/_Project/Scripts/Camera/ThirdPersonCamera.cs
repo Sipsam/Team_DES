@@ -50,6 +50,8 @@ public sealed class ThirdPersonCamera : MonoBehaviour
 
         HandleCursor();
 
+        if (v3Target != null && TwinEdge.Gameplay.V3GameplayBootstrap.Current?.state?.TransitionBlocksInput == true) return;
+
         if (target == null || Cursor.lockState != CursorLockMode.Locked || Mouse.current == null)
         {
             return;

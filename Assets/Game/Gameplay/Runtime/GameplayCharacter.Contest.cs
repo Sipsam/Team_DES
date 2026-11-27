@@ -107,15 +107,15 @@ namespace TwinEdge.Gameplay
         }
 
         internal bool IsCurrentLifeServer(int life) => IsSpawned && IsServer && RespawnCount.Value == life && Now >= respawnUntil;
-        bool ValidAction(int life, RpcParams rpc) => rpc.Receive.SenderClientId == OwnerClientId &&
-            IsCurrentLifeServer(life) && contestGame.CanPlay && NetworkManager.ConnectedClientsList.Count == 2;
+        bool ValidAction(int life, uint action, RpcParams rpc) => rpc.Receive.SenderClientId == OwnerClientId &&
+            IsCurrentLifeServer(life) && contestGame.AcceptsAction(action) && NetworkManager.ConnectedClientsList.Count == 2;
 
         void Update()
         {
             RestoreContestPose();
             if (!IsSpawned || !IsOwner || !contestGame.CanPlay || !contestInput.AcceptsInput) return;
-            if (contestInput.Grab.WasPressedThisFrame()) GrabRpc(ownerLife);
-            if (contestInput.AttackReady && contestInput.Attack.WasPressedThisFrame()) HitRpc(ownerLife);
+            if (contestInput.Grab.WasPressedThisFrame()) GrabRpc(ownerLife, contestGame.ActionRevision);
+            if (contestInput.AttackReady && contestInput.Attack.WasPressedThisFrame()) HitRpc(ownerLife, contestGame.ActionRevision);
         }
 
         internal bool ReadSprint(bool wantsSprint)
@@ -123,15 +123,15 @@ namespace TwinEdge.Gameplay
             if (wantsSprint && Time.unscaledTime >= nextSprintSend)
             {
                 nextSprintSend = Time.unscaledTime + .1f;
-                SprintRpc(ownerLife);
+                SprintRpc(ownerLife, contestGame.ActionRevision);
             }
             return wantsSprint && SprintAllowed;
         }
 
         [Rpc(SendTo.Server, Delivery = RpcDelivery.Unreliable)]
-        void SprintRpc(int life, RpcParams rpc = default)
+        void SprintRpc(int life, uint action, RpcParams rpc = default)
         {
-            if (ValidAction(life, rpc) && !Attached && CanSprintServer()) sprintIntentUntil = Now + .25;
+            if (ValidAction(life, action, rpc) && !Attached && CanSprintServer()) sprintIntentUntil = Now + .25;
         }
 
         bool CanUseMovementAction => !BlocksServerInteraction && !SpecialMovement && !Attached;
@@ -151,14 +151,19 @@ namespace TwinEdge.Gameplay
             if (BlocksOwnerInteraction || stamina.Value < jumpCost || stamina.Value <= 0) return false;
             ownerJumpAccepted = true;
             ownerJumpDeadline = Time.unscaledTime + .85f;
-            JumpRpc(ownerLife, ++ownerJumpSequence, fast);
+            JumpRpc(ownerLife, ++ownerJumpSequence, fast, contestGame.ActionRevision);
             return ownerJumpAccepted;
         }
 
         [Rpc(SendTo.Server)]
-        void JumpRpc(int life, uint sequence, bool sprint, RpcParams rpc = default)
+        void JumpRpc(int life, uint sequence, bool sprint, uint action, RpcParams rpc = default)
         {
-            if (!ValidAction(life, rpc) || sequence <= lastJumpSequence) return;
+            if (rpc.Receive.SenderClientId != OwnerClientId || !IsCurrentLifeServer(life) || sequence <= lastJumpSequence) return;
+            if (!contestGame.AcceptsAction(action) || NetworkManager.ConnectedClientsList.Count != 2)
+            {
+                JumpReplyRpc(life, sequence, false, false);
+                return;
+            }
             lastJumpSequence = sequence;
             // Ground contact belongs to the owner capsule. Replicated transforms can already be
             // airborne when the request arrives. The server gates the action and charges the pool.
@@ -212,7 +217,22 @@ namespace TwinEdge.Gameplay
             return true;
         }
 
-        internal bool TryStrongRowServer(float dt) => IsServer && contestGame.CanPlay && SpendStamina(strongRowPerSecond * dt);
+        internal void ClearTransitionIntentServer()
+        {
+            CancelPendingStrike();
+            sprintIntentUntil = 0;
+            sprintUntil.Value = 0;
+        }
+
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+        internal void ProbeTransitionActions(uint action)
+        {
+            HitRpc(ownerLife, action);
+            GrabRpc(ownerLife, action);
+        }
+#endif
+
+        internal bool TryStrongRowServer(float dt) => IsServer && contestGame.AcceptsGameplay && SpendStamina(strongRowPerSecond * dt);
 
         void FixedUpdate()
         {
@@ -273,9 +293,9 @@ namespace TwinEdge.Gameplay
         }
 
         [Rpc(SendTo.Server)]
-        void HitRpc(int life, RpcParams rpc = default)
+        void HitRpc(int life, uint action, RpcParams rpc = default)
         {
-            if (!ValidAction(life, rpc) || Now < attackAt.Value || BlocksServerInteraction || SpecialMovement) return;
+            if (!ValidAction(life, action, rpc) || Now < attackAt.Value || BlocksServerInteraction || SpecialMovement) return;
             attackStartedAt.Value = Now;
             attackAt.Value = Now + hitCooldown;
             strikePending = true;
@@ -301,9 +321,9 @@ namespace TwinEdge.Gameplay
         }
 
         [Rpc(SendTo.Server)]
-        void GrabRpc(int life, RpcParams rpc = default)
+        void GrabRpc(int life, uint action, RpcParams rpc = default)
         {
-            if (!ValidAction(life, rpc)) return;
+            if (!ValidAction(life, action, rpc)) return;
             if (holder.Value != NoPlayer)
             {
                 if (Now < lastResistance + .13) return;
@@ -509,7 +529,7 @@ namespace TwinEdge.Gameplay
 
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
         internal string StaminaTuningForTest => $"cap={maximumStamina} jump={jumpCost} sprint={sprintPerSecond}";
-        internal void RequestHitForLifeForTest(int life) => HitRpc(life);
+        internal void RequestHitForLifeForTest(int life) => HitRpc(life, contestGame.ActionRevision);
         internal ulong HeldForTest => held.Value;
         internal ulong HolderForTest => holder.Value;
         internal double AttackReadyAtForTest => attackAt.Value;

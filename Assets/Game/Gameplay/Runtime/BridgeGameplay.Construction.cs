@@ -265,15 +265,15 @@ namespace TwinEdge.Gameplay
 
         public void Interact(PlayerInteraction player)
         {
-            if (player != null && player.IsOwner && IsSpawned) UseRpc(load.Value.revision);
+            if (player != null && player.IsOwner && IsSpawned) UseRpc(load.Value.revision, game.ActionRevision);
         }
 
         [Rpc(SendTo.Server, InvokePermission = RpcInvokePermission.Everyone)]
-        void UseRpc(uint revision, RpcParams rpc = default)
+        void UseRpc(uint revision, uint action, RpcParams rpc = default)
         {
             var current = load.Value;
             ulong id = rpc.Receive.SenderClientId;
-            if (!CanInteract || current.revision != revision) return;
+            if (!game.AcceptsAction(action) || !CanInteract || current.revision != revision) return;
             var player = Player(id);
             if (player == null || player.GetComponent<GameplayCharacter>()?.BlocksServerInteraction == true || CooperativePole.Current?.IsAttached(id) == true ||
                 player.GetComponent<MountainReturnLaunch>()?.ControlsMovement == true) return;
@@ -344,11 +344,11 @@ namespace TwinEdge.Gameplay
         }
 
         [Rpc(SendTo.Server, Delivery = RpcDelivery.Unreliable, InvokePermission = RpcInvokePermission.Everyone)]
-        void SteerRpc(uint revision, Vector3 direction, bool sprint, RpcParams rpc = default)
+        void SteerRpc(uint revision, Vector3 direction, bool sprint, uint action, RpcParams rpc = default)
         {
             var current = load.Value;
             ulong id = rpc.Receive.SenderClientId;
-            if (!CanInteract || !current.Paired || current.revision != revision || !current.Has(id) ||
+            if (!game.AcceptsAction(action) || !CanInteract || !current.Paired || current.revision != revision || !current.Has(id) ||
                 !float.IsFinite(direction.x) || !float.IsFinite(direction.z) ||
                 Mathf.Abs(direction.x) > 1 || Mathf.Abs(direction.z) > 1) return;
             direction.y = 0;
@@ -364,7 +364,7 @@ namespace TwinEdge.Gameplay
             if (Time.unscaledTime >= nextSend)
             {
                 nextSend = Time.unscaledTime + .05f;
-                SteerRpc(current.revision, direction, sprint);
+                SteerRpc(current.revision, direction, sprint, game.ActionRevision);
             }
             bool right = movement.OwnerClientId == current.right;
             var grip = current.Grip(right, gripHalfWidth);

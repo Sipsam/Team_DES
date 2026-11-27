@@ -89,17 +89,21 @@ namespace TwinEdge.Gameplay
             return true;
         }
         bool Valid(RpcParams rpc, uint revision) => IsServer && rpc.Receive.SenderClientId == OwnerClientId && revision == Revision.Value && ReturnEnabled;
+        public void PrepareRpc(uint revision) => RequestPrepareRpc(revision, game.ActionRevision);
+
         [Rpc(SendTo.Server)]
-        public void PrepareRpc(uint revision, RpcParams rpc = default)
+        void RequestPrepareRpc(uint revision, uint action, RpcParams rpc = default)
         {
-            if (!Valid(rpc, revision) || State.Value != LaunchState.Ready || character.BlocksServerInteraction || NetworkManager.ServerTime.Time < availableAt.Value ||
+            if (!game.AcceptsAction(action) || !Valid(rpc, revision) || State.Value != LaunchState.Ready || character.BlocksServerInteraction || NetworkManager.ServerTime.Time < availableAt.Value ||
                 CooperativePole.Current == null || CooperativePole.Current.IsAttached(OwnerClientId) || !Supported(out _)) return;
             began = NetworkManager.ServerTime.Time; chargeLevel.Value = 0; State.Value = LaunchState.Charging;
         }
+        public void FireRpc(uint revision, float direction, float elevation, float charge) => RequestFireRpc(revision, direction, elevation, charge, game.ActionRevision);
+
         [Rpc(SendTo.Server)]
-        public void FireRpc(uint revision, float direction, float elevation, float charge, RpcParams rpc = default)
+        void RequestFireRpc(uint revision, float direction, float elevation, float charge, uint action, RpcParams rpc = default)
         {
-            if (!Valid(rpc, revision)) { Reject("Phase / owner / stale ticket"); return; }
+            if (!game.AcceptsAction(action) || !Valid(rpc, revision)) { Reject("Phase / owner / stale ticket"); return; }
             if (State.Value != LaunchState.Charging) { Reject("Not charging: " + State.Value); return; }
             if (!float.IsFinite(direction) || !float.IsFinite(elevation) || !float.IsFinite(charge)) { Reject("Nonfinite input"); return; }
             if (charge < 0 || charge > 1 || charge > Charge + .08f) { Reject($"Charge requested {charge:G3}, server {Charge:F3}"); return; }

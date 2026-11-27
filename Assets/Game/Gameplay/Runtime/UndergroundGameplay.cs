@@ -78,7 +78,6 @@ namespace TwinEdge.Gameplay
         {
             foreach (var trap in traps)
                 if (trap != null) trap.Audio = default;
-            seal.OnValueChanged += OnSealAudio;
             if (!IsServer) return;
             spawns = NetworkManager.GetComponent<NetworkSpawnCoordinator>();
             NetworkManager.OnClientDisconnectCallback += OnDisconnect;
@@ -105,14 +104,7 @@ namespace TwinEdge.Gameplay
 
         public override void OnNetworkDespawn()
         {
-            seal.OnValueChanged -= OnSealAudio;
             if (IsServer) NetworkManager.OnClientDisconnectCallback -= OnDisconnect;
-        }
-
-        void OnSealAudio(UndergroundSeal before, UndergroundSeal after)
-        {
-            if (after == UndergroundSeal.Unsealed && IsBound)
-                game.PlayLiveCue(AudioCueId.Seal, Altar + Vector3.up * 1.45f);
         }
 
         void OnDisconnect(ulong id)
@@ -259,7 +251,7 @@ namespace TwinEdge.Gameplay
         internal bool CanUse(int id, ulong client)
         {
             int lane = castle.Slot(client);
-            if (!IsBound || !IsSpawned || !game.CanPlay || lane < 0) return false;
+            if (!IsBound || !IsSpawned || !game.AcceptsGameplay || lane < 0) return false;
             if (id == GemStation) return gem.CanAcquire;
             if (!Cooperative) return false;
             if (id >= SealStation) return id == SealStation + lane && Step == SwitchOrder.Length && arrivals.Value == Both &&
@@ -271,14 +263,14 @@ namespace TwinEdge.Gameplay
         {
             if (!player.IsOwner || !CanUse(id, player.OwnerClientId)) return;
             if (id == GemStation) gem.RequestAcquire();
-            else UseRpc(id, Step, Deadline(Step));
+            else UseRpc(id, Step, Deadline(Step), game.ActionRevision);
         }
 
         [Rpc(SendTo.Server, InvokePermission = RpcInvokePermission.Everyone)]
-        void UseRpc(int id, int expectedStep, double previousDeadline, RpcParams rpc = default)
+        void UseRpc(int id, int expectedStep, double previousDeadline, uint action, RpcParams rpc = default)
         {
             ulong sender = rpc.Receive.SenderClientId;
-            if (id < 0 || id >= GemStation || !TrySender(sender, out var player, out int slot) ||
+            if (!game.AcceptsAction(action) || id < 0 || id >= GemStation || !TrySender(sender, out var player, out int slot) ||
                 !CanUse(id, sender) || !Near(player, stations[id])) return;
             if (id < SealStation)
             {
@@ -375,9 +367,12 @@ namespace TwinEdge.Gameplay
 
                 if (ready && participants.Value == Both && Now >= unsealAt.Value)
                 {
+                    Vector3 point = Altar + Vector3.up * 1.45f;
+                    game.PresentSealServer(point);
                     seal.Value = UndergroundSeal.Unsealed;
                     ClearParticipation();
-                    gem.UnlockServer(Altar + Vector3.up * 1.45f);
+                    gem.UnlockServer(point);
+                    game.EmitWorldCue(AudioCueId.Seal, point);
                 }
                 else seal.Value = !ready ? UndergroundSeal.Sealed : participants.Value == Both ?
                     UndergroundSeal.Unsealing : UndergroundSeal.ReadyForCooperation;

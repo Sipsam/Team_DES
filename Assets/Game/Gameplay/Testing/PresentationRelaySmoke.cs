@@ -40,7 +40,7 @@ namespace TwinEdge.Gameplay
         IEnumerator Start()
         {
             Application.runInBackground = true;
-            Application.targetFrameRate = 45;
+            Application.targetFrameRate = host ? 60 : 30;
             InputSystem.settings = Instantiate(InputSystem.settings);
             InputSystem.settings.backgroundBehavior = InputSettings.BackgroundBehavior.IgnoreFocus;
             Application.logMessageReceived += OnLog;
@@ -118,6 +118,32 @@ namespace TwinEdge.Gameplay
             yield return Delay();
             if (!host) LobbyAction().onClick.Invoke();
             yield return Wait(() => State.ClientReady, "second ready approved");
+            yield return Barrier("start-cancel-probe");
+            if (host) LobbyAction().onClick.Invoke();
+            yield return Wait(() => State.Transition.Kind == MatchTransition.Countdown && State.TransitionBlocksInput &&
+                State.MatchServerTime >= State.Transition.Start, "first countdown begins before Client leave");
+            if (!host)
+            {
+                var leave = game.sessions.LeaveRoomAsync();
+                yield return Wait(() => leave.IsCompleted, "Client left during countdown window");
+            }
+            else
+            {
+                yield return Wait(() => State.Phase == FoundationPhase.WaitingForPlayers && !State.ClientReady &&
+                    State.Transition.Kind == MatchTransition.None, "countdown and ready cancelled after disconnect");
+                Require(State.ElapsedSeconds == 0, "cancelled countdown never starts the clock");
+                Signal("countdown-cancelled");
+            }
+            if (!host)
+            {
+                yield return Wait(() => Exists("countdown-cancelled"), "Host cancelled countdown");
+                yield return Join();
+            }
+            yield return Wait(() => State.IsGameReady, "Runtime Ready after countdown disconnect");
+            yield return Delay();
+            Require(State.Phase == FoundationPhase.WaitingForPlayers && !State.ClientReady, "rejoin requires fresh Ready after countdown cancellation");
+            if (!host) LobbyAction().onClick.Invoke();
+            yield return Wait(() => State.ClientReady, "fresh Ready after countdown cancellation");
             yield return Barrier("start");
             if (host)
             {
@@ -131,15 +157,40 @@ namespace TwinEdge.Gameplay
                 yield return Wait(() => Exists("host-started"), "host started first");
                 State.SetLobbyReadyRpc(false);
             }
-            yield return Wait(() => State.CanPlay, "manual start reaches Outbound");
+            yield return Wait(() => State.Transition.Kind == MatchTransition.Countdown && State.TransitionBlocksInput &&
+                View("Match transition").activeInHierarchy, "live countdown on gameplay camera");
+            var start = State.Transition;
+            Require(start.End - start.Start == 3 && State.Phase == FoundationPhase.Preparing && State.ElapsedSeconds == 0,
+                "countdown duration, Preparing and zero timer");
+            var startingPlayer = game.manager.LocalClient.PlayerObject.GetComponent<GameplayCharacter>();
+            var startingInput = startingPlayer.GetComponent<GameplayInput>();
+            startingInput.SimulateCapturedCursor = true;
+            Require(!startingInput.AcceptsInput && !State.AcceptsGameplay, "countdown blocks local and authoritative input");
+            Debug.Log($"MATCH_TRANSITION player-window={Screen.width}x{Screen.height} target-fps={Application.targetFrameRate}");
+            double before = startingPlayer.AttackReadyAtForTest;
+            startingPlayer.ProbeTransitionActions(State.ActionRevision);
+            yield return TransitionLayouts("countdown");
+            var keys = InputSystem.AddDevice<Keyboard>();
+            var lockedFeet = startingPlayer.transform.position;
+            keys.MakeCurrent();
+            InputSystem.QueueStateEvent(keys, new KeyboardState(Key.W, Key.LeftShift, Key.Space));
+            yield return Delay(.18f);
+            InputSystem.QueueStateEvent(keys, new KeyboardState());
+            Require(Vector3.ProjectOnPlane(startingPlayer.transform.position - lockedFeet, Vector3.up).magnitude < .04f &&
+                startingPlayer.transform.position.y < lockedFeet.y + .04f, "walking, sprint and jump input were suppressed");
+            yield return Wait(() => State.AcceptsGameplay && View("Match transition").activeInHierarchy, "manual start reaches Outbound and displays the start notice");
+            Require(State.ElapsedSeconds < .45 && State.MatchServerTime >= start.End &&
+                startingPlayer.AttackReadyAtForTest == before, "shared countdown deadline starts clock and denies attack");
+            Require(startingInput.AcceptsInput, "local gameplay input is available at Outbound");
+            yield return TransitionLayouts("outbound-start");
             yield return Wait(() => View("Gameplay HUD").activeInHierarchy && !PresentationRoot.BlocksGameplay,
                 "start loading hands input back to gameplay");
             Require(State.Phase == FoundationPhase.Outbound && !State.ClientReady, "start consumed readiness");
             CheckListener(game.standbyCamera.name);
             if (audioTrace)
             {
-                Require(AudioCount("Ready") == (host ? 0 : 3) && AudioCount("Unready") == (host ? 0 : 1) &&
-                    AudioCount("Start") == (host ? 1 : 0), "Ready, cancel and Start each sound once for the approving player");
+                Require(AudioCount("Ready") == (host ? 0 : 4) && AudioCount("Unready") == (host ? 0 : 1) &&
+                    AudioCount("Start") == (host ? 2 : 0), "Ready, cancel and Start play once per approval for the correct peer");
                 yield return CheckCourse(MusicTheme.Summit, AmbientBed.Mountain);
             }
             Require(SystemInfo.graphicsDeviceType == UnityEngine.Rendering.GraphicsDeviceType.Direct3D11, "D3D11 Player");
@@ -152,7 +203,10 @@ namespace TwinEdge.Gameplay
             var input = game.manager.LocalClient.PlayerObject.GetComponent<GameplayInput>();
             input.SimulateCapturedCursor = true;
             Cursor.lockState = CursorLockMode.Locked;
-            var keys = InputSystem.AddDevice<Keyboard>();
+            Vector3 releasedFeet = startingPlayer.transform.position;
+            yield return Press(keys, Key.W);
+            Require(Vector3.ProjectOnPlane(startingPlayer.transform.position - releasedFeet, Vector3.up).magnitude > .08f,
+                "owner movement resumes after countdown");
             var mini = View("Minimap");
             const string mapPreference = "TwinEdge.MinimapVisible";
             bool mapWasVisible = mini.activeInHierarchy;
@@ -162,7 +216,11 @@ namespace TwinEdge.Gameplay
             if (!mini.activeInHierarchy) yield return Press(keys, Key.N);
             Require(mini.activeInHierarchy, "N restores minimap");
             CheckMinimapSize(mini, (float)Screen.width / Screen.height);
-            if (host) yield return CheckGameplayLayouts(mini);
+            if (host)
+            {
+                yield return CheckGameplayLayouts(mini);
+                yield return CheckPlayerWindows(mini);
+            }
             yield return Press(keys, Key.M);
             Require(PresentationRoot.BlocksGameplay && View("Detailed map").activeInHierarchy, "M opens modal and owns input");
             CheckListener(game.standbyCamera.name);
@@ -227,6 +285,40 @@ namespace TwinEdge.Gameplay
             Application.Quit(0);
         }
 
+        IEnumerator TransitionLayouts(string label)
+        {
+            yield return new WaitForEndOfFrame();
+            CaptureTransition(game, folder, Role + "-" + label, capture);
+        }
+
+        internal static void CaptureTransition(V3GameplayBootstrap game, string output, string label, bool capture)
+        {
+            var panel = game.Presentation.GetComponentsInChildren<CanvasGroup>(false)
+                .Single(item => item.name == "Match transition");
+            foreach (int width in new[] { 1280, 1600, 1920, 2560 })
+            {
+                int height = width * 9 / 16;
+                using var target = new CaptureTarget(game.Presentation.Canvas, game.standbyCamera, width, height);
+                Canvas.ForceUpdateCanvases();
+                foreach (var text in panel.GetComponentsInChildren<Text>())
+                {
+                    if (text.text.Length == 0) continue;
+                    Require(text.preferredHeight <= text.rectTransform.rect.height + 2 &&
+                        text.preferredWidth <= text.rectTransform.rect.width + 2,
+                        $"transition label {text.text} fits at {width}x{height}, preferred {text.preferredWidth}x{text.preferredHeight}, text rect {text.rectTransform.rect.size}");
+                }
+                // Rendering and PNG encoding four large frames here would stall NGO within the live window.
+                if (capture && width == 1600) target.Save(Path.Combine(output, $"{label}-{width}x{height}.png"));
+            }
+        }
+
+        internal static void CaptureGameplayHud(V3GameplayBootstrap game, string output)
+        {
+            using var target = new CaptureTarget(game.Presentation.Canvas, game.standbyCamera, 1600, 900);
+            Canvas.ForceUpdateCanvases();
+            target.Save(Path.Combine(output, "host-hud-restored-1600x900.png"));
+        }
+
         IEnumerator CheckGameplayLayouts(GameObject minimap)
         {
             foreach (int width in new[] { 1280, 1600, 1920, 2560 })
@@ -246,6 +338,23 @@ namespace TwinEdge.Gameplay
                 Debug.Log($"Presentation check passed: fixed D3D11 target layout {width}×{height}");
             }
             yield return Delay(.15f);
+        }
+
+        IEnumerator CheckPlayerWindows(GameObject minimap)
+        {
+            int previousWidth = Screen.width;
+            int previousHeight = Screen.height;
+            foreach (int width in new[] { 1280, 1600, 1920, 2560 })
+            {
+                int height = width * 9 / 16;
+                Screen.SetResolution(width, height, FullScreenMode.Windowed);
+                yield return new WaitForEndOfFrame();
+                yield return Delay(.2f);
+                CheckMinimapSize(minimap, (float)Screen.width / Screen.height);
+                Debug.Log($"MATCH_TRANSITION window requested={width}x{height} actual={Screen.width}x{Screen.height}");
+            }
+            Screen.SetResolution(previousWidth, previousHeight, FullScreenMode.Windowed);
+            yield return new WaitForEndOfFrame();
         }
 
         void CheckMinimapSize(GameObject minimap, float aspect)
@@ -321,8 +430,12 @@ namespace TwinEdge.Gameplay
             yield return Barrier("gem-available");
             if (host) gem.RequestAcquire();
             yield return Wait(() => gem.State == GemState.Carried && State.Phase == FoundationPhase.Return, "production pickup and Return transition");
-            yield return Delay(.3f);
-            yield return Screenshot("return-gem-notice");
+            var window = State.Transition;
+            Require(window.Kind == MatchTransition.Return && window.End - window.Start == 2 &&
+                window.CarrierSlot == 0 && State.TransitionBlocksInput, "first pickup opens the two-second Return window");
+            yield return TransitionLayouts("return-start");
+            yield return Wait(() => State.AcceptsGameplay, "Return window releases both peers");
+            yield return Screenshot("return-restored");
             int returnSample = 0;
             if (audioTrace)
             {
@@ -341,6 +454,7 @@ namespace TwinEdge.Gameplay
             if (!host) gem.RequestAcquire();
             yield return Wait(() => gem.State == GemState.Carried && gem.Owner != Unity.Netcode.NetworkManager.ServerClientId,
                 "client picked up the previously carried gem");
+            Require(State.Transition.Sequence == window.Sequence && !State.TransitionBlocksInput, "later pickup does not replay Return");
             if (audioTrace)
                 Require(MusicSource(MusicTheme.Race) is { } music && music.timeSamples > returnSample,
                     "Return music continued through drop and theft");

@@ -289,7 +289,7 @@ namespace TwinEdge.Gameplay
         {
             slot = Slot(rpc.Receive.SenderClientId);
             player = null;
-            if (!ready || !IsServer || !game.CanPlay || slot < 0 ||
+            if (!ready || !IsServer || !game.AcceptsGameplay || slot < 0 ||
                 !NetworkManager.ConnectedClients.TryGetValue(rpc.Receive.SenderClientId, out var peer)) return false;
             player = peer.PlayerObject;
             return player != null && player.GetComponent<GameplayCharacter>()?.BlocksServerInteraction != true && Contains(player.transform.position);
@@ -311,7 +311,7 @@ namespace TwinEdge.Gameplay
 
         internal bool CanUse(CastleStation station, int slot)
         {
-            if (!IsSpawned || !game.CanPlay || slot < 0 || station.Slot >= 0 && station.Slot != slot) return false;
+            if (!IsSpawned || !game.AcceptsGameplay || slot < 0 || station.Slot >= 0 && station.Slot != slot) return false;
             if (station.Kind is Action.SewerPad or Action.ClearSewer)
                 return Returning && !SewerOpen;
             if (Returning) return false;
@@ -356,10 +356,12 @@ namespace TwinEdge.Gameplay
             game.EmitWorldCue(acceptedInput ? AudioCueId.PuzzleAccept : AudioCueId.PuzzleError,
                 position, player.OwnerClientId);
 
+        internal void UseRpc(int id, int expectedStage, int revision) => RequestStationUseRpc(id, expectedStage, revision, game.ActionRevision);
+
         [Rpc(SendTo.Server, InvokePermission = RpcInvokePermission.Everyone)]
-        internal void UseRpc(int id, int expectedStage, int revision, RpcParams rpc = default)
+        void RequestStationUseRpc(int id, int expectedStage, int revision, uint action, RpcParams rpc = default)
         {
-            if (id < 0 || id >= stations.Count || Stage != expectedStage || !TryPlayer(rpc, out var player, out int slot)) return;
+            if (!game.AcceptsAction(action) || id < 0 || id >= stations.Count || Stage != expectedStage || !TryPlayer(rpc, out var player, out int slot)) return;
             CastleStation station = stations[id];
             var p = progress[slot];
             if (p.Revision != revision || !CanUse(station, slot) || !Near(player, station)) return;
@@ -423,10 +425,12 @@ namespace TwinEdge.Gameplay
             }
         }
 
+        internal void SubmitNumberRpc(int value, int revision) => RequestKeypadSubmitRpc(value, revision, game.ActionRevision);
+
         [Rpc(SendTo.Server, InvokePermission = RpcInvokePermission.Everyone)]
-        internal void SubmitNumberRpc(int value, int revision, RpcParams rpc = default)
+        void RequestKeypadSubmitRpc(int value, int revision, uint action, RpcParams rpc = default)
         {
-            if (value < 0 || value > 9999 || !TryPlayer(rpc, out var player, out int slot) ||
+            if (!game.AcceptsAction(action) || value < 0 || value > 9999 || !TryPlayer(rpc, out var player, out int slot) ||
                 occupants[slot] != player.OwnerClientId || !CanUse(keypads[slot], slot) || !Near(player, keypads[slot])) return;
             var p = progress[slot];
             if (p.Revision != revision) return;
