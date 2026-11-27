@@ -23,6 +23,7 @@ namespace TwinEdge.Presentation
         readonly RectTransform miniFrame, fullFrame;
         readonly MapView mini, full;
         readonly GameObject modal;
+        readonly CourseMapBackdrop backdrop;
         readonly Text zoneLabel, fullTitle;
         readonly Image rim;
         readonly Texture2D symbols, circleTexture;
@@ -86,6 +87,7 @@ namespace TwinEdge.Presentation
 
             var content = ui.Modal(root.Modals);
             modal = content.parent.parent.gameObject;
+            backdrop = new CourseMapBackdrop(overlay);
             var panel = (RectTransform)content.parent;
             panel.anchorMin = new Vector2(.08f, .08f);
             panel.anchorMax = new Vector2(.92f, .92f);
@@ -160,8 +162,11 @@ namespace TwinEdge.Presentation
 
         internal void ToggleMinimap() => MinimapVisible = !MinimapVisible;
 
+        internal void Close() => backdrop?.Release();
+
         internal void Dispose()
         {
+            Close();
             Object.Destroy(symbols);
             Object.Destroy(circle);
             Object.Destroy(circleTexture);
@@ -169,9 +174,11 @@ namespace TwinEdge.Presentation
 
         internal bool NearFinish(Vector3 position) => data && (position - data.Finish).sqrMagnitude < 22 * 22;
 
-        internal void Refresh(V3GameplayBootstrap game, GameplayCharacter local, GameplayCharacter[] peers, GemOwnership gem)
+        internal void Refresh(V3GameplayBootstrap game, GameplayCharacter local, GameplayCharacter[] peers,
+            GemOwnership gem, bool presentingTransition)
         {
             if (!data) return;
+            backdrop.Refresh(IsOpen && !presentingTransition ? game.standbyCamera : null);
             Vector3 feet = local.transform.position;
             bool returning = game.state.Phase == FoundationPhase.Return;
             Zone next = data.At(feet);

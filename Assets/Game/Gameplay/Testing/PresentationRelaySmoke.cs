@@ -237,20 +237,34 @@ namespace TwinEdge.Gameplay
             if (!mini.activeInHierarchy) yield return Press(keys, Key.N);
             Require(mini.activeInHierarchy, "N restores minimap");
             CheckMinimapSize(mini, (float)Screen.width / Screen.height);
-            if (host)
-            {
-                yield return CheckGameplayLayouts(mini);
-                yield return CheckPlayerWindows(mini);
-            }
+            if (host) yield return CheckGameplayLayouts(mini);
+            yield return CheckPlayerWindows(mini);
+            var worldCamera = game.standbyCamera;
+            int worldMask = worldCamera.cullingMask;
+            double mapOpenedAt = State.ElapsedSeconds;
             yield return Press(keys, Key.M);
             Require(PresentationRoot.BlocksGameplay && View("Detailed map").activeInHierarchy, "M opens modal and owns input");
             CheckListener(game.standbyCamera.name);
+            var backdrop = View("Course map world backdrop").GetComponent<RawImage>();
+            yield return Wait(() => backdrop.enabled && backdrop.texture is RenderTexture snapshot && snapshot.IsCreated(),
+                "full map captured the world backdrop");
+            Require(worldCamera.isActiveAndEnabled && worldCamera.cullingMask == 0 &&
+                worldCamera.GetComponent<ThirdPersonCamera>().isActiveAndEnabled, "world rendering suspended with camera rig active");
             yield return PresentationMetrics.Sample(folder, Role, "full-map");
+            if (capture && host)
+            {
+                yield return new WaitForEndOfFrame();
+                ScreenCapture.CaptureScreenshot(Path.Combine(folder, $"{Role}-full-map-window-{Screen.width}x{Screen.height}.png"));
+                yield return Delay(.3f);
+            }
             yield return Screenshot("full-map");
             yield return Press(keys, Key.Escape);
             Require(!PresentationRoot.BlocksGameplay && mini.activeInHierarchy, "Esc closes map and releases input");
+            Require(!backdrop.enabled && !backdrop.texture && worldCamera.cullingMask == worldMask &&
+                State.ElapsedSeconds > mapOpenedAt, "map releases snapshot, restores world and preserves server clock");
             Cursor.lockState = CursorLockMode.Locked;
-            yield return RouteViews();
+            yield return CheckLiveMapPartner(keys);
+            yield return RouteViews(keys);
             InputSystem.RemoveDevice(keys);
             if (!mapWasVisible) PlayerPrefs.SetInt(mapPreference, 0);
             else if (!preferenceExisted) PlayerPrefs.DeleteKey(mapPreference);
@@ -389,7 +403,32 @@ namespace TwinEdge.Gameplay
             Require(Mathf.Approximately(rect.rect.width, rect.rect.height), "circular minimap stays square");
         }
 
-        IEnumerator RouteViews()
+        IEnumerator CheckLiveMapPartner(Keyboard keys)
+        {
+            yield return Barrier("map-world-restored");
+            if (host)
+            {
+                yield return Press(keys, Key.M);
+                var detailed = View("Detailed map");
+                yield return Wait(() => detailed.activeInHierarchy, "Host reopened the full map");
+                var marker = detailed.GetComponentsInChildren<RawImage>()
+                    .Single(icon => icon.enabled && icon.uvRect.x == 1f / 8f);
+                Vector2 oldPosition = marker.rectTransform.anchoredPosition;
+                Signal("host-map-observing");
+                yield return Wait(() => marker.rectTransform.anchoredPosition != oldPosition,
+                    "full map partner marker tracked live Client movement");
+                yield return Press(keys, Key.M);
+                Require(!detailed.activeInHierarchy && !PresentationRoot.BlocksGameplay, "M closes the reopened map");
+            }
+            else
+            {
+                yield return Wait(() => Exists("host-map-observing"), "Host ready to observe the partner marker");
+                yield return Press(keys, Key.W);
+            }
+            yield return Barrier("map-partner-tracked");
+        }
+
+        IEnumerator RouteViews(Keyboard keys)
         {
             var map = Resources.Load<CourseMapData>("V3CourseMap");
             Require(FindObjectsByType<UnityEngine.EventSystems.EventSystem>(FindObjectsSortMode.None).Length == 1,
@@ -452,12 +491,26 @@ namespace TwinEdge.Gameplay
             yield return Wait(() => gem.State == GemState.Available, "gem available on both peers");
             if (GameplayEffects.Trace) yield return Screenshot("gem-available");
             if (audioTrace) yield return CheckCourse(MusicTheme.Summit, AmbientBed.Mountain);
+            var backdrop = View("Course map world backdrop").GetComponent<RawImage>();
+            if (!host)
+            {
+                yield return Press(keys, Key.M);
+                yield return Wait(() => backdrop.enabled &&
+                    View("Detailed map").GetComponentsInChildren<RawImage>()
+                        .Any(icon => icon.enabled && icon.uvRect.x == 2f / 8f), "full map displays the live gem marker");
+            }
             yield return Barrier("gem-available");
             if (host) gem.RequestAcquire();
             yield return Wait(() => gem.State == GemState.Carried && State.Phase == FoundationPhase.Return, "production pickup and Return transition");
             var window = State.Transition;
             Require(window.Kind == MatchTransition.Return && window.End - window.Start == 2 &&
                 window.CarrierSlot == 0 && State.TransitionBlocksInput, "first pickup opens the two-second Return window");
+            if (!host)
+            {
+                yield return Wait(() => !backdrop.enabled && game.standbyCamera.cullingMask != 0,
+                    "Return transition resumed the live camera while the map was open");
+                yield return Press(keys, Key.Escape);
+            }
             yield return TransitionLayouts("return-start");
             yield return Wait(() => State.AcceptsGameplay, "Return window releases both peers");
             yield return Screenshot("return-restored");

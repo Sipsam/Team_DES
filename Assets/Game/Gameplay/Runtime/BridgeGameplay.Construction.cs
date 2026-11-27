@@ -112,6 +112,7 @@ namespace TwinEdge.Gameplay
             game = GetComponent<GameStateManager>();
             BindReturn(levelScene);
             if (bridgeVisuals != null) Destroy(bridgeVisuals);
+            ReleaseFrameMeshes();
             bridgeVisuals = new GameObject("Bridge Gameplay Visuals");
             bridgeVisuals.transform.SetParent(transform, false);
             BuildSummitApproach();
@@ -131,6 +132,7 @@ namespace TwinEdge.Gameplay
                     position.x += Mathf.Sign(position.x) * Mathf.Max(0, layout.bridgeWidth * .5f - 1.1f);
                     part.transform.localPosition = position;
                 }
+                BatchFrameRenderers(template);
                 template.SetActive(false);
                 for (int i = 0; i < modules; i++)
                 {

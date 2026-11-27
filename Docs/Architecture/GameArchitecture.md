@@ -62,6 +62,8 @@ DeepGullies의 정상 림과 암반 기저 접합부를 좁은 범위에서 둥�
 
 게임플레이 장식 효과는 저장 월드와 별도의 런타임 Particle System에서 URP Particles/Unlit 공유 재질을 사용한다. D3D11에서 지형 재질과 같은 카메라 깊이 검사를 적용한다. [입자 수명과 캐릭터 바인딩](GameplaySystems.md#캐릭터-애니메이션과-월드-효과)
 
+고정 다리 프레임은 기존 생성 템플릿 안에서 호환되는 불투명 부재의 메시를 재질과 렌더러 상태 단위로 결합한다. 현재 저장 코스의 26개 모듈은 같은 로컬 메시 3개를 공유하며 각각 독립적인 컬링 경계를 갖는다. 원본 부재의 변환과 재질을 적용하고 기존 부재의 MeshRenderer만 합쳐진 렌더러로 대체한다. 발판과 운반 목재 및 모든 콜라이더는 기존 경로를 사용한다. 레벨을 다시 바인딩하거나 다리 런타임이 삭제되면 공유 메시를 해제한다. 원본 재질과 프리팹은 기존 레벨 생성 입력으로 유지된다.
+
 **Tools > Twin Edge > Audit project dependencies (read only)**는 Unity 의존성, GUID 및 미리보기 씬 로드를 검사한다. 내부 결과는 무시된 `Docs/Development/Architecture/V1/Audit/`에 생성된다. V1/V2 씬과 프로토타입은 Git에서 열 수 있다. [과거 프로젝트 복원 절차](../Archive/Prototype_v1.md)
 
 
@@ -70,6 +72,8 @@ DeepGullies의 정상 림과 암반 기저 접합부를 좁은 범위에서 둥�
 `CourseMapBake.Bake`는 저장된 `LevelBlockoutV3`의 승인 DeepGullies 산악, 다리, 협곡 계단, 강과 부두, 성채 외벽과 기반, 지하 계단 및 동굴 지형을 선택한다. 지정 메시의 월드 좌표 삼각형을 +X 오른쪽, +Z 위쪽으로 래스터화한다. 실내는 FortressConfig의 공개 방 평면을 사용한다. 하수도 지오메트리와 함정, 장애물, 이동 발판 순서, 경로 그래프는 입력 목록에서 제외한다. 월드 렌더러, 저장 씬과 Collider에는 쓰지 않는다.
 
 Unity에서 **Tools > Twin Edge > Presentation > Bake Public Course Map** 또는 `-executeMethod TwinEdge.Presentation.Editor.CourseMapBake.Bake`를 실행한다. 저장된 메시, 공개 공간의 구성 또는 마커 위치가 변경되면 재생성한다. `Assets/Game/UI/Resources/V3CourseMap.asset`에 월드 X/Z 범위, 확대 기준과 마커가 기록된다. 외부 아틀라스는 목표 1.6 m/px, 실내·지하 별도 시트는 0.65 m/px로 생성한다. 구간별 반경은 산악 150m, 다리 60m, 협곡·강 120m, 성채 외부 60m, 성채 내부 40m, 지하 계단·공동 50m, 결승 120m다. 구간 전환은 0.32초 안정화 뒤 반영한다. 화면에는 사전 생성 지도와 재사용 아이콘을 합성한다.
+
+전체 지도는 지도 뒤에 보이는 경기 카메라의 색상 출력 한 프레임을 현재 창 크기의 RenderTexture에 담는다. 기존 Screen Space Overlay의 HUD와 반투명 모달 아래에 이 프레임을 두고, 지도가 열려 있는 동안 경기 카메라의 월드 레이어를 그리지 않는다. 지도 시트와 보석 및 두 플레이어의 마커는 실시간으로 갱신된다. 카메라 및 `ThirdPersonCamera`, AudioListener, 입력 소유권과 서버 경기는 계속 동작한다. 지도 닫기, 경기 화면 이탈과 전환 연출 시 카메라를 복원하고 텍스처를 해제한다. 창 크기가 바뀌면 새 프레임을 담으며 캡처할 수 없는 경우 월드를 계속 그린다. 미니맵과 전체 지도 밖의 월드 렌더링은 기존 카메라 경로를 사용한다.
 
 ## 결과 화면과 새 경기 수명
 

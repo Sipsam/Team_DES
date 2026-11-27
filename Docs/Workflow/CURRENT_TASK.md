@@ -1,22 +1,20 @@
 # Current task
 
-**V3-STABILITY-01** · Bridge Support and Carry Diagnosis
+**V3-PERF-01** · World and Map Rendering Optimization
 
-**Checkpoint** `READY_TO_COMMIT` · **Base** `862d0dee4644612525ac20c120076841874c9bd8`
+**Checkpoint** `READY_TO_COMMIT` · **Base** `a764f1427addeb49ceac092b4a39f365ea326a74`
 
-Complex · Gameplay, Physics and Network. HEAD, origin/main and live main agreed at entry. Preserve the untracked design PDF, historical bridge runs, published Players and ZIPs, and the 216 protected captures. Both human playtests await reports. V3-INTEGRATION and V3-RELEASE stay deferred.
+Complex · Rendering, Level and UI. HEAD, origin/main and live main agreed at entry and precommit fetch. The earlier verified V3-STABILITY-01 result remains closed. Preserve the untracked design PDF, three distributed Players, 216 prior captures, QA-AUDIT and BridgeStability evidence. Both human playtests await reports. V3-INTEGRATION and V3-RELEASE stay deferred.
 
 | Subtask | Worker | State | Evidence or next action |
 | --- | --- | --- | --- |
-| ST01-A | Explore + Diagnose | `COMPLETED` | Run-015 was headless. Its Host ground flag was followed by a missed support ray at 7→4. PRES-09 023322 failed in zero-based carry 8 after both peers observed installation 8. The bridge pair overlapped a separately logged batch Editor build. |
-| ST01-B | Explore | `COMPLETED` | Reviewed the owner CharacterController and input, server carry and collapse, replicated deck and checkpoints, visual grips, and isolated Bridge Relay driver. |
-| ST01-C | Implement + Validate | `COMPLETED` | Three unchanged runs passed. Build-Trace-20261128-054012478 adds opt-in capture. Exact Run-015 route passed in TraceD3D-20261128-054256235 and TraceHeadless-20261128-054619580. Both landed on Plank_004. Both passed the 8th and 9th installations. |
-| ST01-D | Diagnose | `COMPLETED` | TraceLoaded-20261128-054927100 reproduced release and fall on delivery 8. At server time 59.887, timber z=503.594 and the Client replica z=501.070 exceeded the current 2.5 m grip limit. The owner was still grounded near the grip. TraceEditor-20261128-055053375 passed deliveries 8/9 and exact 7→4. The original delivery 9 trigger and QA-03 remain unconfirmed. |
-| ST01-E | Implement | `COMPLETED` | Gate a proposed server carry step with the existing holder validity check. Preserve current-pose reset, clearance, RPCs, owner movement and installation checks. Repeat Driver carries via ordinary cancellation and fresh pairing. |
-| ST01-F | Validate + Review | `COMPLETED` | FixNormal-20261128-055735876 and FixLoaded-20261128-060225689 passed 10/10 carries each for 8 and 9 on both peers plus the exact Return route. The corrected guard did not activate in the repeated target windows. FixRotation-20261128-060726988 passed rotation, reconnect and recovery. |
-| ST01-G | Finalize | `IN_PROGRESS` | Source and shared contracts reviewed. Preservation-20261128-060805328 verified 216 protected captures, distributed Players and ZIPs, 659 prior evidence files and the untracked PDF. Stage exact paths, commit, push and compare the full hash to live main. |
+| PERF01-A/B | Explore + Diagnose | `COMPLETED` | Baseline two-world and one-world-with-companion samples, fixed-camera GPU and render counter attribution, and URP 17.3.0 reference review. `Attribution-20261128-063724901` and `Geometry-20261128-065418724` identify opaque, SSAO and depth-normal work and the repeated fixed bridge modules. |
+| PERF01-C | Implement + Validate | `COMPLETED` | The full map captures the world frame and restores the camera on close and transitions. `Pair-20261128-070528011` confirmed Host 4.26ms GPU and ~17 draws in the overview. Static region-sheet margins match. |
+| PERF01-D/E | Implement + Review | `COMPLETED` | Combine compatible fixed bridge frame parts into three module meshes. 26 spans share them, cutting active frame renderers from 2,392 to 78. Preserve the terrain, shadow paths, materials and collisions. Depth priming, mountain partition, opaque-copy and settings experiments were excluded. |
+| PERF01-F | Validate + Review | `COMPLETED` | Both configurations passed three stationary 600-frame repeats. `Focused-20261128-071413330`, `Rematch-20261128-071540133` and `Bridge-20261128-071650766` passed both peers. Baseline and optimized bridge fixtures match visually. `NormalPlayer-20261128-072119343` built and booted in D3D11 with Development fixtures absent. |
+| PERF01-G | Finalize | `IN_PROGRESS` | Stage exact scopes, commit and push. Verify the hash against live main. In a clean checkout run the official saved-world capture and commit-qualified map and bridge runtime captures. Record publication and verify historical artifacts independently. |
 
-Local evidence and publication receipt are under ignored `Docs/Development/BridgeStability/V1/`. The only runtime behavior change is the proposed carry-step guard. Official capture publication is skipped for this physics and replay change. Whole match, whole-world regression and full E2E Relay are deferred. [Validation and limits](../Playtest/ValidationSummary.md#v3-stability-01--다리-지지-및-목재-운반)
+Local evidence is in ignored `Docs/Development/RenderingOptimization/V1/`. Source paths cover the fixed frame visual builder, full map backdrop and focused Presentation Relay driver, plus relevant shared contracts. The initial profiling runner's read-only registry handle prevented verification of display-preference restoration. The corrected runner saved snapshots and verified restoration for the repeated matrices, focused runs and rematch. A post-run comparison found no preference drift against the pre-Rematch snapshot. Whole-match, whole-world and full E2E Relay are deferred. Actual 1440p was unavailable. [Measured results and checks](../Playtest/ValidationSummary.md#v3-perf-01--월드와-전체-지도-렌더링)
 
 ## State and handoff
 

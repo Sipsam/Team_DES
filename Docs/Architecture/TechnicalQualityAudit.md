@@ -80,6 +80,26 @@ PRES-10의 Windows 11 D3D11 Development Player 두 개, 1600×900, Host 60/Clien
 
 두 격리 Relay 실행은 양쪽 PASS 및 종료 코드 0을 남겼으며 지도 계측 뒤 종료했다. 샘플, 준비 및 시작 검사, 빌드 명령과 실행 파일·관리 어셈블리 SHA-256은 각 Run 경로와 `Source-20261128-045458280/Reproduction.md`에 보존한다.
 
+### V3-PERF-01 패스 분리
+
+`Attribution-20261128-063724901`은 `a764f14`에 격리 계측을 적용한 Development Player를 사용했다. Host와 Client가 실제 Relay의 Outbound에서 고정 산악 카메라로 각각 2초 예열 후 150프레임을 기록했다. 1600×900, D3D11, VSync 0, 연출 100%, 60fps Host와 30fps Client 조건이며 실제 창을 다시 적용한 이후의 Host 수치다. 시작과 종료 기준의 차이는 짧은 대조의 변동 범위를 보여 준다.
+
+| 조건 | GPU FrameTiming ms | P95 프레임 간격 ms | Draw Calls | 불투명 GPU ms | 깊이·노멀 GPU ms | SSAO GPU ms |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| 기준 | 36.58 | 56.00 | 7,817 | 27.52 | 1.61 | 5.88 |
+| Main Light 그림자 제외 | 32.88 | 59.51 | 7,812 | 25.12 | 1.83 | 5.56 |
+| Additional Light 그림자 제외 | 30.78 | 61.26 | 7,809 | 22.83 | 2.55 | 4.65 |
+| SSAO 제외 | 17.24 | 27.41 | 3,992 | 15.25 | — | — |
+| 카메라 Post Processing 끔 | 34.30 | 60.98 | 7,818 | 23.90 | 2.16 | 6.36 |
+| 투명 레이어 제외 | 29.89 | 50.74 | 7,664 | 21.55 | 2.10 | 4.81 |
+| 기준 재측정 | 31.54 | 53.93 | 7,808 | 23.61 | 2.33 | 4.25 |
+
+기준에서 Opaque CPU 마커는 2.68–2.80ms, 깊이·노멀은 3.20–3.28ms였다. SSAO 제외는 깊이·노멀 프리패스와 불투명 셰이더의 SSAO 경로를 함께 제거했다. 가장 큰 GPU 작업은 불투명 패스였다. 두 그림자 마커는 이 시점에서 각각 약 0.0005ms였고 투명 기준은 0.05ms였다. 카메라에 Post Processing이 기본 활성화되어 있지 않았다. GPU 카운터의 구간은 서로 겹칠 수 있고, 별도 Forward+, 오버레이 UI, 파티클 렌더 및 대기실 미리보기 GPU 시간은 이 표본에서 `NOT_MEASURED`다. 상세 마커와 변형별 실측은 선택 로컬 자료 `Docs/Development/RenderingOptimization/V1/Attribution-20261128-063724901/`에 있다.
+
+`Geometry-20261128-065418724`의 같은 산악 시점에서 런타임 활성 Renderer는 3,954개였다. `GameState` 아래의 MeshRenderer 3,209개는 이 시점의 CPU 프러스텀과 교차했고 Unity의 `isVisible`도 참이었다. 이 수는 화면의 픽셀 기여가 가려진 렌더러를 포함할 수 있다. 그중 고정 다리 프레임은 원본 92개 MeshRenderer를 26개 모듈에 반복해 총 2,392개였다. 저장 YAML의 MeshRenderer 963개와 런타임 수를 분리한다.
+
+같은 실험에서 산악 렌더러를 제외하자 Host GPU가 33.40ms 기준에서 13.09ms로 내려갔다. 산악을 유지한 160m 청크 실험은 519,159개 인덱스를 47개로 나눴고, 프러스텀에 걸린 31개 청크는 417,861개 인덱스였다. 3회 평균 GPU는 29.80ms였으나 26.82–32.49ms의 변동과 약 64개 추가 Draw Calls가 있었다. Depth Priming Auto는 대응 기준 평균 31.76ms에서 29.74ms였고 세 번째 표본은 기준보다 느렸다. Opaque Copy 제외는 짧은 표본에서 32.34ms였다. 기존 산악 출력과 SSAO를 보존하기 위해 산악 분할, Depth Priming 및 Opaque Copy 실험 설정은 제외했다. SSAO와 그림자 품질, 투명 렌더, Forward+, 재질과 셰이더를 보존했다.
+
 ## QA-C · CPU, GC와 메모리
 
 | 경로 | 소스에서 확인한 일과 검증할 비용 |
@@ -122,6 +142,8 @@ ActionRevision은 전환 sequence와 입력 창을 함께 검증한다. 생명 I
 ## QA-F · 에셋 및 빌드
 
 - `Dependencies-20261128-050646263`의 Unity 6000.3.27f1 읽기 전용 `TwinEdge.Levels.Editor.ProjectDependencyAudit.Run`이 통과했다. Unity AssetDatabase가 패키지 경로까지 확인했고, 저장 V3 두 미리보기 씬의 누락 스크립트는 0개였다. 탐색한 로컬 프리팹 YAML에 직렬화된 null MonoScript 필드는 없었다. 이전 정리 감사의 11개 `source,guid` 쌍이 정확히 재현됐다. DefaultVolumeProfile 4개, PC_Renderer 7개다. 실제 Player 씬 로드 실패나 새로 누락된 V3 게임플레이 GUID는 확인되지 않았다. 기존 패키지·디버그 리소스 직렬화 상태의 영향은 URP 필드와 실제 렌더 오류를 대조하기 전 확정할 수 없다.
+
+V3-PERF-01에서 설치된 URP 17.3.0과 Global Settings를 대조했다. `PC_Renderer`의 7개 참조는 URP가 이전 필드로 표시한 `probeVolumeResources`에 있다. 현재 `ProbeVolumeDebugResources`와 `ProbeVolumeRuntimeResources`의 대응 에셋은 설치된 Core 패키지에서 모두 확인됐다. PC URP의 Light Probe System은 Light Probe Groups를 사용한다. `DefaultVolumeProfile` 자체는 글로벌 기본 프로필로 연결되어 있으며, 미해결 4개는 `OutlineVolumeComponent`, `OasisFogVolumeComponent`, `TestAnimationCurveVolumeComponent`, `TestVolume`의 스크립트다. Outline과 Oasis Fog의 직렬화 값은 각각 비활성과 밀도 0이고, 저장 PC Renderer의 기능은 SSAO 한 개다. 네 스크립트는 프로젝트 및 설치된 패키지에서 찾을 수 없었다. 기존 참조와 QA-13의 상태를 보존한다. 선택 로컬 근거는 `Docs/Development/RenderingOptimization/V1/UrpRefs-20261128-063645426691/Audit.txt`다.
 - 생성 에셋 74개 중 비생성 에셋을 루트로 두었을 때 65개가 전이 의존성에 남고 9개가 검토 후보였다. 저장 레벨 씬의 직접·전이 생성 의존성은 60개, 별도 산악 테스트 씬은 5개였다. 수치에는 레거시 씬과 편집 도구의 참조도 반영된다. 검토 후보의 안전한 삭제 여부와 실제 빌드 공간 절감분은 확인하지 않았다. 이번 감사는 정리 도구의 삭제 단계 없이 실행됐다.
 
 - `Artifacts-20261128-050050256`의 Python 읽기 전용 재대조는 2차 ZIP 208개(207개 런타임 파일과 안내)와 3차 ZIP 213개(211개 런타임·고지 파일과 안내 2개)를 확인했다. ZIP SHA-256은 각각 `D0C2CF1CD44F2737315CD6F86368774A9304349CE91D6EA59BB3E51D37691C1A`, `8AFDAC3647728C9DD44A2F3ABEA535BD1EF82F98AF956538F07ECCD1BB09808F`다. 3차는 Player 230,367,685 B, ZIP 123,772,983 B이며 한국어 안내, Noto Sans KR OFL, 오디오 출처와 CC0 전문을 확인했다. 팀 원본 및 그 밖의 제3자 자산의 권리 확인은 이 배포 고지 대조의 범위 밖이다.
@@ -136,7 +158,7 @@ ActionRevision은 전환 sequence와 입력 창을 함께 검증한다. 생명 I
 
 | ID / 상태 / 우선순위 | 영향과 근거 | 원인, 수정 위험도, 제안과 종료 검사 |
 | --- | --- | --- |
-| QA-01 · `REPRODUCED` · P1 | 동일 PC Radeon iGPU의 두 D3D11 창에서 지도 닫힘/표시 GPU 32.09/33.25ms. 전체 지도 유지·가시 월드 제외 시 3.38ms. 산악의 두 표시 상태 모두 60fps 예산을 크게 넘었다. 다른 구역과 별도 PC 영향 범위는 미확인이다. | 가시 월드 부하가 지배적이라는 대조 근거가 있다. V3-PERF-01에서 가시 지오메트리·그림자·SSAO·거리와 투명 UI 비용을 분리한다. 외관과 셰이더 변경 위험 중간. 기기와 동일 시점별 P95, GPU, draw 비교와 승인 화면 보존. |
+| QA-01 · `REPRODUCED` · P1 | 최초 유효 두 창 Host는 지도 닫힘/표시 GPU 32.09/33.25ms였다. V3-PERF-01의 최신 기준은 33.47/32.95ms였으며 고정 프레임 결합과 지도 배경 캡처 후 22.08/4.26ms로 줄었다. | 두 창의 지도 닫힘에서 60fps 예산 초과가 남는다. 산악 불투명과 SSAO·깊이 작업, 다른 기기와 뷰의 성능 범위는 후속 검증 대상이다. [전후 측정](../Playtest/ValidationSummary.md#v3-perf-01--월드와-전체-지도-렌더링) |
 | QA-02 · `REPRODUCED` · P2 | 최초 메뉴 205,228 → 감사 205,171 B/프레임. 예열 메뉴는 약 120 B/프레임으로 내려갔고, 왕로 Host의 2.2KB 수준은 감사에서도 관측됐다. 키패드 수치는 역사 표본이다. | 콜스택 없이 초기 폰트·오디오·UI·월드 중 원인을 확정할 수 없다. V3-PERF-02에서 cold/warm/반복 진입을 나눠 실제 할당 스택을 확인한다. UI 수명 변경 위험 중간. |
 | QA-03 · `INTERMITTENT` · P1 | PRES-08 headless Run-015의 Host가 복로 7→4에서 접지된 직후 `Plank_004` 중심 레이 검사를 실패했다. Run-021/023, PRES-09 022255와 격리 재실행은 각각 다른 붕괴 배치에서 통과했다. | V3-STABILITY-01의 동일 배치 주 검증 5회는 두 피어 모두 통과했다. 원본에서 실제 캡슐 접촉을 기록하지 않아 원인 미확정으로 남겼다. [검증](../Playtest/ValidationSummary.md#v3-stability-01--다리-지지-및-목재-운반) |
 | QA-04 · `INTERMITTENT` · P1 | PRES-09 023322의 두 피어는 여덟 번째 설치를 확인한 뒤 아홉 번째 목재 운반(`Two-input carry 8`)에서 실패했다. 별도 Unity 배치 빌드가 동시에 실행됐다. 격리 재실행은 13개 설치와 복로 보행 30·달리기 점프 5회를 통과했다. | 원본 아홉 번째 실패의 원인은 미확정이다. 별도의 네 Player 비교에서 여덟 번째 운반의 같은 증상을 재현했다. 서버가 지연된 Client 복제 위치에 대해 다음 손잡이를 기존 2.5m 보유 범위 밖으로 옮긴 뒤 운반을 해제했다. 범위를 넘기는 이동을 보류하도록 수정했고 격리 및 네 Player 환경에서 8·9번째 운반을 각 10회 통과했다. [검증 및 한계](../Playtest/ValidationSummary.md#v3-stability-01--다리-지지-및-목재-운반) |
@@ -148,7 +170,7 @@ ActionRevision은 전환 sequence와 입력 창을 함께 검증한다. 생명 I
 | QA-10 · `NOT_MEASURED` | DSP/스트리밍 CPU, NGO traffic·RPC·변수·패킷 손실, 장기 메모리. 기존 세션 동작 검증은 있음. | 계측을 먼저 수행. 유지·해제 상태와 게임·전송 계층을 구분한다. 수치에 따라 최적화 여부 결정. |
 | QA-11 · `HUMAN_REVIEW_REQUIRED` | 별도 두 PC의 2·3차 사람 리뷰, 실제 1440p·IME와 청취·조작. | 제출을 기다리고 실제 세션, 하드웨어, 증상 빈도를 기록한다. 기존 자동화 자료는 비교 기준이다. |
 | QA-12 · `DEFERRED` | 최신 전체 월드, 전체 경기, 전체 E2E Relay와 최종 배포. | V3-INTEGRATION과 별도 사용자 시작 조건. 혼합된 역사 빌드 결과를 현재 통합 PASS로 사용하지 않는다. |
-| QA-13 · `SUSPECTED` · P3 | 기존 URP 직렬화 참조와 packed 대형 에셋 검토 후보. 미사용·중복으로 인해 빌드가 팽창했다는 증거는 없다. | Unity 패키지·전이 및 동적 로드, 원본 권한, BuildReport를 먼저 확인한다. 실행 중 렌더 오류와 직접 연계할 증거가 생기면 우선순위를 재평가한다. |
+| QA-13 · `SUSPECTED` · P3 | URP 17.3.0 대조에서 PC Renderer의 7개는 이전 APV 리소스 필드였고 현재 대응 리소스는 해석됐다. 기본 볼륨 프로필의 4개 스크립트 참조는 여전히 미해결이다. | 활성 패스 오류나 비용과의 연계가 확인되지 않아 직렬화 참조를 보존한다. 대형 packed 에셋의 전이·동적 사용 여부도 열린 검토 항목이다. |
 
 ### 후속 작업과 완료 조건
 

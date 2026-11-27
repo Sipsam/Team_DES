@@ -205,7 +205,7 @@ namespace TwinEdge.Presentation
             staminaPanel.SetActive(true);
             tutorialPanel.SetActive(now < tutorialUntil);
             notificationPanel.SetActive(!presenting && now < noticeUntil);
-            map.Refresh(game, peer, players, gem);
+            map.Refresh(game, peer, players, gem, presenting);
             for (int i = 0; i < names.Length; i++) names[i].Bind(players[i]);
         }
 
@@ -416,6 +416,7 @@ namespace TwinEdge.Presentation
         internal void CloseModal()
         {
             if (!modalOpen) return;
+            map.Close();
             root.CloseModal();
             modalOpen = false;
         }
@@ -450,6 +451,8 @@ namespace TwinEdge.Presentation
             card.offsetMin = card.offsetMax = Vector2.zero;
             controls.SetActive(false);
         }
+
+        void OnDisable() => map?.Close();
 
         void OnDestroy()
         {

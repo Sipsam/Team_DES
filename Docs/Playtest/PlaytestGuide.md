@@ -320,6 +320,14 @@ Use a unique Development build and evidence run for each Windows D3D11 pair.
 - Use `-PresentationMetrics` in `presentation`, `castleKeypad` or `rematch` to sample their scoped views and record resource counts. Review the two processes separately and retain frame count, elapsed time, window, FPS cap, minimap preference and effect intensity. A Unity counter with no samples is `NOT_RUN`. Scope the results to the Development fixture and machine.
 - Build the normal Player with `BuildPlaytestPlayer` into a separate smoke directory. Exercise its menu and check development drivers, F3 and Showcase boundaries independently of test playback. Keep the published second human playtest as the pre-Presentation build. Follow [official screenshots](#official-screenshots) for the post-push map set and the open, entered, rejected and dismissed keypad views.
 
+## World and full-map rendering
+
+Use the fixed mountain view at the beginning of the focused Presentation Relay case. Use a uniquely named Development build and ignored evidence directories under `Docs/Development/RenderingOptimization/V1/`. The historical QA audit lists the camera pose and conditions. Enable Frame Timing Stats and add instrumentation in an isolated checkout for profiling. Check the source commit, patch, executable and managed assembly hashes for each run.
+
+- Reapply windowed 1600×900 after launch and check both the actual HWND and positive GPU timing and draw counter samples. Use 60fps Host, 30fps Client and VSync 0 for historical comparison. Measure the one-rendering-world condition separately and document any remaining rendering by a local Relay companion. Record actual client area when available and label fixed render targets separately.
+- With phase, effect intensity and camera pose held constant, sample the closed map, minimap, overview, region sheet and world-mask-zero control. Use at least three 600-frame windows for the principal comparisons. Keep individual run samples, valid timing counts and CPU main, render and Present wait results. Draw calls and batches are distinct counters. Record unavailable pass or resource counters as `NOT_MEASURED`.
+- Run the focused `presentation` case to exercise M, Esc, the partner and gem markers, the server clock, the active camera and Listener, window-sized backdrop capture, the Return transition and re-entry. Use `rematch` for results and same-room reset when those checks apply. Use the saved-scene captures for direct geometry and material review. Keep an actual window capture of the full map alongside any fixed-target captures.
+
 ## V3-PLAYTEST-03 · 3차 사람 플레이테스트 준비
 
 테스터에게 [3차 플레이테스트 안내와 체크리스트](ThirdHumanPlaytest.md)가 포함된 같은 ZIP을 전달한다. 2차 테스트는 `2079709`의 별도 패키지를 사용한다. 각 회차의 소스와 패키지 식별자는 [검증 요약](ValidationSummary.md#v3-playtest-03--3차-사람-플레이테스트-준비)에 기록한다.
