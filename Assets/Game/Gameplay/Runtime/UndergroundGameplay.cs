@@ -277,6 +277,8 @@ namespace TwinEdge.Gameplay
                 if (Step != expectedStep || Deadline(Step) != previousDeadline) return;
                 deadlines[Step] = Now + platformSeconds;
                 recentFailure.Value = UndergroundFailure.None;
+                if (player.TryGetComponent<GameplayCharacter>(out var switchUser))
+                    switchUser.PresentStationServer(stations[id].transform.position);
                 game.EmitWorldCue(AudioCueId.Switch, stations[id].transform.position);
                 var decks = GroupDecks(Step);
                 if (decks.Count > 0) game.EmitWorldCue(AudioCueId.Platform, decks[0].Top);
@@ -286,7 +288,12 @@ namespace TwinEdge.Gameplay
             if (!AtAltar(player.transform.position) || game.Phase != FoundationPhase.SealPending) return;
             bool joined = (participants.Value & (1 << slot)) == 0;
             participants.Value |= 1 << slot;
-            if (joined) game.EmitWorldCue(AudioCueId.Switch, stations[id].transform.position);
+            if (joined)
+            {
+                if (player.TryGetComponent<GameplayCharacter>(out var participant))
+                    participant.PresentStationServer(stations[id].transform.position);
+                game.EmitWorldCue(AudioCueId.Switch, stations[id].transform.position);
+            }
             if (participants.Value == Both)
             {
                 seal.Value = UndergroundSeal.Unsealing;

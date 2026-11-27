@@ -2,7 +2,7 @@
 
 2026-11-27 KST · V3-PRESENTATION-AUDIT · 기준 `7f17e6c1505af8fb4c3386c22c995dea6faa8468`. Standard 경로의 Explore, Review, Finalize를 한 세션에서 수행했다.
 
-이 문서는 승인 전 조사 기록이다. 후속 개발은 [승인된 프레젠테이션 설계](PresentationDesign.md)와 [실행 순서](../Workflow/ROADMAP.md)를 따른다.
+이 문서는 승인 전 조사 기록이다. 당시의 미연결 자산과 미구현 판정은 기준 커밋에 해당한다. 현행 결과 재생과 런타임 클립 및 효과는 [프레젠테이션 설계](PresentationDesign.md)와 [애니메이션 구현 계약](../Architecture/GameplaySystems.md#캐릭터-애니메이션과-월드-효과)을 참조한다. 후속 개발 순서는 [로드맵](../Workflow/ROADMAP.md)을 따른다.
 
 ## 기준과 증거
 

@@ -28,6 +28,8 @@ namespace TwinEdge.Gameplay
         UndergroundGameplay underground;
         Transform model, pickup;
         bool bound;
+        uint presentedRevision;
+        float nextGemSpark;
 
         public static GemOwnership Current { get; private set; }
         public GemState State => status.Value;
@@ -73,6 +75,8 @@ namespace TwinEdge.Gameplay
 
         public override void OnNetworkSpawn()
         {
+            presentedRevision = IsServer ? 0 : revision.Value;
+            nextGemSpark = 0;
             if (!IsServer) return;
             status.Value = GemState.Sealed;
             owner.Value = ulong.MaxValue;
@@ -234,9 +238,9 @@ namespace TwinEdge.Gameplay
             Vector3 point = IsSpawned && State != GemState.Sealed ? Position : home;
             bool visible = true;
             bool carried = IsSpawned && State == GemState.Carried;
+            Transform carrier = null;
             if (carried)
             {
-                Transform carrier = null;
                 if (IsServer && NetworkManager.ConnectedClients.TryGetValue(Owner, out var peer))
                     carrier = peer.PlayerObject != null ? peer.PlayerObject.transform : null;
                 else
@@ -262,6 +266,31 @@ namespace TwinEdge.Gameplay
             model.SetPositionAndRotation(point, Quaternion.Euler(0, Time.time * 38, 0));
             pickup.position = point;
             pickup.gameObject.SetActive(IsSpawned && CanAcquire);
+            PresentGem(point, carrier, visible);
+        }
+
+        void PresentGem(Vector3 point, Transform carrier, bool visible)
+        {
+            if (!IsSpawned || !IsClient) return;
+            if (presentedRevision != revision.Value)
+            {
+                // A carrier NetworkObject may be delivered one tick after the gem snapshot.
+                if (!visible) return;
+                presentedRevision = revision.Value;
+                nextGemSpark = Time.time + .6f;
+                if (State == GemState.Carried)
+                {
+                    if (carrier.TryGetComponent<GameplayCharacter>(out var character)) character.PresentGemPickup();
+                    if (!IsFirstReturnPickup)
+                        GameplayEffects.Emit(game, GameplayEffects.Kind.Gem, point, Vector3.up * .55f);
+                }
+                if (State is GemState.Dropped or GemState.Relocated)
+                    GameplayEffects.Emit(game, State == GemState.Dropped ? GameplayEffects.Kind.GemDrop : GameplayEffects.Kind.GemRelocate,
+                        point, Vector3.up * .65f);
+            }
+            if (!visible || State == GemState.Sealed || game.TransitionBlocksInput || Time.time < nextGemSpark) return;
+            nextGemSpark = Time.time + (State == GemState.Carried ? 1.10f : .64f);
+            GameplayEffects.Emit(game, GameplayEffects.Kind.Gem, point, Vector3.up * .4f, .20f);
         }
 
     }

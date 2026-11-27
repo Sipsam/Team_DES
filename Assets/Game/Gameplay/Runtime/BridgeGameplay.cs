@@ -108,6 +108,7 @@ namespace TwinEdge.Gameplay
                 removed[change.Value] = true;
                 SetSupport(change.Value, false);
                 game.PlayLiveCue(AudioCueId.BridgeCollapse, planks[change.Value].transform.position);
+                GameplayEffects.Emit(game, GameplayEffects.Kind.Timber, planks[change.Value].transform.position, Vector3.up * .35f);
             }
             else RefreshDeck();
         }

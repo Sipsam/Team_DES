@@ -365,6 +365,9 @@ namespace TwinEdge.Gameplay
             CastleStation station = stations[id];
             var p = progress[slot];
             if (p.Revision != revision || !CanUse(station, slot) || !Near(player, station)) return;
+            if (station.Kind is Action.Pad or Action.SewerPad or Action.Signal or Action.ClearSignal or Action.ClearSewer &&
+                player.TryGetComponent<GameplayCharacter>(out var character))
+                character.PresentStationServer(station.transform.position);
             switch (station.Kind)
             {
                 case Action.Pad:

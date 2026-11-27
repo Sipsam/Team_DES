@@ -90,8 +90,7 @@ namespace TwinEdge.Gameplay
             for (int k = 0; k < hull.Oars.Length; k++)
             {
                 var pivot = NewView("Oar pivot", hull.View);
-                pivot.localPosition = new Vector3(i == 0 ? (k == 0 ? -1.65f : 1.65f) : -.65f, .45f, .05f);
-                Visual(oarModel, pivot);
+                Visual(oarModel, pivot).localPosition = Vector3.forward * .77f;
                 hull.Oars[k] = pivot;
             }
             hull.Collider = hull.View.gameObject.AddComponent<BoxCollider>();
@@ -178,6 +177,52 @@ namespace TwinEdge.Gameplay
         void ContactRpc(Vector3 position, RiverContact cause)
         {
             OnContact?.Invoke(position, cause.ToString());
+            GameplayEffects.Emit(game, GameplayEffects.Kind.Splash, position, Vector3.up, 1.3f);
+        }
+
+        internal bool TryOarGrip(ulong id, out Pose seat, out Vector3 left, out Vector3 right)
+        {
+            left = right = default;
+            if (!TrySeatPose(id, out seat, out _, out int side) || !TrySeat(id, out int hull, out _, out _))
+                return false;
+            Transform oar = hulls[hull].Oars[side];
+            Vector3 inner = oar.position;
+            Vector3 outer = oar.TransformPoint(Vector3.forward * .22f);
+            left = side == 0 ? outer : inner;
+            right = side == 0 ? inner : outer;
+            return true;
+        }
+
+        void RenderOars(Hull hull, RiverRaftSnapshot state, bool snap)
+        {
+            if (snap) hull.WetOars = 0;
+            bool sailing = state.Status == RiverRaftStatus.Sailing;
+            float phase = (float)(NetworkManager.ServerTime.Time % 120) * 6;
+            for (int k = 0; k < hull.Oars.Length; k++)
+            {
+                float side = k == 0 ? -1 : 1;
+                float drive = sailing ? Mathf.Clamp(k == 0 ? state.LeftDrive : state.RightDrive, -1, 1) : 0;
+                float stroke = Mathf.Sin(phase) * drive;
+                float dip = Mathf.Cos(phase) * Mathf.Abs(drive);
+                var pivot = hull.Oars[k];
+                pivot.position = hull.Seats[k].position + hull.View.rotation * new Vector3(side * .015f, .98f - .17f * dip, .24f + .11f * stroke);
+                pivot.rotation = hull.View.rotation * Quaternion.LookRotation(new Vector3(side, -.38f - 1.2f * dip, .1f + .53f * stroke));
+                Vector3 blade = pivot.TransformPoint(Vector3.forward * 1.57f);
+                float water = channel.Sample(blade.z).center.y;
+                int mask = 1 << k;
+                bool wet = sailing && Mathf.Abs(drive) > .15f && blade.y <= water && InWater(blade);
+                if (wet && (hull.WetOars & mask) == 0 && !snap)
+                {
+                    blade.y = water;
+                    GameplayEffects.Emit(game, GameplayEffects.Kind.Splash, blade, hull.View.right * side, .7f);
+                }
+                hull.WetOars = wet ? hull.WetOars | mask : hull.WetOars & ~mask;
+            }
+            if (!sailing || state.Velocity.sqrMagnitude < 1.2f || Time.time < hull.NextWake) return;
+            hull.NextWake = Time.time + .24f;
+            Vector3 wake = hull.View.position - state.Velocity.normalized * Radius(hull.Oars.Length == 2 ? 0 : 1);
+            wake.y = channel.Sample(wake.z).center.y + .035f;
+            GameplayEffects.Emit(game, GameplayEffects.Kind.Wake, wake, -state.Velocity.normalized, .75f);
         }
 
         void RenderRiver()
@@ -219,12 +264,7 @@ namespace TwinEdge.Gameplay
                     snap ? rotation : Quaternion.Slerp(hull.View.rotation, rotation, blend));
                 hull.View.gameObject.SetActive(true);
                 hull.Collider.enabled = s.Status is RiverRaftStatus.Sailing or RiverRaftStatus.Docked;
-                for (int k = 0; k < hull.Oars.Length; k++)
-                {
-                    float stroke = k == 0 ? s.LeftDrive : s.RightDrive;
-                    float wave = Mathf.Sin((float)NetworkManager.ServerTime.Time * 6) * 38 * Mathf.Clamp(stroke, -1, 1);
-                    hull.Oars[k].localRotation = Quaternion.Euler(wave, k == 1 ? -38 : 38, k == 1 ? -14 : 14);
-                }
+                RenderOars(hull, s, snap);
             }
 
             for (int i = 0; i < hazards.Length && i < hazardFeed.Count; i++)

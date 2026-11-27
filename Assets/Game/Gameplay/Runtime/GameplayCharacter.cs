@@ -42,24 +42,16 @@ namespace TwinEdge.Gameplay
             renderer.SetPropertyBlock(properties);
         }
 
-        static readonly string[] MotionStates = { "Idle", "Walk", "Run", "Jump", "Walk_Carry" };
         readonly NetworkVariable<byte> motion = new(0, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Owner);
         readonly NetworkVariable<bool> carrying = new(false);
         public readonly NetworkVariable<Unity.Collections.FixedString64Bytes> CheckpointName = new();
         public readonly NetworkVariable<int> RespawnCount = new();
-        Vector3 previous;
         Transform visualRoot, head;
         internal Vector3 NameplateAnchor => head ? head.position + Vector3.up * 1.05f :
             (visualRoot ? visualRoot.position : transform.position) + Vector3.up * 2.2f;
         internal Unity.Collections.FixedString64Bytes ApprovedNickname => nickname.Value;
         Pose visualRest;
-        Transform leftArm, rightArm;
-        Quaternion leftArmRest, rightArmRest;
-        bool seatVisual, wasRowing;
-        float sampleTime;
-        byte rendered = byte.MaxValue;
-        byte DisplayMotion => holder.Value != NoPlayer ? (byte)0 : motion.Value;
-        public string AnimationState => MotionStates[DisplayMotion];
+        bool toolVisual;
         bool awaitingFoundationReady;
 
         [Rpc(SendTo.Owner, InvokePermission = RpcInvokePermission.Server)]
@@ -88,7 +80,8 @@ namespace TwinEdge.Gameplay
             awaitingFoundationReady = false;
             InitializeContest();
             BindAudio();
-            previous = transform.position; sampleTime = Time.time;
+            ResetMotionPresentation();
+            BindEffects();
             animator.applyRootMotion = false;
             if (IsOwner) GetComponent<GameplayInput>().Activate();
             visualRoot = transform.Find("VisualRoot");
@@ -115,70 +108,26 @@ namespace TwinEdge.Gameplay
                 awaitingFoundationReady = false;
                 ReportFoundationReadyRpc();
             }
-            if (IsOwner && Time.time - sampleTime >= .08f)
-            {
-                float speed = Vector3.ProjectOnPlane(transform.position - previous, Vector3.up).magnitude / (Time.time - sampleTime);
-                var poleMotor = GetComponent<PoleMotor>();
-                bool rowing = RiverGameplay.Current is { } river &&
-                    river.IsSeated(OwnerClientId);
-                motion.Value = rowing ? (byte)0 : poleMotor != null && poleMotor.Attached ? (poleMotor.Orbiting ? (byte)3 : (byte)4) : GetComponent<MountainReturnLaunch>()?.State.Value == LaunchState.Landing ? (byte)0 : (GetComponent<MountainReturnLaunch>()?.InFlight == true || !GetComponent<PlayerMovement>().IsGrounded) ? (byte)3 : speed < .15f ? (byte)0 : carrying.Value ? (byte)4 : speed > 4f ? (byte)2 : (byte)1;
-                if (holder.Value != NoPlayer) motion.Value = 0;
-                else if (ownerMotion == ContestMotion.Thrown) motion.Value = 3;
-                previous = transform.position; sampleTime = Time.time;
-            }
+            bool seated = RenderRaftRider();
+            SampleOwnerMotion(seated);
             UpdateMovementAudio();
-            RenderRaftRider();
-            RenderContest();
-            if (rendered != DisplayMotion)
+            bool specialPose = seated || Attached;
+            if (!specialPose)
             {
-                rendered = DisplayMotion;
-                animator.speed = rendered == 2 ? PlayerMovement.SprintSpeedScale : 1f;
-                animator.CrossFadeInFixedTime(AnimationState, .12f, 0);
+                RenderContest();
+                specialPose = contestPoseApplied || RenderTimberGrip() || RenderStationGesture();
             }
-        }
-        void RenderRaftRider()
-        {
-            if (RiverGameplay.Current is { } river && river.TrySeatPose(OwnerClientId, out var seat, out float stroke, out int side))
-            {
-                // Interpolate the visual against the same hull on both peers while the root retains owner authority.
-                if (!IsOwner)
-                {
-                    visualRoot.SetPositionAndRotation(seat.position + seat.rotation * visualRest.position, seat.rotation * visualRest.rotation);
-                    seatVisual = true;
-                }
-                if (!wasRowing)
-                {
-                    if (leftArm != null) leftArmRest = leftArm.localRotation;
-                    if (rightArm != null) rightArmRest = rightArm.localRotation;
-                }
-                var arm = side == 0 ? leftArm : rightArm;
-                if (arm != null)
-                {
-                    arm.localRotation = side == 0 ? leftArmRest : rightArmRest;
-                    float phase = (float)NetworkManager.ServerTime.Time * 6;
-                    float angle = -(12 + Mathf.Sin(phase) * 16) * Mathf.Clamp(stroke, -1, 1);
-                    arm.RotateAround(arm.position, visualRoot.right, angle);
-                }
-                wasRowing = true;
-                return;
-            }
-
-            if (seatVisual)
-            {
-                visualRoot.SetLocalPositionAndRotation(visualRest.position, visualRest.rotation);
-                seatVisual = false;
-            }
-            if (wasRowing)
-            {
-                if (leftArm != null) leftArm.localRotation = leftArmRest;
-                if (rightArm != null) rightArm.localRotation = rightArmRest;
-            }
-            wasRowing = false;
+            RenderMotion(specialPose);
+            RenderMovementEffects(seated);
+            RenderAttackTrail();
         }
 
         public void ResetAfterRespawn()
         {
-            previous = transform.position; sampleTime = Time.time; rendered = byte.MaxValue;
+            RestoreContestPose();
+            RestoreToolVisual();
+            stationGestureAt = 0;
+            ResetMotionPresentation();
             if (IsOwner) motion.Value = 0;
             if (IsOwner && Camera.main != null) Camera.main.GetComponent<ThirdPersonCamera>()?.SetTarget(transform.Find("CameraTarget"));
         }

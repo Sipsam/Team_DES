@@ -9,10 +9,11 @@ namespace TwinEdge.Gameplay {
  // Opt-in development input replay. Only the initial grip setup uses station placement.
  [DefaultExecutionOrder(11000)]
  public sealed class MountainPoleRelayReplay:MonoBehaviour {
-  bool host,failed; FullMatchRelayReplay fullMatch;string output,planPath,prefix;NetworkManager manager;CooperativePole pole;Vector2 steering;bool send;MountainPolePlan plan;
+  bool host,failed,firstExchangeOnly; FullMatchRelayReplay fullMatch;string output,planPath,prefix;NetworkManager manager;CooperativePole pole;Vector2 steering;bool send;MountainPolePlan plan;
   [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]static void Install(){
    var a=Environment.GetCommandLineArgs();int i=Array.IndexOf(a,"-mountainPoleRun");if(i<0)return;
    var test=new GameObject("MountainPoleRelayReplay").AddComponent<MountainPoleRelayReplay>();test.host=a[i+1]=="host";test.prefix=test.host?"host":"client";
+   test.firstExchangeOnly=Array.IndexOf(a,"-mountainFirstExchange")>=0;
    test.output=a[Array.IndexOf(a,"-mountainPoleEvidence")+1];test.planPath=a[Array.IndexOf(a,"-mountainPolePlan")+1];Directory.CreateDirectory(test.output);
   }
   void LateUpdate(){
@@ -45,6 +46,17 @@ namespace TwinEdge.Gameplay {
    yield return new WaitForSeconds(1);if(!host)yield return Until(()=>pole.Snapshot.phase==PolePhase.OneAttached,"Host grip",30);
    pole.UseRpc(pole.Snapshot.revision);yield return Until(()=>pole.Snapshot.Paired,"Both grips",30);yield return new WaitForSeconds(.4f);
    yield return WalkPoleRoute(player);
+   if(firstExchangeOnly){
+    Check(swaps==1,"First supported role exchange completed");
+    if(host)pole.CancelRpc(pole.Snapshot.revision);
+    yield return Until(()=>pole.Snapshot.phase==PolePhase.Idle&&!player.GetComponent<PoleMotor>().Attached&&cc.enabled,
+     "First exchange release restores ordinary movement",30);
+    File.WriteAllText(output+"/"+prefix+"-exchange-pass.txt","PASS supported first role exchange and release");
+    string other=host?"client":"host";
+    yield return Until(()=>File.Exists(output+"/"+other+"-exchange-pass.txt"),"Peer verified first exchange and release",30);
+    Application.Quit(0);
+    yield break;
+   }
    var own=player.GetComponent<GameplayCharacter>();
    var hostCharacter=FindObjectsByType<GameplayCharacter>(FindObjectsSortMode.None).First(c=>c.OwnerClientId==NetworkManager.ServerClientId);
    string partner=host?"client":"host";
@@ -185,6 +197,7 @@ namespace TwinEdge.Gameplay {
     }
     File.WriteAllText(output+"/"+prefix+"-step-"+i+".txt",i.ToString());
     string other=host?"client":"host";yield return Until(()=>File.Exists(output+"/"+other+"-step-"+i+".txt"),"Peer step "+i,30);
+    if(firstExchangeOnly&&swaps==1){send=false;yield break;}
    }
    send=false;if(fullMatch!=null)fullMatch.SteerPole(Vector2.zero);Check(pole.SafeLanding(pole.Snapshot.a,out var finalA)&&finalA=="Final"&&pole.SafeLanding(pole.Snapshot.b,out var finalB)&&finalB=="Final","Both participants really on Final");
    var own=player.GetComponent<GameplayCharacter>();

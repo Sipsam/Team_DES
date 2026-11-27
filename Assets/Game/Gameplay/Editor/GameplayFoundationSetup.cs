@@ -5,6 +5,7 @@ using TwinEdge.Gameplay;
 using Unity.Netcode;
 using Unity.Netcode.Transports.UTP;
 using UnityEditor;
+using UnityEditor.Animations;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -16,6 +17,7 @@ namespace TwinEdge.Gameplay.Editor
     {
         public const string ScenePath = "Assets/Game/Gameplay/Scenes/V3Gameplay.unity";
         public const string PlayerPath = "Assets/Game/Gameplay/Prefabs/V3NetworkPlayer.prefab";
+        const string ControllerPath = "Assets/Game/Gameplay/Prefabs/GameplayCharacter.controller";
         const string LevelPath = "Assets/Game/Level/Scenes/LevelBlockoutV3.unity";
         const string Evidence = "Docs/Development/Gameplay/V1";
         [MenuItem("Tools/Twin Edge/Gameplay/Create V3 Foundation")]
@@ -41,6 +43,7 @@ namespace TwinEdge.Gameplay.Editor
             foreach (var demo in visual.GetComponentsInChildren<CharacterMotionDemo>()) demo.enabled = false;
             var character = player.AddComponent<GameplayCharacter>(); character.animator = visual.GetComponentInChildren<Animator>();
             character.animator.applyRootMotion = false;
+            character.animator.runtimeAnimatorController = AssetDatabase.LoadAssetAtPath<AnimatorController>(ControllerPath);
             var appearance = new SerializedObject(character);
             appearance.FindProperty("capeRenderer").objectReferenceValue =
                 visual.GetComponentsInChildren<MeshRenderer>().Single(r => r.name == "Cape");
@@ -94,7 +97,8 @@ namespace TwinEdge.Gameplay.Editor
         [MenuItem("Tools/Twin Edge/Gameplay/Validate Saved Foundation")]
         public static void Validate()
         {
-            Directory.CreateDirectory(Evidence);
+            string evidence = Environment.GetEnvironmentVariable("TWIN_EDGE_V3_FOUNDATION_EVIDENCE") ?? Evidence;
+            Directory.CreateDirectory(evidence);
             var scene = EditorSceneManager.OpenScene(ScenePath);
             var bootstrap = Object.FindFirstObjectByType<V3GameplayBootstrap>();
             var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(PlayerPath);
@@ -104,14 +108,28 @@ namespace TwinEdge.Gameplay.Editor
             if (prefab.transform.Find("IdentityBand") != null ||
                 appearance.FindProperty("capeRenderer").objectReferenceValue?.name != "Cape")
                 throw new Exception("V3 appearance bindings invalid");
-            foreach (string state in new[] { "Idle", "Walk", "Run", "Jump", "Walk_Carry" })
-                if (!((UnityEditor.Animations.AnimatorController)prefab.GetComponent<GameplayCharacter>().animator.runtimeAnimatorController).layers[0].stateMachine.states.Any(s => s.state.name == state)) throw new Exception("Animation missing: " + state);
+            var animator = prefab.GetComponent<GameplayCharacter>().animator;
+            if (animator.applyRootMotion || animator.runtimeAnimatorController is not AnimatorController controller ||
+                AssetDatabase.GetAssetPath(controller) != ControllerPath)
+                throw new Exception("The V3 runtime controller and disabled root motion are required.");
+            var states = controller.layers[0].stateMachine.states;
+            foreach (string name in new[] { "Idle", "Walk", "Run", "Jump", "Walk_Carry", "Run_Carry", "PickUp" })
+            {
+                var state = states.SingleOrDefault(item => item.state.name == name).state;
+                if (!state || state.motion is not AnimationClip clip ||
+                    AnimationUtility.GetCurveBindings(clip).Any(binding =>
+                        binding.type == typeof(Transform) && binding.path.Length > 0 && !animator.transform.Find(binding.path)))
+                    throw new Exception("V3 clip or rig binding missing: " + name);
+                if (name == "Jump" && (!state.timeParameterActive || state.timeParameter != "AirPose"))
+                    throw new Exception("Jump requires the AirPose motion time parameter.");
+            }
             EditorSceneManager.OpenScene(LevelPath, OpenSceneMode.Additive);
             Physics.SyncTransforms();
             var markers = Object.FindObjectsByType<TwinEdge.Levels.LevelMarker>(FindObjectsSortMode.None);
             foreach (var id in new[] { "Mountain.V3.Start", "Mountain.V3.InitialSpawn", "Mountain.V3.TrailEntrance", "Mountain.V3.ReturnFinish", "Mountain.V3.Final", "Valley.V3.LowerCheckpoint", "Valley.V3.UpperCheckpoint" })
                 V3GameplayBootstrap.SafeGround(markers.Single(m => m.id == id).transform.position);
-            File.WriteAllText(Evidence + "/StructuralValidation.txt", "PASS: saved/reloaded gameplay scene; existing network prefab variant; height 2/radius .45; 5 animator states; V3 marker ground raycasts. Runtime and Relay require separate validation.\n");
+            File.WriteAllText(Path.Combine(evidence, "StructuralValidation.txt"),
+                "PASS: saved gameplay scene; network prefab and seven bound runtime clips; root motion disabled; AirPose and marker ground checks.\n");
             EditorSceneManager.OpenScene(ScenePath);
             Debug.Log("GAMEPLAY_STRUCTURE_PASS");
         }

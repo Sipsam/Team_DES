@@ -27,8 +27,6 @@ namespace TwinEdge.Gameplay
                 "UpperLeg.L", "LowerLeg.L", "Foot.L", "UpperLeg.R", "LowerLeg.R", "Foot.R"
             }.Select(name => joints.First(joint => joint.name == name)).ToArray();
             animatedRotations = new Quaternion[contestJoints.Length];
-            leftArm = contestJoints[0];
-            rightArm = contestJoints[3];
         }
 
         void RestoreContestPose()
@@ -51,9 +49,15 @@ namespace TwinEdge.Gameplay
             joint.rotation = Quaternion.Slerp(Quaternion.identity, delta, weight) * joint.rotation;
         }
 
+        void CaptureAnimatedPose()
+        {
+            for (int i = 0; i < contestJoints.Length; i++)
+                animatedRotations[i] = contestJoints[i].localRotation;
+            contestPoseApplied = true;
+        }
+
         void RenderContest()
         {
-            if (wasRowing) return;
             visualRoot.localRotation = visualRest.rotation;
             double now = Now;
             float attackAge = (float)(now - attackStartedAt.Value);
@@ -63,9 +67,7 @@ namespace TwinEdge.Gameplay
             bool throwing = throwPoseUntil.Value > now;
             if (holder.Value == NoPlayer && held.Value == NoPlayer && !attacking && !reacting && !throwing) return;
 
-            for (int i = 0; i < contestJoints.Length; i++)
-                animatedRotations[i] = contestJoints[i].localRotation;
-            contestPoseApplied = true;
+            CaptureAnimatedPose();
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
             contestPoseFrame = Time.frameCount;
 #endif

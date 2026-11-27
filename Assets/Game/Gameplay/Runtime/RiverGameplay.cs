@@ -87,6 +87,8 @@ namespace TwinEdge.Gameplay
             public (Renderer renderer, int slot)[] FlashMaterials;
             public bool Flashing;
             public uint RenderedVoyage;
+            public int WetOars;
+            public float NextWake;
             public readonly Paddle Left = new(), Right = new();
             public float NextHit, RebuildAt;
             public bool BankContact;

@@ -12,11 +12,18 @@ namespace TwinEdge.Gameplay
         NetworkObject identity;
         CharacterController controller;
         PlayerMovement movement;
+        GameplayCharacter character;
         bool controllerEnabled;
         bool suspended;
         OwnerNetworkTransform networkTransform;
         public void SuspendForRespawn() { suspended = true; if (Attached) Release(); Attached = false; }
-        void Awake() { identity = GetComponent<NetworkObject>(); controller = GetComponent<CharacterController>(); movement = GetComponent<PlayerMovement>(); }
+        void Awake()
+        {
+            identity = GetComponent<NetworkObject>();
+            controller = GetComponent<CharacterController>();
+            movement = GetComponent<PlayerMovement>();
+            character = GetComponent<GameplayCharacter>();
+        }
         void LateUpdate()
         {
             var pole = CooperativePole.Current;
@@ -37,6 +44,7 @@ namespace TwinEdge.Gameplay
                 Vector3 facing = (s.left == identity.OwnerClientId ? s.b : s.a) - target;
                 facing.y = 0;
                 if (facing.sqrMagnitude > .001f) transform.rotation = Quaternion.LookRotation(facing);
+                character?.RenderPoleGrip(s);
             }
             if (!next && Attached) Release();
             Attached = next;

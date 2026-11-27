@@ -274,3 +274,18 @@ Build a separate Development Windows Player with `TWIN_EDGE_V3_BUILD=Builds/V3Pr
 - For scoped Relay, run `./Tools/Playtest/Run-Relay.ps1 -Build Builds/V3Presentation08Review/V3Gameplay.exe -Case settings -Run <unique-id> -EvidenceRoot Docs/Development/Presentation/V3-PRES-08 -Screenshots -AudioTrace -Width 1600`. This uses two D3D11 Players for countdown gating, local menu input, peer movement, map visibility, leave confirmation and manual re-entry.
 - Distinguish 1280×720, 1600×900, 1920×1080 and 2560×1440 fixed render targets from the actual Player window sizes. Check camera and interaction regressions with the affected cases only. Follow the existing WASAPI loopback procedure for representative Master output.
 - Publish representative menu and modal captures and the official map set after verifying the pushed source. Keep full-match, full-world and full E2E validation deferred.
+
+## V3-PRES-09 animation and VFX
+
+Build with Unity 6000.3.27f1 using a unique direct child such as `TWIN_EDGE_V3_BUILD=Builds/V3Presentation09Review-<build-id>`. Run the scoped Windows cases with D3D11 and unique evidence IDs. Preserve the normal Player, second playtest ZIP and earlier receipts.
+
+- Run `TwinEdge.Gameplay.Editor.GameplayFoundationSetup.Validate` in the Editor to check the saved controller, clip paths, AirPose and disabled root motion. Set `TWIN_EDGE_V3_FOUNDATION_EVIDENCE` to the unique run directory before opening Unity to isolate the generated validation record.
+
+```powershell
+./Tools/Playtest/Run-Relay.ps1 -Build Builds/V3Presentation09Review-<build-id>/V3Gameplay.exe -Case cameraControls -Run <unique-id> -EvidenceRoot Docs/Development/Presentation/V3-PRES-09 -Screenshots -AudioTrace -PolishTrace -Width 1600
+```
+
+- Use `cameraControls`, `poleRecovery` and `mountainExchange` for supported motion, jumps, arm alignment and the first supported role exchange on the saved plan. Use `bridge` for live installation and Return collapses, including the PRES-08 late landing regression. Use `river` or `riverRecovery` for shared and solo oars, water contact and damage. Use `castleWalk` for the castle devices, `transition` for the cavern seal, and `contest`, `returnInput`, `presentation`, `settings` and `rematch` for approval, cancellation and restore checks.
+- `-PolishTrace` records motion transitions, per-hand world-distance to each grip before and after IK, and emitted and live particles. The before sample is the current controller pose before IK. The movement captures use a visible floor at the controls fixture. The settings case additionally checks 0/50/100%, active cleanup, the 160-particle cap and peer independence.
+- Compare matching camera and replay phases when collecting frame timings, batches, allocations and active particles. Record the tested build hashes, graphics API, limitations and any metric unavailable on the capture machine.
+- Use the official map procedure on clean pushed source. Inspect warmed D3D11 images and retain prior commit-qualified sets. Use the same source for fixed render targets from scoped gameplay and record the source and build hashes. Use pose and event logs or short recordings alongside stills for motion evidence. Leave full-world, full-match, E2E and the second human playtest deferred.

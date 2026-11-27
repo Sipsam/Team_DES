@@ -238,6 +238,7 @@ namespace TwinEdge.Gameplay
                 Require(input.AcceptsInput, "resume restores local input");
             }
             yield return Barrier("before-client-leave");
+            if (GameplayEffects.Trace) yield return CheckGameplayPool(local.transform.position, originalEffect);
             yield return CheckEffectIntensity(local.transform.position, originalEffect);
             if (!host)
             {
@@ -271,6 +272,61 @@ namespace TwinEdge.Gameplay
             }
             yield return Wait(() => !game.sessions.HasSession && Landing.gameObject.activeSelf, "host leave returns both peers to landing");
             InputSystem.RemoveDevice(keys);
+        }
+
+        IEnumerator CheckGameplayPool(Vector3 feet, int original)
+        {
+            if (host)
+            {
+                Vector3 point = feet + Vector3.up * .12f;
+                LocalPresentationSettings.EffectPercent = 0;
+                yield return null;
+                yield return null;
+                var existing = GameplayEffects.Inspect(State);
+                GameplayEffects.Emit(State, GameplayEffects.Kind.Land, point, Vector3.up);
+                var disabled = GameplayEffects.Inspect(State);
+                Require(disabled == existing && (!disabled || disabled.particleCount == 0), "0% skips optional emission and clears active particles");
+                if (capture)
+                {
+                    using var target = new CaptureTarget(Root.Canvas, game.standbyCamera, 1600, 900);
+                    yield return null;
+                    target.Save(Path.Combine(folder, Role + "-gameplay-fx-0.png"));
+                }
+
+                LocalPresentationSettings.EffectPercent = 50;
+                GameplayEffects.Emit(State, GameplayEffects.Kind.Land, point, Vector3.up);
+                var pool = GameplayEffects.Inspect(State);
+                Require(pool && pool.particleCount == 5, "50% emits five of nine test landing shards");
+                LocalPresentationSettings.EffectPercent = 0;
+                yield return null;
+                yield return null;
+                Require(pool.particleCount == 0, "0% clears particles already in flight");
+
+                LocalPresentationSettings.EffectPercent = 100;
+                GameplayEffects.Emit(State, GameplayEffects.Kind.Land, point, Vector3.up);
+                Require(GameplayEffects.Inspect(State) == pool && pool.particleCount == 9, "100% emits nine shards in the same pool");
+                if (capture)
+                {
+                    using var target = new CaptureTarget(Root.Canvas, game.standbyCamera, 1600, 900);
+                    yield return null;
+                    target.Save(Path.Combine(folder, Role + "-gameplay-fx-100.png"));
+                }
+                for (int i = 0; i < 25; i++)
+                    GameplayEffects.Emit(State, GameplayEffects.Kind.Land, point, Vector3.up);
+                Require(pool.particleCount == 160 && pool.main.maxParticles == 160, "concurrent effects stay within the particle budget");
+                LocalPresentationSettings.EffectPercent = 0;
+                yield return null;
+                yield return null;
+                Require(pool.particleCount == 0, "zero intensity clears the saturated pool");
+                Signal("optional-fx-verified");
+            }
+            else
+            {
+                yield return Wait(() => Exists("optional-fx-verified"), "host optional VFX settings exercised");
+                Require(LocalPresentationSettings.EffectPercent == original, "host effects leave client setting unchanged");
+            }
+            LocalPresentationSettings.EffectPercent = original;
+            yield return Barrier("optional-fx-settings-restored");
         }
 
         IEnumerator CheckEffectIntensity(Vector3 point, int original)

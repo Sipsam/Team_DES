@@ -70,6 +70,22 @@ namespace TwinEdge.Gameplay
         public bool CanInteract => Outbound && CompletedDeliveries < TotalDeliveries;
         public bool Holds(ulong id) => IsSpawned && load.Value.Has(id);
         internal LoadState Load => load.Value;
+        internal bool TryTimberGrip(ulong id, out Pose rider, out Vector3 left, out Vector3 right)
+        {
+            rider = default;
+            left = right = default;
+            var current = load.Value;
+            if (!IsSpawned || !current.Has(id) || !cargoVisual || !cargoVisual.activeSelf) return false;
+            bool farEnd = current.right == id;
+            Transform cargo = cargoVisual.transform;
+            Vector3 center = current.Grip(farEnd, gripHalfWidth - .26f) + Vector3.up * .97f;
+            Vector3 inward = cargo.right * (farEnd ? -1 : 1);
+            rider = new Pose(current.Grip(farEnd, gripHalfWidth), Quaternion.LookRotation(inward));
+            Vector3 across = rider.rotation * Vector3.right * .14f;
+            left = center - across;
+            right = center + across;
+            return true;
+        }
         internal Vector3 SupplyPoint => StartPoint + Forward * (InstalledCount * Pitch - supplySetback);
         internal Vector3 SocketPoint => StartPoint + Forward * (InstalledCount * Pitch - socketSetback);
         internal float GripHalfWidth => gripHalfWidth;

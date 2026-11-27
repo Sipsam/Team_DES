@@ -1,13 +1,14 @@
 param(
     [Parameter(Mandatory)][string]$Build,
     [Parameter(Mandatory)][string]$Run,
-    [ValidateSet('rematch','presentation','settings','transition','transitionRecovery','foundation','foundationImpaired','cameraControls','poleRecovery','bridge','bridgeContact','bridgeDisconnect','river','riverRecovery','castleUnderground','castleReconnect','cavernHazards','cavernReconnect','contest','contestRegions','contestLifecycle','return','returnInput','returnReconnect','mountain','mountainFromSpawn','mountainEntry','full','canyon','approach','summit','castle','castleWalk','riverLink','middle','finish')]
+    [ValidateSet('rematch','presentation','settings','transition','transitionRecovery','foundation','foundationImpaired','cameraControls','poleRecovery','bridge','bridgeContact','bridgeDisconnect','river','riverRecovery','castleUnderground','castleReconnect','cavernHazards','cavernReconnect','contest','contestRegions','contestLifecycle','return','returnInput','returnReconnect','mountain','mountainExchange','mountainFromSpawn','mountainEntry','full','canyon','approach','summit','castle','castleWalk','riverLink','middle','finish')]
     [string]$Case = 'foundation',
     [string]$PolePlan = 'Docs/Development/Gameplay/V1/MountainPole/ContinuousPlan.json',
     [string]$ReturnPlan = 'Docs/Development/Gameplay/V1/MountainReturn/Route.json',
     [switch]$Headless,
     [switch]$Screenshots,
     [switch]$AudioTrace,
+    [switch]$PolishTrace,
     [ValidateSet(1024,1280,1600,1920,2560)][int]$Width = 1024,
     [string]$EvidenceRoot = 'Docs/Development/Gameplay/V1/RelayRuns'
 )
@@ -77,9 +78,10 @@ try {
             if ($Case -eq 'returnInput') { $extra += '-returnInput'; $marker = 'input-pass'; $captureFlag = '-returnScreenshots' }
             if ($Case -eq 'returnReconnect') { $extra += '-returnRecovery' }
         }
-        '^mountain$' {
+        '^mountain(Exchange)?$' {
             $mode = 'mountainPoleRun'; $evidence = 'mountainPoleEvidence'; $timeout = 1700
             $extra = @('-mountainPolePlan',(Resolve-Path -LiteralPath $PolePlan).Path)
+            if ($Case -eq 'mountainExchange') { $extra += '-mountainFirstExchange'; $marker = 'exchange-pass'; $timeout = 420 }
         }
         '^(full|mountainFromSpawn|mountainEntry|canyon|approach|summit|castle|castleWalk|riverLink|middle|finish)$' {
             $marker = 'full-match-pass'
@@ -113,6 +115,7 @@ try {
     }
     if ($Screenshots -and !$Headless -and $captureFlag) { $extra += $captureFlag }
     if ($AudioTrace) { $extra += '-twinAudioTrace' }
+    if ($PolishTrace) { $extra += '-v3PolishTrace' }
     foreach ($role in 'host','client') {
         $arguments = $graphics + @('-runInBackground',"-$mode",$role,"-$evidence",$output,'-logFile',"$output/$role.log") + $extra
         $quoted = $arguments | ForEach-Object { if ($_ -match '\s') { '"' + $_ + '"' } else { $_ } }

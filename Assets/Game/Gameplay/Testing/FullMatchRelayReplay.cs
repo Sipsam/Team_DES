@@ -420,6 +420,9 @@ namespace TwinEdge.Gameplay
                 heightError = Mathf.Max(heightError, Mathf.Abs(feet.y - valley.CanyonStairProfile(feet.z).y));
                 peak = Mathf.Max(peak, Vector3.ProjectOnPlane(Player.Velocity, Vector3.up).magnitude);
                 Require(heightError < .7f && character.RespawnCount.Value == respawns, $"stair route at {feet:F2}");
+                if (isolatedLink == "canyon" && GameplayEffects.Trace &&
+                    feet.z > top.z + 2 && feet.z < bottom.z - 2 && character.LandingPoseForTest)
+                    Require(false, $"no false landing animation while traversing supported treads at {feet:F2}");
                 if (!capturedStairs && isolatedLink == "canyon" && screenshots &&
                     Mathf.Abs(feet.z - (top.z + bottom.z) * .5f) < 2)
                 {

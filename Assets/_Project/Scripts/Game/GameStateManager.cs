@@ -1,4 +1,5 @@
 using TwinEdge.Audio;
+using TwinEdge.Gameplay;
 using System;
 using System.Collections.Generic;
 using Unity.Netcode;
@@ -284,7 +285,13 @@ public sealed class GameStateManager : NetworkBehaviour
     void WorldCueRpc(AudioCueId cue, Vector3 position, double occurredAt, RpcParams rpc = default)
     {
         if (HasLiveAudio && NetworkManager.ServerTime.Time - occurredAt < .7)
+        {
             AudioService.Play(cue, position);
+            if (cue == AudioCueId.TimberInstall)
+                GameplayEffects.Emit(this, GameplayEffects.Kind.Timber, position, Vector3.up * .4f);
+            else if (cue == AudioCueId.PoleContact)
+                GameplayEffects.Emit(this, GameplayEffects.Kind.Stone, position, Vector3.up * .45f, 1.25f);
+        }
     }
 
     public event Action<GameState, GameState> StateChanged;
@@ -420,6 +427,7 @@ public sealed class GameStateManager : NetworkBehaviour
     public override void OnNetworkDespawn()
     {
         if (foundationMode) AudioService.StopSession();
+        GameplayEffects.Clear(this);
         clientReady.OnValueChanged -= OnClientReadyChanged;
         foundationPhase.OnValueChanged -= OnFoundationChanged;
         currentState.OnValueChanged -= HandleStateChanged;

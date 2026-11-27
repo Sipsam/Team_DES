@@ -89,8 +89,10 @@ namespace TwinEdge.Gameplay
         public override void OnNetworkDespawn()
         {
             UnbindAudio();
+            UnbindEffects();
             capeColor.OnValueChanged -= ApplyCapeColor;
             RestoreContestPose();
+            RestoreToolVisual();
             RestoreCarryCollision();
             if (IsServer) BreakCarryServer();
         }

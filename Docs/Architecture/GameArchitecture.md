@@ -58,6 +58,8 @@ DeepGullies의 정상 림과 암반 기저 접합부를 좁은 범위에서 둥�
 
 성채의 평평한 안뜰과 지하문 뒤 연결부에는 기단의 석재 바닥을 사용한다. 지하 계단의 수평 데크는 같은 높이에서 겹치는 면을 잘라 한 번씩 렌더링한다. 기존 계단과 안뜰 Collider는 저장 씬에 그대로 있고, 계단탑 남쪽 벽과 안쪽 천장·바닥은 지하 입구를 남기고 외부를 가린다. 계단탑과 내부에서 보이는 북동쪽 성벽은 기존 벽 텍스처를 트라이플래너 방식으로 투영한다.
 
+게임플레이 장식 효과는 저장 월드와 별도의 런타임 Particle System에서 URP Particles/Unlit 공유 재질을 사용한다. D3D11에서 지형 재질과 같은 카메라 깊이 검사를 적용한다. [입자 수명과 캐릭터 바인딩](GameplaySystems.md#캐릭터-애니메이션과-월드-효과)
+
 **Tools > Twin Edge > Audit project dependencies (read only)**는 Unity 의존성, GUID 및 미리보기 씬 로드를 검사한다. 내부 결과는 무시된 `Docs/Development/Architecture/V1/Audit/`에 생성된다. V1/V2 씬과 프로토타입은 Git에서 열 수 있다. [과거 프로젝트 복원 절차](../Archive/Prototype_v1.md)
 
 

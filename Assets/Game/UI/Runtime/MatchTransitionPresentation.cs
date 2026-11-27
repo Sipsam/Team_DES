@@ -91,7 +91,7 @@ namespace TwinEdge.Presentation
             bool returning = window.Kind == MatchTransition.Return;
             edge.color = returning ? PresentationTheme.Competition : PresentationTheme.Cooperation;
             float fade = Mathf.Clamp01(remaining / .24f);
-            banner.alpha = Mathf.Lerp(1, fade, intensity);
+            banner.alpha = countdown ? 1 : Mathf.Lerp(1, fade, intensity);
             banner.gameObject.SetActive(true);
 
             bool number = countdown && !startNotice;
@@ -165,10 +165,7 @@ namespace TwinEdge.Presentation
             if (!source || !source.HasProperty("_EmissionColor")) return;
             shardMaterial = new Material(source);
             shardMaterial.EnableKeyword("_EMISSION");
-            shardMesh = new Mesh { name = "Transition crystal" };
-            shardMesh.vertices = new[] { Vector3.up, Vector3.right, Vector3.forward, Vector3.left, Vector3.back, Vector3.down };
-            shardMesh.triangles = new[] { 0, 2, 1, 0, 3, 2, 0, 4, 3, 0, 1, 4, 5, 1, 2, 5, 2, 3, 5, 3, 4, 5, 4, 1 };
-            shardMesh.RecalculateNormals();
+            shardMesh = CreateCrystalMesh("Transition crystal");
             for (int i = 0; i < shards.Length; i++)
             {
                 var shard = new GameObject("Crystal", typeof(MeshFilter), typeof(MeshRenderer));
@@ -180,6 +177,15 @@ namespace TwinEdge.Presentation
                 renderer.shadowCastingMode = ShadowCastingMode.Off;
                 renderer.receiveShadows = false;
             }
+        }
+
+        internal static Mesh CreateCrystalMesh(string name)
+        {
+            var mesh = new Mesh { name = name };
+            mesh.vertices = new[] { Vector3.up, Vector3.right, Vector3.forward, Vector3.left, Vector3.back, Vector3.down };
+            mesh.triangles = new[] { 0, 2, 1, 0, 3, 2, 0, 4, 3, 0, 1, 4, 5, 1, 2, 5, 2, 3, 5, 3, 4, 5, 4, 1 };
+            mesh.RecalculateNormals();
+            return mesh;
         }
 
         internal void Hide()

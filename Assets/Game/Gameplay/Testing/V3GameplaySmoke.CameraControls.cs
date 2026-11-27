@@ -24,6 +24,18 @@ public sealed partial class V3GameplaySmoke
         Box("Controls floor", center + Vector3.down * .5f, new Vector3(60, 1, 60));
         Box("Remote controls floor", new Vector3(-center.x, center.y - .5f, center.z), new Vector3(60, 1, 60));
         Box("Controls wall", center + runDirection * 18 + Vector3.up * 2, new Vector3(16, 4, .2f));
+        GameObject visibleFloor = null;
+        Material floorMaterial = null;
+        if (capture && GameplayEffects.Trace)
+        {
+            visibleFloor = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            visibleFloor.name = "Movement evidence floor";
+            visibleFloor.GetComponent<Collider>().enabled = false;
+            visibleFloor.transform.position = center + Vector3.down * .52f;
+            visibleFloor.transform.localScale = new Vector3(60, 1, 60);
+            floorMaterial = new Material(Shader.Find("Universal Render Pipeline/Lit")) { color = new Color(.32f, .32f, .29f) };
+            visibleFloor.GetComponent<Renderer>().sharedMaterial = floorMaterial;
+        }
         camera.transform.position = center + Vector3.up * 1.4f - runDirection * 5f;
         camera.transform.rotation = Quaternion.LookRotation(runDirection);
         Teleport(center);
@@ -83,7 +95,8 @@ public sealed partial class V3GameplaySmoke
         if (capture)
         {
             camera.transform.position = player.transform.position + Vector3.up * 1.15f - runDirection * 4f;
-            ScreenCapture.CaptureScreenshot(ControlPath("run", host, "png"));
+            if (GameplayEffects.Trace) PoleRuntimeCapture.SaveOwnerView(ControlPath("run", host, "png"));
+            else ScreenCapture.CaptureScreenshot(ControlPath("run", host, "png"));
         }
         yield return Until(() => remote.AnimationState == "Run" && Mathf.Approximately(remote.animator.speed, 1.5f) &&
             Vector3.Dot(remote.transform.position - remoteStart, -runDirection) > 5f, "Remote run cadence and opposite travel replicated", 5);
@@ -125,6 +138,13 @@ public sealed partial class V3GameplaySmoke
             yield return null;
         }
         Check(player.IsGrounded && apex - ground > 1.33f && apex - ground < 1.55f, $"Normal jump lands, rise {apex - ground:F3}m");
+        if (capture && GameplayEffects.Trace)
+        {
+            yield return new WaitForSeconds(.10f);
+            camera.transform.position = player.transform.position + Vector3.up * 1.3f - runDirection * 3f + Vector3.right * 2f;
+            camera.transform.LookAt(player.transform.position + Vector3.up * .65f);
+            PoleRuntimeCapture.SaveOwnerView(ControlPath("landing", host, "png"));
+        }
         if (audioTrace)
         {
             yield return new WaitForSeconds(.2f);
@@ -132,6 +152,8 @@ public sealed partial class V3GameplaySmoke
                 "One jump and one landing cue, with no footfalls in air");
             Application.logMessageReceived -= CountMovementCue;
         }
+        if (visibleFloor) Destroy(visibleFloor);
+        if (floorMaterial) Destroy(floorMaterial);
         yield return RunPoleCameraControls(camera, capture);
         camera.enabled = true;
         yield return ControlBarrier("finished");

@@ -212,12 +212,19 @@ namespace TwinEdge.Gameplay
             InputSystem.QueueStateEvent(keyboard, new KeyboardState());
             yield return Until(() => !launch.PredictionVisible, "Release hides preview");
             yield return Until(() => launch.InFlight, "Actual R release launches");
+            if (capture && GameplayEffects.Trace)
+                PoleRuntimeCapture.SaveOwnerView(output + "/" + prefix + "-launch-flight.png");
             var v = launch.InitialVelocity.Value;
             float pitch = Mathf.Atan2(v.y, new Vector2(v.x, v.z).magnitude) * Mathf.Rad2Deg;
             float charge = Mathf.InverseLerp(launch.config.minSpeed, launch.config.maxSpeed, v.magnitude);
             Check(pitch > 55 && Mathf.Abs(Mathf.DeltaAngle(yaw, Mathf.Atan2(v.x, v.z) * Mathf.Rad2Deg)) < .1f,
                 "Actual W and camera changed elevation and yaw");
             yield return Until(() => launch.State.Value == LaunchState.Landing, "Input launch landed", 12);
+            if (capture && GameplayEffects.Trace)
+            {
+                yield return new WaitForSeconds(.10f);
+                PoleRuntimeCapture.SaveOwnerView(output + "/" + prefix + "-launch-landing.png");
+            }
             ReportPrediction(launch.ReleasedPrediction, "Final", yaw, pitch, charge);
             yield return Until(() => launch.State.Value == LaunchState.Ready, "Input launch landed and rearmed", 12);
             Check(launch.LastLanding.Value.ToString() == "Final" && launch.GetComponent<GameplayCharacter>().RespawnCount.Value == count, "Input flight real Final landing without respawn");

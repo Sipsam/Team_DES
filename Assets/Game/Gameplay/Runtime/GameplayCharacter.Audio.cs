@@ -130,7 +130,7 @@ namespace TwinEdge.Gameplay
             }
 
             // Remote support is represented by the existing replicated grounded animation.
-            bool grounded = IsOwner ? contestMovement.IsGrounded : DisplayMotion != 3;
+            bool grounded = IsOwner ? contestMovement.IsGrounded : !IsAirMotion(DisplayMotion);
             if (!grounded)
             {
                 if (sampledGround)
@@ -158,7 +158,7 @@ namespace TwinEdge.Gameplay
             }
             else if (distance / elapsed > .25f)
             {
-                bool running = IsOwner ? distance / elapsed > 4f : DisplayMotion == 2;
+                bool running = IsOwner ? distance / elapsed > 4f : DisplayMotion == Motion.Run;
                 if (AccumulateStride(distance, running ? 2.5f : 1.5f))
                     contestGame.PlayLiveCue(AudioService.HasHardFooting(feet) ? AudioCueId.StepHard : AudioCueId.StepSoft, feet);
             }

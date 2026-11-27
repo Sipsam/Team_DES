@@ -443,6 +443,7 @@ namespace TwinEdge.Gameplay
                 gem.UnlockServer(feet + Vector3.up * .65f + Vector3.forward);
             }
             yield return Wait(() => gem.State == GemState.Available, "gem available on both peers");
+            if (GameplayEffects.Trace) yield return Screenshot("gem-available");
             if (audioTrace) yield return CheckCourse(MusicTheme.Summit, AmbientBed.Mountain);
             yield return Barrier("gem-available");
             if (host) gem.RequestAcquire();
