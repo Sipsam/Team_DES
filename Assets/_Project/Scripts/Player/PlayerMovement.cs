@@ -56,6 +56,10 @@ public sealed class PlayerMovement : NetworkBehaviour
         contest = GetComponent<TwinEdge.Gameplay.GameplayCharacter>();
     }
 
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+    private void OnControllerColliderHit(ControllerColliderHit hit) => TwinEdge.Gameplay.BridgeRelaySmoke.TraceContact(this, hit);
+#endif
+
     private void Update()
     {
         if (IsSpawned && !IsOwner)
@@ -142,6 +146,10 @@ public sealed class PlayerMovement : NetworkBehaviour
             ? gameplayInput.Jump?.WasPressedThisFrame() == true : keyboard?.spaceKey.wasPressedThisFrame == true);
         bool jump = pressedJump && IsGrounded;
         bool onBridge = bridge?.UsesBridgeJump(transform.position) == true;
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+        if (pressedJump && TwinEdge.Gameplay.BridgeRelaySmoke.Tracing)
+            TwinEdge.Gameplay.BridgeRelaySmoke.TraceEvent($"jump input grounded={IsGrounded} bridge={onBridge} sprint={wantsSprint} move={moveDirection:F4}");
+#endif
         if (IsSpawned && contest != null)
         {
             if (pressedJump) bufferedJumpUntil = Time.time + .12f;
@@ -158,6 +166,10 @@ public sealed class PlayerMovement : NetworkBehaviour
             verticalSpeed = Mathf.Sqrt(2f * gravity * jumpHeight);
             sprintJump = sprint;
             if (onBridge && bridge != null) bridgeJumpSpeed = bridge.BridgeJumpSpeed(sprint);
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+            if (TwinEdge.Gameplay.BridgeRelaySmoke.Tracing)
+                TwinEdge.Gameplay.BridgeRelaySmoke.TraceEvent($"jump consumed feet={transform.position:F4} vertical={verticalSpeed:R} bridgeSpeed={bridgeJumpSpeed:R} sprint={sprint}");
+#endif
         }
 
         verticalSpeed -= gravity * Time.deltaTime;

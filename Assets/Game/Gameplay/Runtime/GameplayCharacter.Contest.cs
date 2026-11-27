@@ -163,6 +163,7 @@ namespace TwinEdge.Gameplay
             if (rpc.Receive.SenderClientId != OwnerClientId || !IsCurrentLifeServer(life) || sequence <= lastJumpSequence) return;
             if (!contestGame.AcceptsAction(action) || NetworkManager.ConnectedClientsList.Count != 2)
             {
+                TraceJumpDecision("action or peer count", life, sequence, false, false);
                 JumpReplyRpc(life, sequence, false, false);
                 return;
             }
@@ -173,6 +174,7 @@ namespace TwinEdge.Gameplay
                 Now >= nextJumpAt && stamina.Value >= jumpCost && stamina.Value > 0;
             if (!allowed)
             {
+                TraceJumpDecision("movement or stamina", life, sequence, false, false);
                 JumpReplyRpc(life, sequence, false, false);
                 return;
             }
@@ -180,8 +182,19 @@ namespace TwinEdge.Gameplay
             if (fast) sprintIntentUntil = Now + .25;
             SpendStamina(jumpCost);
             nextJumpAt = Now + .12;
+            TraceJumpDecision("approved", life, sequence, true, fast);
             JumpReplyRpc(life, sequence, true, fast);
         }
+
+        partial void TraceJumpDecision(string result, int life, uint sequence, bool approved, bool sprint);
+
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+        partial void TraceJumpDecision(string result, int life, uint sequence, bool approved, bool sprint)
+        {
+            if (BridgeRelaySmoke.Tracing)
+                BridgeRelaySmoke.TraceEvent($"jump server decision owner={OwnerClientId} life={life} sequence={sequence} approved={approved} sprint={sprint} result={result}");
+        }
+#endif
 
         internal bool HasGround()
         {
@@ -201,6 +214,10 @@ namespace TwinEdge.Gameplay
         [Rpc(SendTo.Owner, InvokePermission = RpcInvokePermission.Server)]
         void JumpReplyRpc(int life, uint sequence, bool approved, bool sprint)
         {
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+            if (BridgeRelaySmoke.Tracing)
+                BridgeRelaySmoke.TraceEvent($"jump reply received owner={OwnerClientId} life={life} sequence={sequence} approved={approved} sprint={sprint}");
+#endif
             if (!IsOwner || life != ownerLife || Time.unscaledTime >= ownerJumpDeadline || sequence != ownerJumpSequence) return;
             ownerJumpDeadline = 0;
             ownerJumpAccepted = approved;

@@ -96,6 +96,9 @@ namespace TwinEdge.Gameplay
 
         void OnDelivery(int previous, int next)
         {
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+            if (BridgeRelaySmoke.Tracing) BridgeRelaySmoke.TraceEvent($"delivery state previous={previous} next={next}");
+#endif
             RefreshDeck();
             OnDeliveryChanged();
         }
@@ -107,6 +110,9 @@ namespace TwinEdge.Gameplay
             {
                 removed[change.Value] = true;
                 SetSupport(change.Value, false);
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+                if (BridgeRelaySmoke.Tracing) BridgeRelaySmoke.TraceEvent($"support removed plank={change.Value}");
+#endif
                 game.PlayLiveCue(AudioCueId.BridgeCollapse, planks[change.Value].transform.position);
                 GameplayEffects.Emit(game, GameplayEffects.Kind.Timber, planks[change.Value].transform.position, Vector3.up * .35f);
             }

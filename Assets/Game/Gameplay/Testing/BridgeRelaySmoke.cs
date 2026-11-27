@@ -11,9 +11,10 @@ using UnityEngine.InputSystem.LowLevel;
 
 namespace TwinEdge.Gameplay
 {
-    public sealed class BridgeRelaySmoke : MonoBehaviour
+    public sealed partial class BridgeRelaySmoke : MonoBehaviour
     {
         bool host, failed, carryDisconnect, contactWithoutFall, capture;
+        int carryRepeats = 1;
         FullMatchRelayReplay fullMatch;
         string output, peer;
         BridgeGameplay bridge;
@@ -35,6 +36,11 @@ namespace TwinEdge.Gameplay
             test.contactWithoutFall = Array.IndexOf(args, "-bridgeContactWithoutFall") >= 0;
             test.peer = test.host ? "host" : "client";
             test.output = args[Array.IndexOf(args, "-bridgeEvidence") + 1];
+            test.traceEnabled = Array.IndexOf(args, "-bridgeTrace") >= 0;
+            int route = Array.IndexOf(args, "-bridgeHazardRoute");
+            if (route >= 0) test.hazardRoutePath = args[route + 1];
+            int repeats = Array.IndexOf(args, "-bridgeCarryRepeats");
+            if (repeats >= 0) test.carryRepeats = int.Parse(args[repeats + 1]);
             Directory.CreateDirectory(test.output);
         }
 
@@ -76,6 +82,7 @@ namespace TwinEdge.Gameplay
             keyboard = InputSystem.AddDevice<Keyboard>();
             movementPad = InputSystem.AddDevice<Gamepad>();
             player.GetComponent<GameplayInput>().SimulateCapturedCursor = true;
+            StartTrace(manager);
             var side = Vector3.right * (host ? -bridge.GripHalfWidth : bridge.GripHalfWidth);
             // Only initial summit station placement. All deliveries and crossing use production input and CC.
             Teleport(bridge.SupplyPoint + side);
@@ -85,6 +92,7 @@ namespace TwinEdge.Gameplay
             if (carryDisconnect) yield break;
             if (host)
             {
+                if (hazardRoutePath != null) bridge.SetReplayHazards(File.ReadAllText(hazardRoutePath).Trim());
                 Check(game.AdvanceFoundation(FoundationPhase.SealPending), "Seal test transition");
                 Check(game.AdvanceFoundation(FoundationPhase.Return), "Return test transition");
             }
@@ -132,10 +140,17 @@ namespace TwinEdge.Gameplay
 
         IEnumerator BuildAndCross(MultiplayerSessionManager sessions, NetworkManager manager, GameStateManager game, Vector3 side)
         {
-            for (int delivery = 0; delivery < bridge.TotalDeliveries; delivery++)
+            int trial = 1;
+            for (int delivery = 0; delivery < bridge.TotalDeliveries;)
             {
+                bool targetDelivery = delivery == 7 || delivery == 8;
+                bool repeating = targetDelivery && carryRepeats > 1;
+                string trialSuffix = repeating ? "-trial-" + trial : "";
+                var trialCharacter = repeating ? player.GetComponent<GameplayCharacter>() : null;
+                int life = trialCharacter != null ? trialCharacter.RespawnCount.Value : 0;
+                if (targetDelivery) BeginTrace("carry-" + (delivery + 1) + trialSuffix, default, bridge.SupplyPoint);
                 yield return WalkTo(bridge.SupplyPoint + side, true);
-                yield return Barrier("supply" + delivery);
+                yield return Barrier("supply" + delivery + trialSuffix);
                 if (host) yield return Tap(Key.E);
                 yield return Until(() => bridge.Load.supplied, "E supply " + delivery);
                 yield return Until(() => ReferenceEquals(player.GetComponent<PlayerInteraction>().CurrentTarget, bridge), "Grip target " + delivery);
@@ -184,6 +199,7 @@ namespace TwinEdge.Gameplay
                     Check(Mathf.Abs(bridge.Load.center.z - startZ) < .4f, "Rotation opposed translation");
                 }
                 Steer(bridge.Forward);
+                SetTraceTarget(bridge.SocketPoint);
                 yield return Until(() => bridge.Load.center.z >= bridge.SocketPoint.z - .38f, "Two-input carry " + delivery, 12);
                 Steer(Vector3.zero);
                 if (carryDisconnect)
@@ -224,18 +240,40 @@ namespace TwinEdge.Gameplay
                     Application.Quit(0);
                     yield break;
                 }
-                yield return Barrier("socket" + delivery);
+                yield return Barrier("socket" + delivery + trialSuffix);
                 if (host && delivery == 0 && fullMatch == null) SaveRender("carry", bridge.Load.center + Vector3.up, new Vector3(6, 5, -8));
                 if (delivery == 0) fullMatch?.Capture("bridge-first-delivery");
                 yield return new WaitForSeconds(.4f);
                 Check(bridge.Load.center.z - startZ > 4f && Vector3.Distance(player.transform.position,
                     bridge.Load.Grip(!host, bridge.GripHalfWidth)) < .65f, "Load travelled and owner aligned " + delivery);
+                if (repeating)
+                {
+                    uint revision = bridge.Load.revision;
+                    Check(trialCharacter.RespawnCount.Value == life && player.IsGrounded && bridge.Load.Paired &&
+                        bridge.CompletedDeliveries == delivery, "Repeated carry reached the socket in the original life");
+                    yield return Barrier("carry-pass-" + (delivery + 1) + trialSuffix);
+                    if (trial < carryRepeats)
+                    {
+                        if (host) yield return Tap(Key.Escape);
+                        yield return Until(() => !bridge.Load.supplied && bridge.Load.revision == revision + 1 &&
+                            !bridge.Holds(player.OwnerClientId), "Repeated carry cancellation");
+                        Check(bridge.CompletedDeliveries == delivery && trialCharacter.RespawnCount.Value == life,
+                            "Cancellation restored the uninstalled delivery and same life");
+                        yield return Barrier("cancelled-" + (delivery + 1) + trialSuffix);
+                        EndTrace();
+                        trial++;
+                        continue;
+                    }
+                }
                 if (!host) yield return Until(() => bridge.Load.approvals != 0, "First approval " + delivery);
                 yield return Tap(Key.E);
                 int expected = delivery + 1;
                 yield return Until(() => bridge.CompletedDeliveries == expected, "Server installation " + expected);
                 CheckSupport(bridge.InstalledCount);
                 yield return Barrier("installed" + expected);
+                if (targetDelivery) EndTrace();
+                trial = 1;
+                delivery++;
             }
 
             int respawns = player.GetComponent<GameplayCharacter>().RespawnCount.Value;
@@ -279,7 +317,9 @@ namespace TwinEdge.Gameplay
                     .OrderByDescending(i => route[i + 2]).First();
                 int second = candidates.First(i => Mathf.Abs(i - hole) >= 12 && !route[i - 2]);
                 int contact = candidates.First(i => Mathf.Abs(i - hole) >= 12 && Mathf.Abs(i - second) >= 12);
+                BeginTrace("proximity", planks[host ? hole : second].GetComponent<Collider>(), planks[host ? hole : second].socket);
                 yield return ProbeProximity(side, hole, second, contact, route);
+                EndTrace();
                 if (!contactWithoutFall)
                 {
                     if (host)
@@ -313,11 +353,13 @@ namespace TwinEdge.Gameplay
                 var bounds = planks[high].GetComponent<Collider>().bounds;
                 var takeoff = planks[high].socket + side;
                 takeoff.z = bounds.min.z + .17f;
+                if (high <= 12) BeginTrace($"jump-{high}-{low}", planks[low].GetComponent<Collider>(), takeoff);
                 yield return WalkTo(takeoff, true, .13f);
                 yield return Until(() => bridge.IsCollapsed(high - 1) && (!sprint || bridge.IsCollapsed(high - 2)),
                     "Approach collapsed the gap from a safe plank " + high);
                 if (singles + doubles == 0) fullMatch?.Capture("bridge-collapse");
                 yield return Until(() => player.IsGrounded, "Grounded takeoff " + high);
+                SetTraceTarget(planks[low].socket + side);
                 Steer(-bridge.Forward);
                 if (sprint) Keys(Key.Space, Key.LeftShift);
                 else Keys(Key.Space);
@@ -330,10 +372,12 @@ namespace TwinEdge.Gameplay
                 var targetSupport = planks[low].GetComponent<Collider>();
                 bool supported = Physics.Raycast(feet + Vector3.up * .12f, Vector3.down, out var support, .4f, ~0,
                     QueryTriggerInteraction.Ignore) && support.collider == targetSupport;
+                if (Tracing) TraceEvent($"landing assertion expected={targetSupport.name} ray={support.collider?.name} supported={supported}");
                 Check(supported, $"Jump {high}->{low} expected {targetSupport.name}, got {support.collider?.name ?? "no support"}");
                 if (sprint) doubles++;
                 else singles++;
                 Check(character.RespawnCount.Value == respawns, "No respawn during jump " + high);
+                if (high <= 12) EndTrace();
                 yield return new WaitForSeconds(.08f);
             }
             yield return WalkTo(bridge.StartPoint + side - Vector3.forward * 3, true);
@@ -390,7 +434,12 @@ namespace TwinEdge.Gameplay
         {
             // Express the intended world direction through the owner's normal camera-relative input.
             if (fullMatch != null) fullMatch.SteerWorld(worldDirection);
-            else FullMatchRelayReplay.SteerStick(movementPad, FullMatchRelayReplay.CameraRelativeStick(player, worldDirection));
+            else
+            {
+                var stick = FullMatchRelayReplay.CameraRelativeStick(player, worldDirection);
+                if (Tracing) TraceSteering(worldDirection, stick);
+                FullMatchRelayReplay.SteerStick(movementPad, stick);
+            }
         }
 
         IEnumerator MarkCancel()
@@ -412,6 +461,7 @@ namespace TwinEdge.Gameplay
 
         IEnumerator WalkTo(Vector3 target, bool sprint, float tolerance = .28f)
         {
+            if (Tracing) TraceEvent($"walk target={target:F4} sprint={sprint} tolerance={tolerance:R}");
             float deadline = Time.realtimeSinceStartup + 25;
             while (true)
             {
@@ -430,6 +480,7 @@ namespace TwinEdge.Gameplay
 
         void Teleport(Vector3 position)
         {
+            if (Tracing) TraceEvent($"fixture station teleport target={position:F4}");
             var controller = player.GetComponent<CharacterController>();
             controller.enabled = false;
             player.GetComponent<OwnerNetworkTransform>().Teleport(V3GameplayBootstrap.SafeGround(position), Quaternion.identity, Vector3.one);
@@ -446,8 +497,15 @@ namespace TwinEdge.Gameplay
             camera.farClipPlane = 2000;
             camera.transform.position = focus + offset;
             camera.transform.LookAt(focus);
+            try { SaveCameraRender(label, camera); }
+            finally { Destroy(cameraObject); }
+        }
+
+        void SaveCameraRender(string label, Camera camera)
+        {
             var target = new RenderTexture(960, 540, 24);
             var prior = RenderTexture.active;
+            var priorTarget = camera.targetTexture;
             var image = new Texture2D(target.width, target.height, TextureFormat.RGB24, false);
             try
             {
@@ -461,15 +519,18 @@ namespace TwinEdge.Gameplay
             finally
             {
                 RenderTexture.active = prior;
-                camera.targetTexture = null;
+                camera.targetTexture = priorTarget;
                 target.Release();
                 Destroy(target);
                 Destroy(image);
-                Destroy(cameraObject);
             }
         }
 
-        void Keys(params Key[] keys) => InputSystem.QueueStateEvent(keyboard, new KeyboardState(keys));
+        void Keys(params Key[] keys)
+        {
+            if (Tracing) TraceKeys(keys);
+            InputSystem.QueueStateEvent(keyboard, new KeyboardState(keys));
+        }
         IEnumerator Tap(Key key)
         {
             Keys(key);
@@ -486,6 +547,11 @@ namespace TwinEdge.Gameplay
 
         IEnumerator Until(Func<bool> condition, string label, float seconds = 10, bool simulationTime = false)
         {
+            if (Tracing)
+            {
+                traceWait = label;
+                TraceEvent($"waiting seconds={seconds} simulationTime={simulationTime}");
+            }
             float deadline = Time.realtimeSinceStartup + (simulationTime ? 25 : seconds);
             float simulationDeadline = Time.time + seconds;
             while (!condition())
@@ -493,6 +559,7 @@ namespace TwinEdge.Gameplay
                 Check(Time.realtimeSinceStartup < deadline && (!simulationTime || Time.time < simulationDeadline), label);
                 yield return null;
             }
+            if (Tracing) TraceEvent($"condition met: {label}");
             Debug.Log("BRIDGE_RELAY " + label);
         }
 
@@ -507,7 +574,15 @@ namespace TwinEdge.Gameplay
             if (failed || type != LogType.Exception && type != LogType.Assert) return;
             failed = true;
             File.WriteAllText(output + "/" + peer + "-fail.txt", message + "\n" + stack);
-            Application.Quit(1);
+            bool failedInTrace = Tracing;
+            if (failedInTrace)
+            {
+                TraceEvent($"failure {message}");
+                EndTrace();
+            }
+            if (failedInTrace && SystemInfo.graphicsDeviceType != UnityEngine.Rendering.GraphicsDeviceType.Null)
+                StartCoroutine(CaptureFailureAndQuit());
+            else Application.Quit(1);
         }
     }
 }

@@ -190,6 +190,23 @@ After generating the saved mountain Return plan below, use `-Case return -Return
 
 Use `-Case bridge` to verify all 13 timber deliveries, the outbound crossing, proximity boundaries at four, three, two and zero plank slots, replicated warning and removal, Canyon bridge approach recovery and both players’ Return crossings. The legacy `bridgeContact` case runs the same proximity and crossing checks without the dedicated fall station. The probes stage each owner at separate slots before traversing the deck by camera-relative input. `-Screenshots` records the outbound deck, warning and collapse. Repeat with distinct run names for different server-selected hazards. Check both peers’ proximity and Return pass files and exit codes.
 
+### Bridge stability diagnosis
+
+Build a fresh Development Player with `TWIN_EDGE_V3_BUILD` set to a unique direct child of `Builds/`. Run `bridge` first with the default 1024×720 D3D11 windows and no other Player or Editor. For QA-03, PRES-08 Run-015 used headless graphics and the 198-slot route below. The characters still use the original inputs and the server still schedules warnings and removes supports. Repeat the command without `-Headless` for a D3D11 comparison.
+
+```powershell
+$evidence = 'Docs/Development/BridgeStability/V1'
+New-Item -ItemType Directory -Path $evidence -Force | Out-Null
+$id = Get-Date -Format 'yyyyMMdd-HHmmssfff'
+$route = "$evidence/Run015-route-$id.txt"
+'000001100000001000000010001000000011000000110110000000001001000010000010100000001000000100001000100100010001000000000000001001100010011001100000100000001001010000000001001001000010000000000100000000' | Set-Content -LiteralPath $route
+./Tools/Playtest/Run-Relay.ps1 -Build $build -Case bridge -Headless -Run "TraceHeadless-$id" -EvidenceRoot $evidence -BridgeTrace -BridgeHazardRoute $route
+```
+
+`-BridgeTrace` records limited frame and event histories per peer for deliveries 8 and 9, proximity, and late Return jumps. The trace distinguishes the driver's center ray, owner capsule contact, and each peer's observed transform. Align records on estimated server time and confirm the event order using each peer's local and frame counters. Compare 8th installation and 9th carry separately because the historic driver labels deliveries from zero. Record the active process inventory and actual frame cadence when introducing load. Use new run IDs for every comparison. Evidence hashes and private Relay logs stay in the ignored output. D3D11 failures attempt to capture the actual Player window. Development station placement precedes the crossing checks. Record it separately from any unexpected route teleport or recovery.
+
+For repeated carry checks, add `-BridgeCarryRepeats 10` to a D3D11 `bridge` run. At deliveries 8 and 9, both owners walk to the original supply, grip the timber, carry to the original socket and confirm support in the same life. The Host uses normal Escape to restore the uninstalled delivery between trials. After the tenth carry the peers install with the original two E approvals. Count both peers' `carry-pass` and `cancelled` markers and inspect server state changes before counting a trial. Then verify all 13 installations and the original Return pass files. Use a separate `bridgeDisconnect` run for opposing-input rotation, reconnect and outbound fall recovery.
+
 The mountain and finish fixtures need route data from the same saved scene. In the same PowerShell session, generate it and run the isolated finish when that path is in scope.
 
 ```powershell

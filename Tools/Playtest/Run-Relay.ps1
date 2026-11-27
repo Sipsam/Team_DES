@@ -11,11 +11,21 @@ param(
     [switch]$PolishTrace,
     [switch]$PresentationMetrics,
     [ValidateSet(1024,1280,1600,1920,2560)][int]$Width = 1024,
-    [string]$EvidenceRoot = 'Docs/Development/Gameplay/V1/RelayRuns'
+    [string]$EvidenceRoot = 'Docs/Development/Gameplay/V1/RelayRuns',
+    [switch]$BridgeTrace,
+    [string]$BridgeHazardRoute,
+    [ValidateRange(1,20)][int]$BridgeCarryRepeats = 1
 )
 
 $ErrorActionPreference = 'Stop'
 if ($Run -notmatch '^[a-zA-Z0-9][a-zA-Z0-9_-]*$') { throw 'Use a single directory name for -Run.' }
+if (($BridgeTrace -or $BridgeHazardRoute) -and $Case -notin 'bridge','bridgeContact','bridgeDisconnect') {
+    throw 'Bridge diagnostics require an isolated bridge case.'
+}
+if ($BridgeHazardRoute -and $Case -eq 'bridgeDisconnect') { throw 'The disconnect case has no Return route.' }
+if ($BridgeCarryRepeats -gt 1 -and $Case -notin 'bridge','bridgeContact') {
+    throw 'Carry repeats require a bridge crossing case.'
+}
 $project = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '../..')).Path
 Push-Location -LiteralPath $project
 $players = @()
@@ -53,7 +63,7 @@ try {
         '^cameraControls$' { $extra = @('-v3CameraControls'); $captureFlag = '-v3ControlScreenshots' }
         '^poleRecovery$' { $mode = 'poleSmoke'; $evidence = 'poleEvidence' }
         '^bridge' {
-            $mode = 'bridgeSmoke'; $evidence = 'bridgeEvidence'; $timeout = 560; $captureFlag = '-bridgeScreenshots'
+            $mode = 'bridgeSmoke'; $evidence = 'bridgeEvidence'; $timeout = 560 + 30 * ($BridgeCarryRepeats - 1); $captureFlag = '-bridgeScreenshots'
             if ($Case -eq 'bridgeContact') { $extra = @('-bridgeContactWithoutFall') }
             if ($Case -eq 'bridgeDisconnect') { $extra = @('-bridgeCarryDisconnect'); $marker = 'disconnect-pass' }
         }
@@ -119,16 +129,29 @@ try {
     if ($AudioTrace) { $extra += '-twinAudioTrace' }
     if ($PresentationMetrics) { $extra += '-v3PresentationMetrics' }
     if ($PolishTrace) { $extra += '-v3PolishTrace' }
+    if ($BridgeTrace) { $extra += '-bridgeTrace' }
+    if ($BridgeCarryRepeats -gt 1) { $extra += @('-bridgeCarryRepeats',"$BridgeCarryRepeats") }
+    if ($BridgeHazardRoute) {
+        $route = (Resolve-Path -LiteralPath $BridgeHazardRoute).Path
+        Copy-Item -LiteralPath $route -Destination "$output/replay-route-input.txt"
+        $extra += @('-bridgeHazardRoute',"$output/replay-route-input.txt")
+    }
     foreach ($role in 'host','client') {
         $arguments = $graphics + @('-runInBackground',"-$mode",$role,"-$evidence",$output,'-logFile',"$output/$role.log") + $extra
         $quoted = $arguments | ForEach-Object { if ($_ -match '\s') { '"' + $_ + '"' } else { $_ } }
         $players += Start-Process -FilePath $exe -ArgumentList $quoted -PassThru -WindowStyle Hidden
     }
     $deadline = [DateTime]::UtcNow.AddSeconds($timeout)
+    $failureDeadline = $null
     while ([DateTime]::UtcNow -lt $deadline) {
         $active = @($players | Where-Object { !$_.HasExited })
         $failed = @($players | Where-Object { $_.HasExited -and $_.ExitCode -ne 0 })
-        if (!$active.Count -or $failed.Count) { break }
+        if (!$active.Count) { break }
+        if ($failed.Count) {
+            if (!$BridgeTrace) { break }
+            if (!$failureDeadline) { $failureDeadline = [DateTime]::UtcNow.AddSeconds(4) }
+            if ([DateTime]::UtcNow -ge $failureDeadline) { break }
+        }
         Start-Sleep -Seconds 1
     }
     $exitCodes = @($players | ForEach-Object { if ($_.HasExited) { $_.ExitCode } else { 'stopped' } })
@@ -146,7 +169,7 @@ try {
 }
 finally {
     $players | Where-Object { !$_.HasExited } | Stop-Process
-    if ($Case -in 'settings','castleKeypad' -and $createdOutput) {
+    if (($Case -in 'settings','castleKeypad' -or $BridgeTrace -or $BridgeHazardRoute -or $BridgeCarryRepeats -gt 1) -and $createdOutput) {
         foreach ($name in 'room.txt', 'room.tmp') {
             $codeFile = Join-Path $output $name
             if (Test-Path -LiteralPath $codeFile) { Remove-Item -LiteralPath $codeFile }

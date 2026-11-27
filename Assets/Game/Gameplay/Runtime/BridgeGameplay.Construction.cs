@@ -289,14 +289,26 @@ namespace TwinEdge.Gameplay
         {
             var current = load.Value;
             ulong id = rpc.Receive.SenderClientId;
-            if (!game.AcceptsAction(action) || !CanInteract || current.revision != revision) return;
+            if (!game.AcceptsAction(action) || !CanInteract || current.revision != revision)
+            {
+                TraceTimberUse(id, "rejected action/phase/revision");
+                return;
+            }
             var player = Player(id);
             if (player == null || player.GetComponent<GameplayCharacter>()?.BlocksServerInteraction == true || CooperativePole.Current?.IsAttached(id) == true ||
-                player.GetComponent<MountainReturnLaunch>()?.ControlsMovement == true) return;
+                player.GetComponent<MountainReturnLaunch>()?.ControlsMovement == true)
+            {
+                TraceTimberUse(id, "rejected player state");
+                return;
+            }
             var position = player.transform.position;
             if (!current.supplied)
             {
-                if (Vector3.Distance(position, CratePoint) > 2.3f || !Ground(SupplyPoint, out float height)) return;
+                if (Vector3.Distance(position, CratePoint) > 2.3f || !Ground(SupplyPoint, out float height))
+                {
+                    TraceTimberUse(id, "rejected supply range/support");
+                    return;
+                }
                 current.center = SupplyPoint;
                 current.center.y = height;
                 current.yaw = BridgeYaw;
@@ -304,16 +316,26 @@ namespace TwinEdge.Gameplay
                 constructionReached = true;
                 lastActivity = NetworkManager.ServerTime.Time;
                 load.Value = current;
+                TraceTimberUse(id, "supplied");
                 return;
             }
 
             if (current.Has(id))
             {
-                if (!current.Paired || !AtSocket(current)) return;
+                if (!current.Paired || !AtSocket(current))
+                {
+                    TraceTimberUse(id, "rejected pairing/socket");
+                    return;
+                }
                 var left = Player(current.left);
                 var right = Player(current.right);
-                if (!NearGrip(left, current, false) || !NearGrip(right, current, true)) return;
+                if (!NearGrip(left, current, false) || !NearGrip(right, current, true))
+                {
+                    TraceTimberUse(id, "rejected grip alignment");
+                    return;
+                }
                 current.approvals |= id == current.left ? (byte)1 : (byte)2;
+                TraceTimberUse(id, current.approvals == 3 ? "approved installation" : "approved first grip");
                 if (current.approvals == 3)
                 {
                     Vector3 installedAt = SocketPoint;
@@ -329,12 +351,17 @@ namespace TwinEdge.Gameplay
             bool takeRight = rightDistance < leftDistance;
             if ((takeRight ? rightDistance : leftDistance) > gripRange ||
                 (takeRight ? current.right : current.left) != LoadState.Empty ||
-                !Ground(position, out float floor) || Mathf.Abs(floor - position.y) > .32f) return;
+                !Ground(position, out float floor) || Mathf.Abs(floor - position.y) > .32f)
+            {
+                TraceTimberUse(id, "rejected grip range/occupancy/support");
+                return;
+            }
             if (takeRight) current.right = id;
             else current.left = id;
             SetCarry(id, true);
             lastActivity = NetworkManager.ServerTime.Time;
             load.Value = current;
+            TraceTimberUse(id, "gripped");
             game.EmitWorldCue(AudioCueId.TimberLift, current.Grip(takeRight, gripHalfWidth));
         }
 
@@ -356,7 +383,11 @@ namespace TwinEdge.Gameplay
         [Rpc(SendTo.Server, InvokePermission = RpcInvokePermission.Everyone)]
         void CancelRpc(uint revision, RpcParams rpc = default)
         {
-            if (load.Value.revision == revision && Holds(rpc.Receive.SenderClientId)) ResetLoad();
+            if (load.Value.revision == revision && Holds(rpc.Receive.SenderClientId))
+            {
+                TraceTimberUse(rpc.Receive.SenderClientId, "accepted cancellation");
+                ResetLoad();
+            }
         }
 
         [Rpc(SendTo.Server, Delivery = RpcDelivery.Unreliable, InvokePermission = RpcInvokePermission.Everyone)]
@@ -380,6 +411,10 @@ namespace TwinEdge.Gameplay
             if (Time.unscaledTime >= nextSend)
             {
                 nextSend = Time.unscaledTime + .05f;
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+                if (BridgeRelaySmoke.Tracing)
+                    BridgeRelaySmoke.TraceEvent($"carry input consumed owner={movement.OwnerClientId} revision={current.revision} direction={direction:F4} sprint={sprint}");
+#endif
                 SteerRpc(current.revision, direction, sprint, game.ActionRevision);
             }
             bool right = movement.OwnerClientId == current.right;
@@ -413,11 +448,19 @@ namespace TwinEdge.Gameplay
                 (current.left != LoadState.Empty && !HolderValid(current, false)) ||
                 (current.right != LoadState.Empty && !HolderValid(current, true)))
             {
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+                if (BridgeRelaySmoke.Tracing)
+                    BridgeRelaySmoke.TraceEvent($"carry reset canInteract={CanInteract} idle={now-lastActivity:F3} leftValid={HolderValid(current, false)} rightValid={HolderValid(current, true)}");
+#endif
                 ResetLoad();
                 return;
             }
             if (!current.Paired || now - inputAt[0] > .3 || now - inputAt[1] > .3 ||
-                directions[0].sqrMagnitude < .01f || directions[1].sqrMagnitude < .01f) return;
+                directions[0].sqrMagnitude < .01f || directions[1].sqrMagnitude < .01f)
+            {
+                TraceCarryGate("waiting for paired input");
+                return;
+            }
 
             var left = directions[0] * efforts[0];
             var right = directions[1] * efforts[1];
@@ -426,9 +469,26 @@ namespace TwinEdge.Gameplay
             var loadForward = Quaternion.Euler(0, current.yaw, 0) * Vector3.forward;
             next.yaw += Vector3.Dot(left - right, loadForward) * .5f * turnSpeed * Time.fixedDeltaTime;
             // Ground both hands and the center. Small gaps between original planks remain traversable.
-            if (!Ground(next.center, out float height) || Mathf.Abs(height - current.center.y) > .25f) return;
+            if (!Ground(next.center, out float height) || Mathf.Abs(height - current.center.y) > .25f)
+            {
+                TraceCarryGate("center support");
+                return;
+            }
             next.center.y = height;
-            if (!ClearCarry(next)) return;
+            // The server advances the timber before the owners apply and replicate that pose.
+            // Wait for the current holders to catch up instead of advancing beyond the same
+            // range that would invalidate the carry at the start of the next step.
+            if (!HolderValid(next, false) || !HolderValid(next, true))
+            {
+                TraceCarryGate("waiting for holder positions");
+                return;
+            }
+            if (!ClearCarry(next))
+            {
+                TraceCarryGate("carry clearance or grip support");
+                return;
+            }
+            TraceCarryGate("advancing");
             if (!AtSocket(next)) next.approvals = 0;
             lastActivity = now;
             load.Value = next;
@@ -491,12 +551,43 @@ namespace TwinEdge.Gameplay
 
         void OnBridgeDisconnect(ulong id)
         {
-            if (Holds(id)) ResetLoad();
+            if (Holds(id))
+            {
+                TraceTimberUse(id, "reset on disconnect");
+                ResetLoad();
+            }
         }
 
         public void BeforeRespawnServer(PlayerMovement player)
         {
-            if (IsServer && Holds(player.OwnerClientId)) ResetLoad();
+            if (IsServer && Holds(player.OwnerClientId))
+            {
+                TraceTimberUse(player.OwnerClientId, "reset on respawn");
+                ResetLoad();
+            }
         }
+
+        partial void TraceTimberUse(ulong id, string result);
+        partial void TraceCarryGate(string gate);
+
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+        string tracedCarryGate;
+
+        partial void TraceTimberUse(ulong id, string result)
+        {
+            if (BridgeRelaySmoke.Tracing)
+                BridgeRelaySmoke.TraceEvent($"timber use id={id} revision={load.Value.revision} feet={Player(id)?.transform.position} outcome={result}");
+        }
+
+        partial void TraceCarryGate(string gate)
+        {
+            if (!BridgeRelaySmoke.Tracing || tracedCarryGate == gate) return;
+            tracedCarryGate = gate;
+            BridgeRelaySmoke.TraceEvent($"carry gate={gate} center={load.Value.center:F4} {CarryInputsForTrace()}");
+        }
+
+        internal string CarryInputsForTrace() =>
+            $"leftInput={directions[0]:F4} leftAt={inputAt[0]:F6} rightInput={directions[1]:F4} rightAt={inputAt[1]:F6} carryGate={tracedCarryGate}";
+#endif
     }
 }

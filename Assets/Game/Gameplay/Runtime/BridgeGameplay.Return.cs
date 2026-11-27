@@ -82,9 +82,20 @@ namespace TwinEdge.Gameplay
             ReturnActive && InBridgeAirspace(feet) && Mathf.Abs(feet.y - StartPoint.y) < .3f;
 
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
+        bool[] replayHazards;
+
         internal bool IsWarningForTest(int index) => warning.Contains(index);
         internal int CollapseCountForTest => collapsed.Count;
         internal bool[] ReadServerHazardsForTest() => IsServer && hazard != null ? (bool[])hazard.Clone() : null;
+
+        internal void SetReplayHazards(string route)
+        {
+            if (!IsServer || ReturnActive || route.Length != PlankCount || route.Any(slot => slot != '0' && slot != '1') ||
+                route.Take(safeEndPlanks).Concat(route.Skip(route.Length - safeEndPlanks)).Any(slot => slot == '1') ||
+                route.Count(slot => slot == '1') != Mathf.RoundToInt(PlankCount * hazardFraction) || route.Contains("111"))
+                throw new InvalidOperationException("Bridge replay route does not match the saved deck and hazard rules.");
+            replayHazards = route.Select(slot => slot == '1').ToArray();
+        }
 #endif
 
         public static bool[] SelectHazards(int count, int safeEnds, float fraction, int seed)
@@ -120,6 +131,9 @@ namespace TwinEdge.Gameplay
         void TickReturn()
         {
             if (!ReturnActive || !game.CanPlay) return;
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+            hazard ??= replayHazards;
+#endif
             if (hazard == null) hazard = SelectHazards(PlankCount, safeEndPlanks, hazardFraction, Guid.NewGuid().GetHashCode());
             float now = Time.time;
             foreach (var peer in NetworkManager.ConnectedClientsList)
@@ -132,6 +146,10 @@ namespace TwinEdge.Gameplay
                 {
                     if (!hazard[index] || removed[index] || collapseAt[index] != 0) continue;
                     collapseAt[index] = now + WarningSeconds;
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+                    if (BridgeRelaySmoke.Tracing)
+                        BridgeRelaySmoke.TraceEvent($"warning server plank={index} slot={slot} dueGame={collapseAt[index]:R} dueServerEstimate={NetworkManager.ServerTime.Time + WarningSeconds:F6}");
+#endif
                     warning.Add(index);
                 }
             }
@@ -148,6 +166,9 @@ namespace TwinEdge.Gameplay
         void OnWarning(NetworkListEvent<int> change)
         {
             if (planks == null || !levelScene.isLoaded) return;
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+            if (BridgeRelaySmoke.Tracing) BridgeRelaySmoke.TraceEvent($"warning state type={change.Type} plank={change.Value}");
+#endif
             if (change.Type == NetworkListEvent<int>.EventType.Add)
             {
                 SetWarning(change.Value, true);
