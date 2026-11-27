@@ -1,3 +1,4 @@
+using TwinEdge.Audio;
 using TwinEdge.Gameplay;
 using Unity.Collections;
 using Unity.Netcode;
@@ -156,6 +157,7 @@ namespace TwinEdge.Presentation
             }
             if (respawnCount != local.RespawnCount.Value)
             {
+                game.state.PlayLiveCue(AudioCueId.Recovery);
                 respawnCount = local.RespawnCount.Value;
                 checkpoint = local.CheckpointName.Value;
                 tutorialUntil = 0;
@@ -164,6 +166,7 @@ namespace TwinEdge.Presentation
             }
             else if (!checkpoint.Equals(local.CheckpointName.Value))
             {
+                game.state.PlayLiveCue(AudioCueId.Checkpoint);
                 checkpoint = local.CheckpointName.Value;
                 Announce("체크포인트를 활성화했습니다.", local.transform.position);
             }
@@ -215,6 +218,18 @@ namespace TwinEdge.Presentation
                 if (gem.State == GemState.Carried)
                     foreach (var peer in peers)
                         if (peer && peer.OwnerClientId == gem.Owner) point = peer.NameplateAnchor;
+                switch (gem.State)
+                {
+                    case GemState.Carried:
+                        game.state.PlayLiveCue(stolen ? AudioCueId.GemSteal : AudioCueId.GemPickup, point);
+                        break;
+                    case GemState.Dropped:
+                        game.state.PlayLiveCue(AudioCueId.GemDrop, point);
+                        break;
+                    case GemState.Relocated:
+                        game.state.PlayLiveCue(AudioCueId.GemRelocate, point);
+                        break;
+                }
                 if (message != null) Announce(message, point);
             }
             gemObserved = true;

@@ -1,8 +1,10 @@
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using TwinEdge.Audio;
 using TwinEdge.Presentation;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -14,7 +16,8 @@ namespace TwinEdge.Gameplay
 {
     internal sealed class PresentationRelaySmoke : MonoBehaviour
     {
-        bool host, capture;
+        bool host, capture, audioTrace;
+        readonly Dictionary<string, int> audioCounts = new();
         string folder, code;
         V3GameplayBootstrap game;
         GameStateManager State => game.state;
@@ -29,6 +32,7 @@ namespace TwinEdge.Gameplay
             var smoke = new GameObject("V3 Presentation Relay Check").AddComponent<PresentationRelaySmoke>();
             smoke.host = args[role + 1] == "host";
             smoke.capture = args.Contains("-presentationScreenshots");
+            smoke.audioTrace = args.Contains("-twinAudioTrace");
             smoke.folder = args[Array.IndexOf(args, "-presentationEvidence") + 1];
         }
 
@@ -42,6 +46,7 @@ namespace TwinEdge.Gameplay
             game = V3GameplayBootstrap.Current;
             if (!game) game = FindFirstObjectByType<V3GameplayBootstrap>();
             yield return Wait(() => game.WorldReady, "saved world loaded");
+            CheckListener("Menu World Camera");
             if (host)
             {
                 var create = game.sessions.CreateRoomAsync("산마루");
@@ -128,6 +133,12 @@ namespace TwinEdge.Gameplay
             yield return Wait(() => View("Gameplay HUD").activeInHierarchy && !PresentationRoot.BlocksGameplay,
                 "start loading hands input back to gameplay");
             Require(State.Phase == FoundationPhase.Outbound && !State.ClientReady, "start consumed readiness");
+            CheckListener(game.standbyCamera.name);
+            if (audioTrace)
+            {
+                Require(AudioCount("Ready") == (host ? 0 : 3) && AudioCount("Unready") == (host ? 0 : 1) &&
+                    AudioCount("Start") == (host ? 1 : 0), "Ready, cancel and Start each sound once for the approving player");
+            }
             Require(SystemInfo.graphicsDeviceType == UnityEngine.Rendering.GraphicsDeviceType.Direct3D11, "D3D11 Player");
             if (host)
             {
@@ -151,6 +162,7 @@ namespace TwinEdge.Gameplay
             if (host) yield return CheckGameplayLayouts(mini);
             yield return Press(keys, Key.M);
             Require(PresentationRoot.BlocksGameplay && View("Detailed map").activeInHierarchy, "M opens modal and owns input");
+            CheckListener(game.standbyCamera.name);
             yield return Screenshot("full-map");
             yield return Press(keys, Key.Escape);
             Require(!PresentationRoot.BlocksGameplay && mini.activeInHierarchy, "Esc closes map and releases input");
@@ -161,6 +173,7 @@ namespace TwinEdge.Gameplay
             else if (!preferenceExisted) PlayerPrefs.DeleteKey(mapPreference);
             PlayerPrefs.Save();
             yield return Barrier("played");
+            int oldTransactions = AudioCount("GemPickup") + AudioCount("GemSteal") + AudioCount("Seal") + AudioCount("Win") + AudioCount("Lose");
 
             if (!host)
             {
@@ -177,6 +190,11 @@ namespace TwinEdge.Gameplay
             }
             yield return Wait(() => State.CanPlay, "live match recovered with no new user Ready");
             Require(State.Phase == FoundationPhase.Return && !State.ClientReady, "rejoin retains phase without user readiness");
+            yield return Wait(() => View("Gameplay HUD").activeInHierarchy, "live match HUD restored");
+            CheckListener(game.standbyCamera.name);
+            if (audioTrace)
+                Require(oldTransactions == AudioCount("GemPickup") + AudioCount("GemSteal") + AudioCount("Seal") +
+                    AudioCount("Win") + AudioCount("Lose"), "rejoin does not replay gem acquisition, seal or result");
             yield return Barrier("rejoined");
             if (host)
             {
@@ -189,6 +207,10 @@ namespace TwinEdge.Gameplay
                 yield return Wait(() => leave.IsCompleted, "fresh room cleanup");
             }
             else yield return Wait(() => !game.sessions.HasSession, "client observed host closure");
+            yield return Delay();
+            CheckListener("Menu World Camera");
+            if (audioTrace) Require(game.GetComponent<AudioService>().GetComponentsInChildren<AudioSource>().All(s => !s.isPlaying),
+                "audio pool silent after session shutdown");
             Signal(Role + "-pass", "PASS Windows Player Relay readiness, input ownership and rejoin.");
             Application.Quit(0);
         }
@@ -438,8 +460,24 @@ namespace TwinEdge.Gameplay
             if (!success) throw new InvalidOperationException("Presentation check failed: " + stage);
         }
 
+        void CheckListener(string expected)
+        {
+            if (!audioTrace) return;
+            var listeners = FindObjectsByType<AudioListener>(FindObjectsSortMode.None).Where(l => l.isActiveAndEnabled).ToArray();
+            Require(listeners.Length == 1 && listeners[0].name == expected, "one audio listener on " + expected);
+            Debug.Log("Presentation check passed: one audio listener on " + expected);
+        }
+
+        int AudioCount(string cue) => audioCounts.TryGetValue(cue, out int count) ? count : 0;
+
         void OnLog(string message, string trace, LogType type)
         {
+            if (audioTrace && message.StartsWith("AUDIO_PLAY ", StringComparison.Ordinal))
+            {
+                int end = message.IndexOf(' ', 11);
+                string cue = message.Substring(11, end - 11);
+                audioCounts[cue] = AudioCount(cue) + 1;
+            }
             if (type != LogType.Exception && !message.StartsWith("Presentation check failed:", StringComparison.Ordinal)) return;
             Signal(Role + "-failure", message);
             Application.Quit(1);

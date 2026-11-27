@@ -1,4 +1,5 @@
-﻿using System.Threading.Tasks;
+using TwinEdge.Audio;
+using System.Threading.Tasks;
 using TwinEdge.Gameplay;
 using Unity.Netcode;
 using UnityEngine;
@@ -18,6 +19,7 @@ namespace TwinEdge.Presentation
         MultiplayerSessionManager session;
         UiKit ui;
         Camera menuCamera;
+        AudioListener menuListener, standbyListener;
         bool originalCameraEnabled;
         ScreenView visible = ScreenView.WorldLoading;
         ScreenView disconnectedView = ScreenView.Landing;
@@ -50,6 +52,7 @@ namespace TwinEdge.Presentation
             root = game.Presentation;
             session = game.sessions;
             ui = new UiKit(font, emblem);
+            standbyListener = game.standbyCamera.GetComponent<AudioListener>();
             originalCameraEnabled = game.standbyCamera.enabled;
             BuildLanding();
             BuildJoin();
@@ -69,6 +72,7 @@ namespace TwinEdge.Presentation
                 SceneManager.MoveGameObjectToScene(menuCamera.gameObject, game.gameObject.scene);
                 menuCamera.CopyFrom(game.standbyCamera);
                 menuCamera.tag = "Untagged";
+                menuListener = menuCamera.gameObject.AddComponent<AudioListener>();
             }
             menuCamera.transform.SetPositionAndRotation(pose.position, pose.rotation);
             UpdateWorldCamera();
@@ -198,6 +202,9 @@ namespace TwinEdge.Presentation
             bool showMenu = !game.WorldFailed && CurrentScreenIsActive();
             menuCamera.enabled = showMenu;
             game.standbyCamera.enabled = !showMenu && originalCameraEnabled;
+            standbyListener.enabled = !showMenu;
+            menuListener.enabled = showMenu;
+            AudioService.UseListener(showMenu ? menuListener : standbyListener);
         }
 
         bool CurrentScreenIsActive() => landing.activeSelf || join.activeSelf || lobby.activeSelf || loading.activeSelf;
@@ -266,6 +273,7 @@ namespace TwinEdge.Presentation
             if (!game.WorldReady || session.HasSession || session.IsBusy || attempting || departing) return;
             if (!PlayerNickname.TryNormalize(nickname.text, out string name))
             {
+                AudioService.Play(AudioCueId.Error);
                 const string invalid = "닉네임은 줄바꿈이나 제어문자 없이 2~12자로 입력해 주세요.";
                 if (host) landingMessage = invalid;
                 else joinMessage = invalid;
@@ -274,6 +282,7 @@ namespace TwinEdge.Presentation
             string code = "";
             if (!host && !TryNormalizeJoinCode(roomCode.text, out code))
             {
+                AudioService.Play(AudioCueId.Error);
                 joinMessage = ErrorMessage(RoomIssue.InvalidCode, false, rejoining);
                 return;
             }
@@ -298,6 +307,7 @@ namespace TwinEdge.Presentation
             if (!this) return;
             if (session.HasSession)
             {
+                AudioService.Play(AudioCueId.Confirm);
                 if (!host) previousClientRoom = code;
                 landingMessage = "";
                 joinMessage = "";
@@ -305,6 +315,7 @@ namespace TwinEdge.Presentation
             }
             else
             {
+                AudioService.Play(AudioCueId.Error);
                 var message = ErrorMessage(session.Issue, host, rejoining);
                 if (host) landingMessage = message;
                 else if (rejoining && session.Issue == RoomIssue.NotFound)
@@ -333,6 +344,7 @@ namespace TwinEdge.Presentation
         {
             if (session.IsBusy || departing || !session.HasSession) return;
             departing = true;
+            AudioService.StopSession();
             await session.LeaveRoomAsync();
             if (!this) return;
             departing = false;
@@ -347,6 +359,7 @@ namespace TwinEdge.Presentation
         {
             if (!PlayerNickname.TryNormalize(nickname.text, out _))
             {
+                AudioService.Play(AudioCueId.Error);
                 landingMessage = "닉네임은 2~12자로 입력해 주세요.";
                 return;
             }
@@ -366,6 +379,7 @@ namespace TwinEdge.Presentation
             if (string.IsNullOrEmpty(session.CurrentJoinCode)) return;
             GUIUtility.systemCopyBuffer = session.CurrentJoinCode;
             copiedUntil = Time.unscaledTime + 2.5f;
+            AudioService.Play(AudioCueId.CopyCode);
         }
 
         GameObject Page(string title, byte shade)
@@ -440,7 +454,7 @@ namespace TwinEdge.Presentation
             codeLabel.GetComponent<LayoutElement>().minWidth = 128;
             lobbyCode = Label(codeRow, "", PresentationTheme.HeadingSize, 56, PresentationTheme.PrimaryText);
             lobbyCode.GetComponent<LayoutElement>().flexibleWidth = 1;
-            copy = ui.Button(codeRow, "코드 복사", CopyCode);
+            copy = ui.Button(codeRow, "코드 복사", CopyCode, clickSound: false);
             copy.GetComponent<LayoutElement>().minWidth = 160;
             lobbyCount = Label(panel, "", PresentationTheme.CaptionSize, 38, PresentationTheme.SecondaryText);
             var row = Row(panel, 430);
@@ -477,7 +491,7 @@ namespace TwinEdge.Presentation
                 if (!game.state.IsSpawned || game.state.Phase != FoundationPhase.WaitingForPlayers) return;
                 if (game.manager.IsHost) game.state.RequestMatchStartRpc();
                 else game.state.SetLobbyReadyRpc(!game.state.ClientReady);
-            });
+            }, clickSound: false);
             leave = ui.Button(actions, "방 나가기", () => _ = Leave());
         }
 
@@ -520,6 +534,12 @@ namespace TwinEdge.Presentation
         void OnDestroy()
         {
             foreach (var slot in slots) slot.Clear();
+            if (menuListener) menuListener.enabled = false;
+            if (standbyListener)
+            {
+                standbyListener.enabled = true;
+                AudioService.UseListener(standbyListener);
+            }
             if (menuCamera) Destroy(menuCamera.gameObject);
             if (game && game.standbyCamera) game.standbyCamera.enabled = originalCameraEnabled;
         }

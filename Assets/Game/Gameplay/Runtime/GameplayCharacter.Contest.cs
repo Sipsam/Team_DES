@@ -1,3 +1,4 @@
+using TwinEdge.Audio;
 using System.Collections.Generic;
 using System.Linq;
 using Unity.Netcode;
@@ -87,6 +88,7 @@ namespace TwinEdge.Gameplay
 
         public override void OnNetworkDespawn()
         {
+            UnbindAudio();
             capeColor.OnValueChanged -= ApplyCapeColor;
             RestoreContestPose();
             RestoreCarryCollision();
@@ -307,7 +309,11 @@ namespace TwinEdge.Gameplay
                 if (Now < lastResistance + .13) return;
                 lastResistance = Now;
                 var carrier = Peer(holder.Value);
-                if (carrier != null && ++resistance.Value >= resistancePresses) carrier.EndCarryServer(Vector3.zero);
+                if (carrier != null && ++resistance.Value >= resistancePresses)
+                {
+                    carrier.EndCarryServer(Vector3.zero);
+                    contestGame.EmitWorldCue(AudioCueId.Resist, transform.position + Vector3.up);
+                }
                 return;
             }
             if (held.Value != NoPlayer)

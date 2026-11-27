@@ -1,3 +1,4 @@
+using TwinEdge.Audio;
 using System;
 using System.Collections.Generic;
 using Unity.Netcode;
@@ -119,6 +120,9 @@ namespace TwinEdge.Gameplay
             Array.Clear(suppressedVoyage, 0, suppressedVoyage.Length);
             nextSend = 0;
             sequence = 0;
+            shared.OnValueChanged += OnHullAudio;
+            first.OnValueChanged += OnHullAudio;
+            second.OnValueChanged += OnHullAudio;
             if (!IsServer) return;
             split.Value = false;
             splitAt.Value = 0;
@@ -132,12 +136,27 @@ namespace TwinEdge.Gameplay
 
         public override void OnNetworkDespawn()
         {
+            shared.OnValueChanged -= OnHullAudio;
+            first.OnValueChanged -= OnHullAudio;
+            second.OnValueChanged -= OnHullAudio;
             if (IsServer && NetworkManager != null) NetworkManager.OnClientDisconnectCallback -= Disconnect;
             if (Current == this) Current = null;
             if (presentation == null) return;
             foreach (var hull in hulls) hull.View.gameObject.SetActive(false);
             HideHazards();
             if (rain != null) rain.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+        }
+
+        void OnHullAudio(RiverRaftSnapshot before, RiverRaftSnapshot after)
+        {
+            if (before.DamagedAt != after.DamagedAt && after.DamagedAt > 0 &&
+                NetworkManager.ServerTime.Time - after.DamagedAt < .65)
+                game.PlayLiveCue(AudioCueId.RaftHit, after.Position);
+            if (before.Status != RiverRaftStatus.Destroyed && after.Status == RiverRaftStatus.Destroyed &&
+                after.Recovery is not (RiverContact.Disconnect or RiverContact.PhaseChanged))
+                game.PlayLiveCue(AudioCueId.RaftBreak, after.Position);
+            if (before.Status == RiverRaftStatus.Destroyed && after.Status == RiverRaftStatus.Docked)
+                game.PlayLiveCue(AudioCueId.RaftRestore, after.Position);
         }
 
         void ResetServer()

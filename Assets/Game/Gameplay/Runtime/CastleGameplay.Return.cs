@@ -1,3 +1,4 @@
+using TwinEdge.Audio;
 using System;
 using Unity.Netcode;
 using UnityEngine;
@@ -21,6 +22,7 @@ namespace TwinEdge.Gameplay
             public BoxCollider Hitbox;
             public int Hit;
             public bool WasActive;
+            public TimedTrapAudio Audio;
             public Vector3 Previous;
         }
 
@@ -178,6 +180,14 @@ namespace TwinEdge.Gameplay
                 SetActive(trap.WarningStripe, elapsed >= 0 && elapsed < trapWarning);
                 SetActive(trap.View.gameObject, active);
                 trap.Hitbox.enabled = active;
+                var attack = trap.Kind switch
+                {
+                    TrapKind.Fire => AudioCueId.TrapFire,
+                    TrapKind.Arrow => AudioCueId.TrapArrow,
+                    _ => AudioCueId.TrapSpikes
+                };
+                trap.Audio.Observe(game, Now, activations[i] < 0 ? double.NegativeInfinity : activations[i],
+                    trapWarning, trap.WarningStripe.transform.position, attack, config.origin + AttackPosition(trap, 0));
                 if (!active) continue;
                 float t = Mathf.Clamp01((float)(elapsed - trapWarning) / trapAttack);
                 trap.View.position = config.origin + AttackPosition(trap, t);
@@ -222,6 +232,7 @@ namespace TwinEdge.Gameplay
                         controller.height, controller.radius * 2));
                     if (!volume.Intersects(body)) continue;
                     trap.Hit |= 1 << slot;
+                    game.EmitWorldCue(AudioCueId.TrapHit, player.transform.position + Vector3.up);
                     Damage(player, slot);
                 }
             }

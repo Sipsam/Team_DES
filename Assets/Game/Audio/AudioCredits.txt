@@ -1,0 +1,30 @@
+Twin Edge V3 - Core audio credits
+
+RPG Sound Pack by artisticdude
+Original release: https://opengameart.org/content/rpg-sound-pack
+Original archive: https://opengameart.org/sites/default/files/rpg_sound_pack.zip
+License: CC0 1.0 Universal (https://creativecommons.org/publicdomain/zero/1.0/)
+License and download verified on 2026-11-27.
+The archive has no separate license file. The release page declares CC0.
+The included WAVs match the archive. Unity import settings and playback vary
+sample rate, channel count, gain and pitch without changing the source WAVs.
+This credit is provided for provenance. CC0 does not require attribution.
+The CC0 legal text accompanies this notice in shipped builds.
+
+Original archive path       Use in Twin Edge
+battle/magic1.wav           Castle completion, seal release, gem relocation
+battle/swing2.wav           PvP swing, arrow trap firing
+battle/swing3.wav           PvP throw, fire trap ignition
+battle/sword-unsheathe3.wav Spike and mechanical trap activation
+interface/interface1.wav    Button click, copy success, puzzle acceptance
+interface/interface2.wav    Session confirmation, Ready, checkpoint, victory
+interface/interface3.wav    Host start approval, recovery
+interface/interface4.wav    Unready, defeat
+interface/interface5.wav    UI error, puzzle error
+inventory/chainmail1.wav    Successful resistance
+inventory/cloth-heavy.wav   Successful grab, raft restoration
+inventory/coin3.wav         Gem acquisition and drop
+inventory/metal-ringing.wav Trap warning, gem steal
+inventory/metal-small1.wav  Underground platform activation
+inventory/wood-small.wav    Contact hits, bridge warning, raft damage, switch
+world/door.wav              Gate opening, bridge collapse, raft break

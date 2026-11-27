@@ -164,6 +164,8 @@ namespace TwinEdge.Gameplay.Editor
                     throw new IOException("V3 build did not produce a complete Windows player.");
 
                 File.Copy("Assets/Game/UI/Fonts/OFL.txt", Path.Combine(stage, "NotoSansKR-OFL.txt"));
+                File.Copy("Assets/Game/Audio/AudioCredits.txt", Path.Combine(stage, "AudioCredits.txt"));
+                File.Copy("Assets/Game/Audio/CC0-1.0.txt", Path.Combine(stage, "Audio-CC0-1.0.txt"));
                 if (Directory.Exists(destination)) Directory.Move(destination, previous);
                 try { Directory.Move(stage, destination); }
                 catch

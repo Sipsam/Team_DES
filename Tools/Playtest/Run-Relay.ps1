@@ -6,7 +6,8 @@ param(
     [string]$PolePlan = 'Docs/Development/Gameplay/V1/MountainPole/ContinuousPlan.json',
     [string]$ReturnPlan = 'Docs/Development/Gameplay/V1/MountainReturn/Route.json',
     [switch]$Headless,
-    [switch]$Screenshots
+    [switch]$Screenshots,
+    [switch]$AudioTrace
 )
 
 $ErrorActionPreference = 'Stop'
@@ -93,6 +94,7 @@ try {
         @('-force-d3d11','-screen-fullscreen','0','-screen-width','1024','-screen-height','720')
     }
     if ($Screenshots -and !$Headless -and $captureFlag) { $extra += $captureFlag }
+    if ($AudioTrace) { $extra += '-twinAudioTrace' }
     foreach ($role in 'host','client') {
         $arguments = $graphics + @('-runInBackground',"-$mode",$role,"-$evidence",$output,'-logFile',"$output/$role.log") + $extra
         $quoted = $arguments | ForEach-Object { if ($_ -match '\s') { '"' + $_ + '"' } else { $_ } }

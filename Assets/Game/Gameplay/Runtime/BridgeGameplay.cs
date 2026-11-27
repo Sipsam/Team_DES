@@ -1,3 +1,4 @@
+using TwinEdge.Audio;
 using System;
 using System.Linq;
 using TwinEdge.Levels;
@@ -106,6 +107,7 @@ namespace TwinEdge.Gameplay
             {
                 removed[change.Value] = true;
                 SetSupport(change.Value, false);
+                game.PlayLiveCue(AudioCueId.BridgeCollapse, planks[change.Value].transform.position);
             }
             else RefreshDeck();
         }

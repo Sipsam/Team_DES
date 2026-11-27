@@ -1,3 +1,4 @@
+using TwinEdge.Audio;
 using System;
 using UnityEngine;
 using UnityEngine.UI;
@@ -102,7 +103,7 @@ namespace TwinEdge.Presentation
             return lockup;
         }
 
-        public UiButton Button(Transform parent, string caption, Action pressed, bool interactable = true)
+        public UiButton Button(Transform parent, string caption, Action pressed, bool interactable = true, bool clickSound = true)
         {
             var face = Surface(parent, caption, Color.white, true);
             Measure(face.rectTransform, 56);
@@ -114,7 +115,11 @@ namespace TwinEdge.Presentation
             button.colors = PresentationTheme.Controls(false);
             button.SetStyle(Marker(face.transform), label);
             button.interactable = interactable;
-            if (pressed != null) button.onClick.AddListener(() => pressed());
+            if (pressed != null) button.onClick.AddListener(() =>
+            {
+                if (clickSound && button.isActiveAndEnabled && button.IsInteractable()) AudioService.Play(AudioCueId.Click);
+                pressed();
+            });
             return button;
         }
 

@@ -87,6 +87,7 @@ namespace TwinEdge.Gameplay
             }
             awaitingFoundationReady = false;
             InitializeContest();
+            BindAudio();
             previous = transform.position; sampleTime = Time.time;
             animator.applyRootMotion = false;
             if (IsOwner) GetComponent<GameplayInput>().Activate();

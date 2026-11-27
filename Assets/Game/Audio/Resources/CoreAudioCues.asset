@@ -1,0 +1,460 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 97315951798822e488f51a42c51f968f, type: 3}
+  m_Name: CoreAudioCues
+  m_EditorClassIdentifier: Assembly-CSharp::TwinEdge.Audio.AudioCueCatalog
+  mixer: {fileID: 24100000, guid: 52de2442b5130864f969e967d158b7bf, type: 2}
+  cues:
+  - id: 0
+    clip: {fileID: 8300000, guid: 1075e7ac9c103594bae1c9e839a53e17, type: 3}
+    output: {fileID: -5180535376072577212, guid: 52de2442b5130864f969e967d158b7bf, type: 2}
+    volume: 0.14999999
+    pitch: {x: 1.135, y: 1.185}
+    spatialBlend: 0
+    minDistance: 2.5
+    maxDistance: 20
+    rolloff: 1
+    priority: 145
+    simultaneous: 1
+    repeatInterval: 0.07
+  - id: 1
+    clip: {fileID: 8300000, guid: 8c15d65f502433f4891d748b948d9643, type: 3}
+    output: {fileID: -5180535376072577212, guid: 52de2442b5130864f969e967d158b7bf, type: 2}
+    volume: 0.26999998
+    pitch: {x: 1.015, y: 1.0649999}
+    spatialBlend: 0
+    minDistance: 2.5
+    maxDistance: 20
+    rolloff: 1
+    priority: 85
+    simultaneous: 1
+    repeatInterval: 0.1
+  - id: 2
+    clip: {fileID: 8300000, guid: 2fa0be7562305d043b9ffe4ee1158980, type: 3}
+    output: {fileID: -5180535376072577212, guid: 52de2442b5130864f969e967d158b7bf, type: 2}
+    volume: 0.28
+    pitch: {x: 0.90500003, y: 0.955}
+    spatialBlend: 0
+    minDistance: 2.5
+    maxDistance: 20
+    rolloff: 1
+    priority: 65
+    simultaneous: 1
+    repeatInterval: 0.11000001
+  - id: 3
+    clip: {fileID: 8300000, guid: 1075e7ac9c103594bae1c9e839a53e17, type: 3}
+    output: {fileID: -5180535376072577212, guid: 52de2442b5130864f969e967d158b7bf, type: 2}
+    volume: 0.29
+    pitch: {x: 1.335, y: 1.385}
+    spatialBlend: 0
+    minDistance: 2.5
+    maxDistance: 20
+    rolloff: 1
+    priority: 85
+    simultaneous: 1
+    repeatInterval: 0.1
+  - id: 4
+    clip: {fileID: 8300000, guid: 8c15d65f502433f4891d748b948d9643, type: 3}
+    output: {fileID: -5180535376072577212, guid: 52de2442b5130864f969e967d158b7bf, type: 2}
+    volume: 0.29
+    pitch: {x: 1.135, y: 1.185}
+    spatialBlend: 0
+    minDistance: 2.5
+    maxDistance: 20
+    rolloff: 1
+    priority: 65
+    simultaneous: 1
+    repeatInterval: 0.1
+  - id: 5
+    clip: {fileID: 8300000, guid: a55d6de8df6a5134d8dbd90eee980497, type: 3}
+    output: {fileID: -5180535376072577212, guid: 52de2442b5130864f969e967d158b7bf, type: 2}
+    volume: 0.26
+    pitch: {x: 0.90500003, y: 0.955}
+    spatialBlend: 0
+    minDistance: 2.5
+    maxDistance: 20
+    rolloff: 1
+    priority: 65
+    simultaneous: 1
+    repeatInterval: 0.1
+  - id: 6
+    clip: {fileID: 8300000, guid: 57c81f51b0c86604e88d8f2acac44ca7, type: 3}
+    output: {fileID: -5180535376072577212, guid: 52de2442b5130864f969e967d158b7bf, type: 2}
+    volume: 0.29999998
+    pitch: {x: 1.025, y: 1.0749999}
+    spatialBlend: 0
+    minDistance: 2.5
+    maxDistance: 20
+    rolloff: 1
+    priority: 38
+    simultaneous: 1
+    repeatInterval: 0.11000001
+  - id: 7
+    clip: {fileID: 8300000, guid: a491b123840254342a935b60808aaa84, type: 3}
+    output: {fileID: 1464727125624981262, guid: 52de2442b5130864f969e967d158b7bf, type: 2}
+    volume: 0.29999998
+    pitch: {x: 0.975, y: 1.025}
+    spatialBlend: 1
+    minDistance: 2.5
+    maxDistance: 17
+    rolloff: 1
+    priority: 115
+    simultaneous: 2
+    repeatInterval: 0.054
+  - id: 8
+    clip: {fileID: 8300000, guid: da3d9505869a1414697fc072a44c2dfc, type: 3}
+    output: {fileID: 1464727125624981262, guid: 52de2442b5130864f969e967d158b7bf, type: 2}
+    volume: 0.45
+    pitch: {x: 0.855, y: 0.905}
+    spatialBlend: 1
+    minDistance: 2.5
+    maxDistance: 19
+    rolloff: 1
+    priority: 56
+    simultaneous: 2
+    repeatInterval: 0.054
+  - id: 9
+    clip: {fileID: 8300000, guid: bebad5c27fa98ba42bba4d2babb9a1a6, type: 3}
+    output: {fileID: 1464727125624981262, guid: 52de2442b5130864f969e967d158b7bf, type: 2}
+    volume: 0.39
+    pitch: {x: 1.005, y: 1.055}
+    spatialBlend: 1
+    minDistance: 2.5
+    maxDistance: 16
+    rolloff: 1
+    priority: 74
+    simultaneous: 2
+    repeatInterval: 0.062000003
+  - id: 10
+    clip: {fileID: 8300000, guid: 71ef6cf207778114faf326f8792e9041, type: 3}
+    output: {fileID: 1464727125624981262, guid: 52de2442b5130864f969e967d158b7bf, type: 2}
+    volume: 0.38
+    pitch: {x: 0.70500004, y: 0.755}
+    spatialBlend: 1
+    minDistance: 2.5
+    maxDistance: 22
+    rolloff: 1
+    priority: 67
+    simultaneous: 2
+    repeatInterval: 0.065000005
+  - id: 11
+    clip: {fileID: 8300000, guid: 29df846b9a7cdfa40956ba9141d938f2, type: 3}
+    output: {fileID: 1464727125624981262, guid: 52de2442b5130864f969e967d158b7bf, type: 2}
+    volume: 0.34
+    pitch: {x: 1.255, y: 1.305}
+    spatialBlend: 1
+    minDistance: 2.5
+    maxDistance: 17
+    rolloff: 1
+    priority: 75
+    simultaneous: 2
+    repeatInterval: 0.075
+  - id: 12
+    clip: {fileID: 8300000, guid: 8fe8429f70bd5ad4a9d056887fb2d62c, type: 3}
+    output: {fileID: 1464727125624981262, guid: 52de2442b5130864f969e967d158b7bf, type: 2}
+    volume: 0.45
+    pitch: {x: 1.215, y: 1.265}
+    spatialBlend: 1
+    minDistance: 5
+    maxDistance: 25
+    rolloff: 1
+    priority: 28
+    simultaneous: 2
+    repeatInterval: 0.125
+  - id: 13
+    clip: {fileID: 8300000, guid: 71ef6cf207778114faf326f8792e9041, type: 3}
+    output: {fileID: 1464727125624981262, guid: 52de2442b5130864f969e967d158b7bf, type: 2}
+    volume: 0.45999998
+    pitch: {x: 0.58500004, y: 0.635}
+    spatialBlend: 1
+    minDistance: 2.5
+    maxDistance: 22
+    rolloff: 1
+    priority: 76
+    simultaneous: 2
+    repeatInterval: 0.09
+  - id: 14
+    clip: {fileID: 8300000, guid: a491b123840254342a935b60808aaa84, type: 3}
+    output: {fileID: 1464727125624981262, guid: 52de2442b5130864f969e967d158b7bf, type: 2}
+    volume: 0.41
+    pitch: {x: 1.405, y: 1.4549999}
+    spatialBlend: 1
+    minDistance: 2.5
+    maxDistance: 22
+    rolloff: 1
+    priority: 72
+    simultaneous: 2
+    repeatInterval: 0.09
+  - id: 15
+    clip: {fileID: 8300000, guid: eb00ff7aac0e10e41812fee3720b2eaa, type: 3}
+    output: {fileID: 1464727125624981262, guid: 52de2442b5130864f969e967d158b7bf, type: 2}
+    volume: 0.42
+    pitch: {x: 0.845, y: 0.895}
+    spatialBlend: 1
+    minDistance: 2.5
+    maxDistance: 22
+    rolloff: 1
+    priority: 72
+    simultaneous: 2
+    repeatInterval: 0.09
+  - id: 16
+    clip: {fileID: 8300000, guid: da3d9505869a1414697fc072a44c2dfc, type: 3}
+    output: {fileID: 1464727125624981262, guid: 52de2442b5130864f969e967d158b7bf, type: 2}
+    volume: 0.47
+    pitch: {x: 0.725, y: 0.775}
+    spatialBlend: 1
+    minDistance: 2.5
+    maxDistance: 19
+    rolloff: 1
+    priority: 46
+    simultaneous: 2
+    repeatInterval: 0.067
+  - id: 17
+    clip: {fileID: 8300000, guid: da3d9505869a1414697fc072a44c2dfc, type: 3}
+    output: {fileID: 1464727125624981262, guid: 52de2442b5130864f969e967d158b7bf, type: 2}
+    volume: 0.44
+    pitch: {x: 1.1850001, y: 1.235}
+    spatialBlend: 1
+    minDistance: 5
+    maxDistance: 26
+    rolloff: 1
+    priority: 32
+    simultaneous: 1
+    repeatInterval: 0.18
+  - id: 18
+    clip: {fileID: 8300000, guid: 7f3e9ebf2b80f724f928ed69f59d0ebf, type: 3}
+    output: {fileID: 1464727125624981262, guid: 52de2442b5130864f969e967d158b7bf, type: 2}
+    volume: 0.45999998
+    pitch: {x: 0.69500005, y: 0.745}
+    spatialBlend: 1
+    minDistance: 5
+    maxDistance: 32
+    rolloff: 1
+    priority: 57
+    simultaneous: 2
+    repeatInterval: 0.125
+  - id: 19
+    clip: {fileID: 8300000, guid: da3d9505869a1414697fc072a44c2dfc, type: 3}
+    output: {fileID: 1464727125624981262, guid: 52de2442b5130864f969e967d158b7bf, type: 2}
+    volume: 0.48999998
+    pitch: {x: 0.665, y: 0.715}
+    spatialBlend: 1
+    minDistance: 2.5
+    maxDistance: 22
+    rolloff: 1
+    priority: 58
+    simultaneous: 2
+    repeatInterval: 0.080000006
+  - id: 20
+    clip: {fileID: 8300000, guid: 7f3e9ebf2b80f724f928ed69f59d0ebf, type: 3}
+    output: {fileID: 1464727125624981262, guid: 52de2442b5130864f969e967d158b7bf, type: 2}
+    volume: 0.48999998
+    pitch: {x: 0.785, y: 0.835}
+    spatialBlend: 1
+    minDistance: 5
+    maxDistance: 30
+    rolloff: 1
+    priority: 45
+    simultaneous: 2
+    repeatInterval: 0.1
+  - id: 21
+    clip: {fileID: 8300000, guid: bebad5c27fa98ba42bba4d2babb9a1a6, type: 3}
+    output: {fileID: 1464727125624981262, guid: 52de2442b5130864f969e967d158b7bf, type: 2}
+    volume: 0.38
+    pitch: {x: 0.725, y: 0.775}
+    spatialBlend: 1
+    minDistance: 2.5
+    maxDistance: 24
+    rolloff: 1
+    priority: 82
+    simultaneous: 2
+    repeatInterval: 0.120000005
+  - id: 22
+    clip: {fileID: 8300000, guid: 1075e7ac9c103594bae1c9e839a53e17, type: 3}
+    output: {fileID: 1464727125624981262, guid: 52de2442b5130864f969e967d158b7bf, type: 2}
+    volume: 0.32
+    pitch: {x: 1.195, y: 1.245}
+    spatialBlend: 1
+    minDistance: 2.5
+    maxDistance: 10
+    rolloff: 1
+    priority: 56
+    simultaneous: 1
+    repeatInterval: 0.075
+  - id: 23
+    clip: {fileID: 8300000, guid: 2fa0be7562305d043b9ffe4ee1158980, type: 3}
+    output: {fileID: 1464727125624981262, guid: 52de2442b5130864f969e967d158b7bf, type: 2}
+    volume: 0.42
+    pitch: {x: 0.815, y: 0.86499995}
+    spatialBlend: 1
+    minDistance: 2.5
+    maxDistance: 10
+    rolloff: 1
+    priority: 48
+    simultaneous: 1
+    repeatInterval: 0.080000006
+  - id: 24
+    clip: {fileID: 8300000, guid: d9048135dc3cc4b46a9e6437c69cbc82, type: 3}
+    output: {fileID: 1464727125624981262, guid: 52de2442b5130864f969e967d158b7bf, type: 2}
+    volume: 0.37
+    pitch: {x: 1.105, y: 1.155}
+    spatialBlend: 1
+    minDistance: 2.5
+    maxDistance: 23
+    rolloff: 1
+    priority: 43
+    simultaneous: 1
+    repeatInterval: 0.135
+  - id: 25
+    clip: {fileID: 8300000, guid: 7f3e9ebf2b80f724f928ed69f59d0ebf, type: 3}
+    output: {fileID: 1464727125624981262, guid: 52de2442b5130864f969e967d158b7bf, type: 2}
+    volume: 0.45
+    pitch: {x: 0.95500004, y: 1.005}
+    spatialBlend: 1
+    minDistance: 2.5
+    maxDistance: 23
+    rolloff: 1
+    priority: 63
+    simultaneous: 2
+    repeatInterval: 0.065000005
+  - id: 26
+    clip: {fileID: 8300000, guid: da3d9505869a1414697fc072a44c2dfc, type: 3}
+    output: {fileID: 1464727125624981262, guid: 52de2442b5130864f969e967d158b7bf, type: 2}
+    volume: 0.35
+    pitch: {x: 1.345, y: 1.395}
+    spatialBlend: 1
+    minDistance: 2.5
+    maxDistance: 14
+    rolloff: 1
+    priority: 76
+    simultaneous: 2
+    repeatInterval: 0.075
+  - id: 27
+    clip: {fileID: 8300000, guid: bd8ee027431cd124286c1b605140b40f, type: 3}
+    output: {fileID: 1464727125624981262, guid: 52de2442b5130864f969e967d158b7bf, type: 2}
+    volume: 0.37
+    pitch: {x: 0.83500004, y: 0.885}
+    spatialBlend: 1
+    minDistance: 2.5
+    maxDistance: 24
+    rolloff: 1
+    priority: 88
+    simultaneous: 2
+    repeatInterval: 0.09
+  - id: 28
+    clip: {fileID: 8300000, guid: d9048135dc3cc4b46a9e6437c69cbc82, type: 3}
+    output: {fileID: 1464727125624981262, guid: 52de2442b5130864f969e967d158b7bf, type: 2}
+    volume: 0.48999998
+    pitch: {x: 0.745, y: 0.79499996}
+    spatialBlend: 1
+    minDistance: 5
+    maxDistance: 33
+    rolloff: 1
+    priority: 32
+    simultaneous: 1
+    repeatInterval: 0.13000001
+  - id: 29
+    clip: {fileID: 8300000, guid: 71214707498515c4eb09355a8d03ad0a, type: 3}
+    output: {fileID: 1464727125624981262, guid: 52de2442b5130864f969e967d158b7bf, type: 2}
+    volume: 0.48
+    pitch: {x: 1.1650001, y: 1.215}
+    spatialBlend: 1
+    minDistance: 2.5
+    maxDistance: 21
+    rolloff: 1
+    priority: 45
+    simultaneous: 1
+    repeatInterval: 0.09
+  - id: 30
+    clip: {fileID: 8300000, guid: 71214707498515c4eb09355a8d03ad0a, type: 3}
+    output: {fileID: 1464727125624981262, guid: 52de2442b5130864f969e967d158b7bf, type: 2}
+    volume: 0.45999998
+    pitch: {x: 0.785, y: 0.835}
+    spatialBlend: 1
+    minDistance: 2.5
+    maxDistance: 23
+    rolloff: 1
+    priority: 48
+    simultaneous: 1
+    repeatInterval: 0.09
+  - id: 31
+    clip: {fileID: 8300000, guid: 8fe8429f70bd5ad4a9d056887fb2d62c, type: 3}
+    output: {fileID: 1464727125624981262, guid: 52de2442b5130864f969e967d158b7bf, type: 2}
+    volume: 0.45
+    pitch: {x: 1.405, y: 1.4549999}
+    spatialBlend: 1
+    minDistance: 5
+    maxDistance: 25
+    rolloff: 1
+    priority: 42
+    simultaneous: 1
+    repeatInterval: 0.09
+  - id: 32
+    clip: {fileID: 8300000, guid: d9048135dc3cc4b46a9e6437c69cbc82, type: 3}
+    output: {fileID: 1464727125624981262, guid: 52de2442b5130864f969e967d158b7bf, type: 2}
+    volume: 0.42
+    pitch: {x: 1.3050001, y: 1.355}
+    spatialBlend: 1
+    minDistance: 5
+    maxDistance: 28
+    rolloff: 1
+    priority: 47
+    simultaneous: 1
+    repeatInterval: 0.1
+  - id: 33
+    clip: {fileID: 8300000, guid: 8c15d65f502433f4891d748b948d9643, type: 3}
+    output: {fileID: -5180535376072577212, guid: 52de2442b5130864f969e967d158b7bf, type: 2}
+    volume: 0.29
+    pitch: {x: 1.3050001, y: 1.355}
+    spatialBlend: 0
+    minDistance: 2.5
+    maxDistance: 20
+    rolloff: 1
+    priority: 53
+    simultaneous: 1
+    repeatInterval: 0.15
+  - id: 34
+    clip: {fileID: 8300000, guid: 57c81f51b0c86604e88d8f2acac44ca7, type: 3}
+    output: {fileID: -5180535376072577212, guid: 52de2442b5130864f969e967d158b7bf, type: 2}
+    volume: 0.26999998
+    pitch: {x: 0.815, y: 0.86499995}
+    spatialBlend: 0
+    minDistance: 2.5
+    maxDistance: 20
+    rolloff: 1
+    priority: 47
+    simultaneous: 1
+    repeatInterval: 0.15
+  - id: 35
+    clip: {fileID: 8300000, guid: 8c15d65f502433f4891d748b948d9643, type: 3}
+    output: {fileID: -5180535376072577212, guid: 52de2442b5130864f969e967d158b7bf, type: 2}
+    volume: 0.38
+    pitch: {x: 0.855, y: 0.905}
+    spatialBlend: 0
+    minDistance: 2.5
+    maxDistance: 20
+    rolloff: 1
+    priority: 18
+    simultaneous: 1
+    repeatInterval: 0.15
+  - id: 36
+    clip: {fileID: 8300000, guid: a55d6de8df6a5134d8dbd90eee980497, type: 3}
+    output: {fileID: -5180535376072577212, guid: 52de2442b5130864f969e967d158b7bf, type: 2}
+    volume: 0.37
+    pitch: {x: 0.665, y: 0.715}
+    spatialBlend: 0
+    minDistance: 2.5
+    maxDistance: 20
+    rolloff: 1
+    priority: 18
+    simultaneous: 1
+    repeatInterval: 0.15

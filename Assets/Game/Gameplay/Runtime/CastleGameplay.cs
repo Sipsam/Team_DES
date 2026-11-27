@@ -1,3 +1,4 @@
+using TwinEdge.Audio;
 using System;
 using TwinEdge.Levels;
 using Unity.Netcode;
@@ -111,6 +112,16 @@ namespace TwinEdge.Gameplay
         public override void OnNetworkSpawn()
         {
             hintStage = localNumber = pendingKeypad = -1;
+            for (int i = 0; i < traps.Length; i++)
+            {
+                if (traps[i] == null) continue;
+                double start = !IsServer && i < activations.Count && activations[i] >= 0
+                    ? activations[i] : double.NegativeInfinity;
+                traps[i].Audio.Seed(Now, start, trapWarning);
+            }
+            stage.OnValueChanged += OnPuzzleStageAudio;
+            accepted.OnValueChanged += OnCastleDoorAudio;
+            sewerOpen.OnValueChanged += OnSewerDoorAudio;
             if (!IsServer) return;
             spawns = NetworkManager.GetComponent<NetworkSpawnCoordinator>();
             stage.Value = signal.Value = collected.Value = accepted.Value = crossed.Value = 0;
@@ -310,6 +321,41 @@ namespace TwinEdge.Gameplay
             return station.Stage == Stage && (station.Kind != Action.Pad || Progress(slot).Steps < 3);
         }
 
+        public override void OnNetworkDespawn()
+        {
+            stage.OnValueChanged -= OnPuzzleStageAudio;
+            accepted.OnValueChanged -= OnCastleDoorAudio;
+            sewerOpen.OnValueChanged -= OnSewerDoorAudio;
+        }
+
+        void OnPuzzleStageAudio(int before, int after)
+        {
+            if (after <= before || !game.HasLiveAudio ||
+                !NetworkManager.LocalClient.PlayerObject.TryGetComponent<GameplayCharacter>(out var player)) return;
+            int lane = player.LobbySlot;
+            var gates = unlockedGroups[after - 1];
+            if (!gates || lane >= gates.transform.childCount) return;
+            game.PlayLiveCue(after == Stages ? AudioCueId.PuzzleComplete : AudioCueId.DoorOpen,
+                gates.transform.GetChild(lane).position);
+        }
+
+        void OnCastleDoorAudio(int before, int after)
+        {
+            if (after == Both && basementGate)
+                game.PlayLiveCue(AudioCueId.DoorOpen, basementGate.transform.position);
+        }
+
+        void OnSewerDoorAudio(bool before, bool after)
+        {
+            if (!after) return;
+            foreach (var door in sewerDoors)
+                if (door) game.PlayLiveCue(AudioCueId.DoorOpen, door.transform.position);
+        }
+
+        void EmitPrivatePuzzleCue(NetworkObject player, bool acceptedInput, Vector3 position) =>
+            game.EmitWorldCue(acceptedInput ? AudioCueId.PuzzleAccept : AudioCueId.PuzzleError,
+                position, player.OwnerClientId);
+
         [Rpc(SendTo.Server, InvokePermission = RpcInvokePermission.Everyone)]
         internal void UseRpc(int id, int expectedStage, int revision, RpcParams rpc = default)
         {
@@ -324,6 +370,7 @@ namespace TwinEdge.Gameplay
                     p.Steps = correct ? p.Steps + 1 : 0;
                     p.PressedGlyphs = correct ? (byte)(p.PressedGlyphs | (1 << station.Value)) : (byte)0;
                     p.Feedback = correct ? 1 : -1;
+                    EmitPrivatePuzzleCue(player, correct, station.transform.position);
                     break;
                 case Action.ReadHint:
                     ShowHintRpc(Stage, CodeForStage(Stage), RpcTarget.Single(player.OwnerClientId, RpcTargetUse.Temp));
@@ -346,7 +393,9 @@ namespace TwinEdge.Gameplay
                     OpenKeypadRpc(slot, RpcTarget.Single(player.OwnerClientId, RpcTargetUse.Temp));
                     return;
                 case Action.SewerPad:
-                    if (station.Value != answer[p.SewerLength]) return;
+                    bool sewerCorrect = station.Value == answer[p.SewerLength];
+                    EmitPrivatePuzzleCue(player, sewerCorrect, station.transform.position);
+                    if (!sewerCorrect) return;
                     sewerPressTimes[station.Value] = Now;
                     p.SewerLength++;
                     if (p.SewerLength == answer.Length) sewerOpen.Value = true;
@@ -385,6 +434,7 @@ namespace TwinEdge.Gameplay
             p.Feedback = valid ? 1 : -1;
             p.Revision++;
             progress[slot] = p;
+            EmitPrivatePuzzleCue(player, valid, keypads[slot].transform.position);
             if (!valid) return;
             accepted.Value |= 1 << slot;
             occupants[slot] = ulong.MaxValue;

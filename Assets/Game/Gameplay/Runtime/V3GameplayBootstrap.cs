@@ -1,3 +1,4 @@
+using TwinEdge.Audio;
 using System.Collections;
 using System.Linq;
 using TwinEdge.Levels;
@@ -40,6 +41,8 @@ namespace TwinEdge.Gameplay
         void OnEnable()
         {
             Current = this;
+            if (!GetComponent<AudioService>()) gameObject.AddComponent<AudioService>();
+            AudioService.UseListener(standbyCamera.GetComponent<AudioListener>());
             Presentation = PresentationRoot.Create(gameObject.scene);
             SessionUI = Presentation.gameObject.AddComponent<SessionPresentation>();
             SessionUI.Initialize(this, presentationFont, presentationEmblem);
@@ -50,6 +53,7 @@ namespace TwinEdge.Gameplay
         void OnDisable()
         {
             SceneManager.sceneLoaded -= DisableLevelPreview;
+            AudioService.StopSession();
             if (Current == this) Current = null;
             if (Presentation)
             {

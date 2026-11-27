@@ -227,3 +227,12 @@ Fortress 검토 도구가 참조하는 `Assets/Game/Level/Testing/MountainTraver
 고정 BaselineConfig와 Sparse/Balanced/Dense 메시를 사용하는 단독 콜라이더 실험이다. 발판 표본, 테스트 포물선과 두 캡슐이 설 수 있는 지점을 실제 MeshCollider에서 조사한다. V3 지형·설정 변경과 별도로 이전 실험의 재현성을 유지한다. 현재 막대·탄성 발사와 Relay 수용 검증에는 위의 V3 회귀를 사용한다. 배치 스모크는 `TwinEdge.Levels.Testing.Editor.TraversalSmoke.Run`을 호출한다. 이 메서드가 직접 에디터를 종료하므로 `-quit`을 생략한다. 결과는 `Docs/Development/Level/V3/TraversalTests/`에 있다.
 
 [검증 요약](ValidationSummary.md) · [게임플레이 시스템](../Architecture/GameplaySystems.md)
+
+## V3 audio foundation and core SFX
+
+Use the development build workflow with `TWIN_EDGE_V3_BUILD=Builds/V3Audio04` and the matching Unity 6000.3.27f1 Windows Player. Keep the normal playtest and distribution artifacts separate.
+
+- Launch the Player with `-force-d3d11 -twinAudioProbe -twinAudioTrace -logFile <local-path>`, then launch a new process with `-force-d3d11 -twinAudioRestore -logFile <local-path>`. Run both steps with no other Twin Edge Player running. The first probe saves 50 percent and the second verifies it and restores the previous preference. Check `AUDIO_PROBE_PASS` and the restoration check.
+- Capture the default Windows playback endpoint with WASAPI loopback during the probe. `AUDIO_SIGNAL` entries timestamp the UI at 100/50/0 percent and the same 3D effect at 2/16 m. Compare signal level and peaks. Report Windows loopback separately from Unity source traces and listening evaluation.
+- Run `Run-Relay.ps1 -AudioTrace` with `presentation`, `contest`, `bridge`, `riverRecovery` and the relevant castle/cavern case. Use the normal gameplay assertions and compare `AUDIO_PLAY` against authoritative event counts and locations for each peer. The presentation case asserts listener ownership, local Ready/Start cues, and cleanup and rejoin behavior when trace is enabled. Use the existing fixture placements and distinguish a generated test state from a normal gameplay transaction.
+- Keep traces, loopback, and build hashes in ignored evidence. Use [Audio Architecture](../Architecture/AudioArchitecture.md) for the mixer and event mapping. Do not publish screenshots as audio evidence.

@@ -1,3 +1,4 @@
+using TwinEdge.Audio;
 using System;
 using UnityEngine;
 
@@ -27,6 +28,7 @@ namespace TwinEdge.Gameplay
             public int Hits;
             public Vector3 PreviousPosition;
             public bool WasActive;
+            public TimedTrapAudio Audio;
         }
 
         readonly Trap[] traps = new Trap[6];
@@ -127,6 +129,17 @@ namespace TwinEdge.Gameplay
                 trap.Warning.SetActive(active && phase < trapWarning);
                 trap.Attack.gameObject.SetActive(active && phase >= trapWarning && phase < trapWarning + trapAttack);
                 trap.Attack.localPosition = AttackPosition(trap, phase);
+                var attack = trap.Kind switch
+                {
+                    TrapKind.Fire => AudioCueId.TrapFire,
+                    TrapKind.Arrow => AudioCueId.TrapArrow,
+                    _ => AudioCueId.TrapSpikes
+                };
+                double now = IsSpawned ? Now : 0;
+                double start = active
+                    ? hazardEpoch.Value + System.Math.Floor((elapsed + trap.Offset) / AttackPeriod) * AttackPeriod - trap.Offset
+                    : double.NegativeInfinity;
+                trap.Audio.Observe(game, now, start, trapWarning, trap.Frame.position, attack, trap.Attack.position);
             }
 
             float period = Mathf.Max(vanishPeriod, vanishWarning + vanishAbsent + .5f);
@@ -165,6 +178,7 @@ namespace TwinEdge.Gameplay
                         new Vector3(capsule.radius * 2, capsule.height, capsule.radius * 2));
                     if (!volume.Intersects(body)) continue;
                     trap.Hits |= 1 << slot;
+                    game.EmitWorldCue(AudioCueId.TrapHit, player.transform.position + Vector3.up);
                     slowedUntil[slot] = Now + slowSeconds;
                     Vector3 direction = Vector3.ProjectOnPlane(player.transform.position - trap.Frame.TransformPoint(center), Vector3.up).normalized;
                     player.GetComponent<PlayerMovement>().ApplyExternalVelocityRpc(direction * knockback);

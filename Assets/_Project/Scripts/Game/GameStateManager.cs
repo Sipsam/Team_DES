@@ -1,3 +1,4 @@
+using TwinEdge.Audio;
 using System;
 using System.Collections.Generic;
 using Unity.Netcode;
@@ -113,7 +114,42 @@ public sealed class GameStateManager : NetworkBehaviour
         return true;
     }
 
-    void OnFoundationChanged(FoundationPhase before, FoundationPhase after) => FoundationPhaseChanged?.Invoke(before, after);
+    void OnFoundationChanged(FoundationPhase before, FoundationPhase after)
+    {
+        FoundationPhaseChanged?.Invoke(before, after);
+        if (HasLiveAudio && IsHost && before == FoundationPhase.WaitingForPlayers && after == FoundationPhase.Preparing)
+            AudioService.Play(AudioCueId.Start);
+    }
+
+    internal bool HasLiveAudio => foundationMode && IsSpawned && IsClient && NetworkManager.IsConnectedClient &&
+        !NetworkManager.ShutdownInProgress && NetworkManager.LocalClient?.PlayerObject is { IsSpawned: true };
+
+    internal void PlayLiveCue(AudioCueId cue, Vector3 position = default)
+    {
+        if (HasLiveAudio) AudioService.Play(cue, position);
+    }
+
+    void OnClientReadyChanged(bool before, bool after)
+    {
+        if (HasLiveAudio && !IsHost && Phase == FoundationPhase.WaitingForPlayers)
+            AudioService.Play(after ? AudioCueId.Ready : AudioCueId.Unready);
+    }
+
+    // Transient server events that cannot be reconstructed faithfully from a replicated snapshot.
+    internal void EmitWorldCue(AudioCueId cue, Vector3 position, ulong? recipient = null)
+    {
+        if (!IsSpawned || !IsServer || !foundationMode) return;
+        if (recipient.HasValue && !NetworkManager.ConnectedClients.ContainsKey(recipient.Value)) return;
+        WorldCueRpc(cue, position, NetworkManager.ServerTime.Time, recipient.HasValue
+            ? RpcTarget.Single(recipient.Value, RpcTargetUse.Temp) : RpcTarget.ClientsAndHost);
+    }
+
+    [Rpc(SendTo.SpecifiedInParams, InvokePermission = RpcInvokePermission.Server)]
+    void WorldCueRpc(AudioCueId cue, Vector3 position, double occurredAt, RpcParams rpc = default)
+    {
+        if (HasLiveAudio && NetworkManager.ServerTime.Time - occurredAt < .7)
+            AudioService.Play(cue, position);
+    }
 
     public event Action<GameState, GameState> StateChanged;
 
@@ -204,6 +240,7 @@ public sealed class GameStateManager : NetworkBehaviour
         foundationPhase.OnValueChanged += OnFoundationChanged;
         currentState.OnValueChanged += HandleStateChanged;
         winnerClientId.OnValueChanged += HandleWinnerChanged;
+        clientReady.OnValueChanged += OnClientReadyChanged;
         if (IsServer)
         {
             if (foundationMode && NetworkManager.NetworkConfig.EnableSceneManagement)
@@ -229,6 +266,8 @@ public sealed class GameStateManager : NetworkBehaviour
 
     public override void OnNetworkDespawn()
     {
+        if (foundationMode) AudioService.StopSession();
+        clientReady.OnValueChanged -= OnClientReadyChanged;
         foundationPhase.OnValueChanged -= OnFoundationChanged;
         currentState.OnValueChanged -= HandleStateChanged;
         winnerClientId.OnValueChanged -= HandleWinnerChanged;
@@ -301,6 +340,8 @@ public sealed class GameStateManager : NetworkBehaviour
             return;
         }
 
+        if (HasLiveAudio)
+            AudioService.Play(nextValue == NetworkManager.LocalClientId ? AudioCueId.Win : AudioCueId.Lose);
         Debug.Log($"Player {nextValue} wins { (foundationMode ? "V3 Foundation" : "Prototype") }.");
     }
 

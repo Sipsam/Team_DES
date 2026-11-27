@@ -1,4 +1,5 @@
-﻿using System;
+using TwinEdge.Audio;
+using System;
 using System.Linq;
 using TwinEdge.Levels;
 using Unity.Netcode;
@@ -75,6 +76,9 @@ namespace TwinEdge.Gameplay
 
         public override void OnNetworkSpawn()
         {
+            foreach (var trap in traps)
+                if (trap != null) trap.Audio = default;
+            seal.OnValueChanged += OnSealAudio;
             if (!IsServer) return;
             spawns = NetworkManager.GetComponent<NetworkSpawnCoordinator>();
             NetworkManager.OnClientDisconnectCallback += OnDisconnect;
@@ -101,7 +105,14 @@ namespace TwinEdge.Gameplay
 
         public override void OnNetworkDespawn()
         {
+            seal.OnValueChanged -= OnSealAudio;
             if (IsServer) NetworkManager.OnClientDisconnectCallback -= OnDisconnect;
+        }
+
+        void OnSealAudio(UndergroundSeal before, UndergroundSeal after)
+        {
+            if (after == UndergroundSeal.Unsealed && IsBound)
+                game.PlayLiveCue(AudioCueId.Seal, Altar + Vector3.up * 1.45f);
         }
 
         void OnDisconnect(ulong id)
@@ -274,11 +285,16 @@ namespace TwinEdge.Gameplay
                 if (Step != expectedStep || Deadline(Step) != previousDeadline) return;
                 deadlines[Step] = Now + platformSeconds;
                 recentFailure.Value = UndergroundFailure.None;
+                game.EmitWorldCue(AudioCueId.Switch, stations[id].transform.position);
+                var decks = GroupDecks(Step);
+                if (decks.Count > 0) game.EmitWorldCue(AudioCueId.Platform, decks[0].Top);
                 return;
             }
 
             if (!AtAltar(player.transform.position) || game.Phase != FoundationPhase.SealPending) return;
+            bool joined = (participants.Value & (1 << slot)) == 0;
             participants.Value |= 1 << slot;
+            if (joined) game.EmitWorldCue(AudioCueId.Switch, stations[id].transform.position);
             if (participants.Value == Both)
             {
                 seal.Value = UndergroundSeal.Unsealing;

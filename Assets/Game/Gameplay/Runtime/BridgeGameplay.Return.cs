@@ -1,3 +1,4 @@
+using TwinEdge.Audio;
 using System;
 using System.Linq;
 using TwinEdge.Levels;
@@ -148,7 +149,10 @@ namespace TwinEdge.Gameplay
         {
             if (planks == null || !levelScene.isLoaded) return;
             if (change.Type == NetworkListEvent<int>.EventType.Add)
+            {
                 SetWarning(change.Value, true);
+                game.PlayLiveCue(AudioCueId.BridgeWarning, planks[change.Value].transform.position);
+            }
             else if (change.Type == NetworkListEvent<int>.EventType.RemoveAt)
                 SetWarning(change.Value, false);
             else RefreshDeck();
