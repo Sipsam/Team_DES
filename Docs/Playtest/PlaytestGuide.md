@@ -247,6 +247,29 @@ The runner opens actual D3D11 windows when a network profile is supplied. Add `-
 
 Review each peer's exit and pass files, connected settings, restored settings, nonzero RTT, missing sequence indices by count, and visible window receipt. Interpret driver packets separately from NGO messages and the diagnostic sequence count. Use the raw per-peer events to distinguish denied requests, server phase changes and distinct driver generations. Keep the Development and normal Players separate. [Measurement layers](../Architecture/NetworkBaseline.md)
 
+## Graceful session shutdown
+
+Build into a new ignored development output. Run the cases sequentially with two visible Windows D3D11 peers and a new run ID every time. `networkClose` exercises lobby departure and Ready reset, Outbound departure and manual rejoin, then the Host's Esc confirmation and actual replacement-room join. `networkCloseResult` closes from Finished after result rejoin. `networkCloseRematch` also checks the same-room scene rebuild and previous match requests. Use the three cases for each impaired profile and a representative normal-link case.
+
+```powershell
+$evidence = 'Docs/Development/NetworkClose/V1'
+foreach ($profile in 'C','D') {
+    foreach ($case in 'networkClose','networkCloseResult','networkCloseRematch') {
+        $id = Get-Date -Format 'yyyyMMdd-HHmmssfff'
+        ./Tools/Playtest/Run-Relay.ps1 -Build $build -Run "$case-$profile-$id" -Case $case -NetworkProfile $profile -EvidenceRoot $evidence
+    }
+}
+$id = Get-Date -Format 'yyyyMMdd-HHmmssfff'
+./Tools/Playtest/Run-Relay.ps1 -Build $build -Run "Close-A-$id" -Case networkClose -NetworkProfile A -EvidenceRoot $evidence
+./Tools/Playtest/Run-Relay.ps1 -Build $build -Run "Unreachable-D-$id" -Case networkCloseUnreachable -NetworkProfile D -EvidenceRoot $evidence
+foreach ($profile in 'C','D') {
+    $id = Get-Date -Format 'yyyyMMdd-HHmmssfff'
+    ./Tools/Playtest/Run-Relay.ps1 -Build $build -Run "ClientLoss-$profile-$id" -Case networkCloseClientLoss -NetworkProfile $profile -EvidenceRoot $evidence
+}
+```
+
+The loss cases apply a verified 100% UTP transmit and receive drop to the Client on an established Relay link. `networkCloseUnreachable` checks the Host's bounded close and the Client's generic disconnect notice and replacement room. `networkCloseClientLoss` keeps the Host and room running until it detects the loss, then checks manual rejoin. Compare UTC close events across peers and subtract driver counters within the same driver generation. Reliable sequence gaps and retransmissions are UTP observations. Per-message transport queue residency and independent wire loss are `NOT_MEASURED`. The runner removes both room-code exchange files. In a separate normal Player, confirm the Windows UI and Relay close and that the Development fixture flags and types are excluded.
+
 ## Final integration only
 
 Run the following only after the [roadmap](../Workflow/ROADMAP.md) prerequisites are met and the user explicitly starts final integration. Use the matching Development Player and route data prepared above.

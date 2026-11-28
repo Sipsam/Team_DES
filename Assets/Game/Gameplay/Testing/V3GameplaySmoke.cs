@@ -71,6 +71,7 @@ public sealed partial class V3GameplaySmoke : MonoBehaviour
         var game = FindFirstObjectByType<GameStateManager>();
 #if DEVELOPMENT_BUILD
         if (networkBaseline) yield return MeasureNetworkLobby(game);
+        if (NetworkCloseCase == "networkClose") yield return NetworkReconnectLobby(game);
 #endif
         if (RematchTest) yield return RecordInitialLobby(game);
         yield return TwinEdge.Gameplay.RelayMatchStart.Run(game);
@@ -97,6 +98,11 @@ public sealed partial class V3GameplaySmoke : MonoBehaviour
         if (networkResult)
         {
             yield return RunNetworkResult(game);
+            yield break;
+        }
+        if (NetworkCloseCase != null)
+        {
+            yield return RunNetworkClose(game);
             yield break;
         }
         if (networkCombat)

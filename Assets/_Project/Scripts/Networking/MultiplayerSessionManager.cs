@@ -12,6 +12,8 @@ public sealed class MultiplayerSessionManager : MonoBehaviour
 {
     internal enum RoomIssue { None, InvalidCode, NotFound, Full, InvalidNickname, Connection, HostLeft, Rebuilding }
     const string HostLeftReason = "Host closed the room.";
+    const string DepartureMessage = "TwinEdge.Session.Departure";
+    const double DepartureWaitSeconds = 2;
     [SerializeField] private NetworkManager networkManager;
 
     private ISession activeSession;
@@ -19,6 +21,7 @@ public sealed class MultiplayerSessionManager : MonoBehaviour
     private Task initializationTask;
     private bool operationInProgress;
     private bool leaving;
+    private bool hostCloseReceived;
     private Task disconnectCleanup;
 
     public event Action<string> StatusChanged;
@@ -26,11 +29,16 @@ public sealed class MultiplayerSessionManager : MonoBehaviour
 
     public string CurrentJoinCode { get; private set; } = string.Empty;
     public string CurrentStatus { get; private set; } = "Offline. Create or join a room.";
-    public bool IsBusy => operationInProgress || (networkManager != null && networkManager.ShutdownInProgress);
+    public bool IsBusy => operationInProgress || (hostCloseReceived && HasSession) ||
+        (networkManager != null && networkManager.ShutdownInProgress);
     public bool HasSession => activeSession != null;
+    internal bool IsClosingRoom => leaving && networkManager.IsServer;
     internal RoomIssue Issue { get; private set; }
     internal string InterruptedRoomCode { get; private set; } = string.Empty;
     internal bool WasDisconnected { get; private set; }
+#if DEVELOPMENT_BUILD
+    internal bool ReceivedHostCloseForTest => hostCloseReceived;
+#endif
 
     private void Awake()
     {
@@ -49,6 +57,7 @@ public sealed class MultiplayerSessionManager : MonoBehaviour
 
         networkManager.OnClientConnectedCallback += HandleClientConnected;
         networkManager.OnClientDisconnectCallback += HandleClientDisconnected;
+        networkManager.OnClientStarted += RegisterDepartureHandler;
         networkManager.OnClientStopped += HandleClientStopped;
     }
 
@@ -61,7 +70,9 @@ public sealed class MultiplayerSessionManager : MonoBehaviour
 
         networkManager.OnClientConnectedCallback -= HandleClientConnected;
         networkManager.OnClientDisconnectCallback -= HandleClientDisconnected;
+        networkManager.OnClientStarted -= RegisterDepartureHandler;
         networkManager.OnClientStopped -= HandleClientStopped;
+        networkManager.CustomMessagingManager?.UnregisterNamedMessageHandler(DepartureMessage);
         DetachSession();
     }
 
@@ -159,6 +170,7 @@ public sealed class MultiplayerSessionManager : MonoBehaviour
             return;
         }
 
+        TraceClose("local leave accepted", networkManager.LocalClientId);
         operationInProgress = true;
         leaving = true;
         ResetRoomIssue();
@@ -166,18 +178,23 @@ public sealed class MultiplayerSessionManager : MonoBehaviour
 
         try
         {
-            if (networkManager.IsServer)
+            if (networkManager.IsHost)
             {
-                for (int i = networkManager.ConnectedClientsIds.Count - 1; i >= 0; i--)
-                {
-                    ulong clientId = networkManager.ConnectedClientsIds[i];
-                    if (clientId != networkManager.LocalClientId)
-                        networkManager.DisconnectClient(clientId, HostLeftReason);
-                }
+                foreach (ulong clientId in networkManager.ConnectedClientsIds)
+                    if (clientId != NetworkManager.ServerClientId)
+                        SendDeparture(clientId);
+                await WaitForDepartureAsync(() => networkManager.ConnectedClientsIds.Count > 1);
+            }
+            else if (networkManager.IsConnectedClient)
+            {
+                SendDeparture(NetworkManager.ServerClientId);
+                await WaitForDepartureAsync(() => networkManager.IsConnectedClient);
             }
             if (sessionToLeave != null)
             {
+                TraceClose("MPS leave begin", networkManager.LocalClientId);
                 await sessionToLeave.LeaveAsync();
+                TraceClose("MPS leave completed", networkManager.LocalClientId);
             }
         }
         catch (Exception exception)
@@ -188,6 +205,7 @@ public sealed class MultiplayerSessionManager : MonoBehaviour
         {
             if (networkManager != null && networkManager.IsListening)
             {
+                TraceClose("NGO fallback shutdown requested", networkManager.LocalClientId);
                 networkManager.Shutdown();
             }
 
@@ -196,6 +214,66 @@ public sealed class MultiplayerSessionManager : MonoBehaviour
             SetStatus("Left session.");
             leaving = false;
             operationInProgress = false;
+        }
+    }
+
+    private void RegisterDepartureHandler()
+    {
+        hostCloseReceived = false;
+        networkManager.CustomMessagingManager.RegisterNamedMessageHandler(DepartureMessage, HandleDeparture);
+    }
+
+    private void SendDeparture(ulong recipient)
+    {
+        using var payload = new FastBufferWriter(1, Unity.Collections.Allocator.Temp);
+        networkManager.CustomMessagingManager.SendNamedMessage(DepartureMessage, recipient, payload);
+        TraceClose("reliable departure enqueued", recipient);
+    }
+
+    private void HandleDeparture(ulong sender, FastBufferReader payload)
+    {
+        if (networkManager.ShutdownInProgress || payload.Position != payload.Length) return;
+        if (networkManager.IsServer)
+        {
+            // A Client can only request removal of its own live connection.
+            if (sender == NetworkManager.ServerClientId || !networkManager.ConnectedClients.ContainsKey(sender)) return;
+            TraceClose("client departure received", sender);
+            networkManager.DisconnectClient(sender, IsClosingRoom ? HostLeftReason : null);
+        }
+        else if (sender == NetworkManager.ServerClientId && networkManager.IsConnectedClient &&
+            HasSession && !hostCloseReceived)
+        {
+            hostCloseReceived = true;
+            TraceClose("host close received", sender);
+            // The same Client departure message confirms the notice. Keep UTP running
+            // while the acknowledgement can be delivered and the server can disconnect us.
+            SendDeparture(sender);
+            _ = FinishRemoteCloseAsync(activeSession);
+        }
+    }
+
+    private async Task FinishRemoteCloseAsync(ISession closingSession)
+    {
+        await WaitForDepartureAsync(() => activeSession == closingSession && networkManager.IsConnectedClient);
+        if (networkManager && activeSession == closingSession &&
+            networkManager.IsConnectedClient && !networkManager.ShutdownInProgress)
+        {
+            TraceClose("NGO remote close fallback shutdown requested", networkManager.LocalClientId);
+            networkManager.Shutdown();
+        }
+    }
+
+    private async Task WaitForDepartureAsync(Func<bool> peerStillConnected)
+    {
+        double deadline = Time.realtimeSinceStartupAsDouble + DepartureWaitSeconds;
+        while (networkManager && networkManager.IsListening && !networkManager.ShutdownInProgress && peerStillConnected())
+        {
+            if (Time.realtimeSinceStartupAsDouble >= deadline)
+            {
+                TraceClose("departure wait expired", networkManager.LocalClientId);
+                return;
+            }
+            await Awaitable.NextFrameAsync();
         }
     }
 
@@ -273,7 +351,11 @@ public sealed class MultiplayerSessionManager : MonoBehaviour
         return session;
     }
 
-    private void HandleSessionDeleted() => EndConnection(RoomIssue.HostLeft);
+    private void HandleSessionDeleted()
+    {
+        TraceClose("MPS session deleted", networkManager.LocalClientId);
+        EndConnection(DisconnectIssue);
+    }
 
     private async Task EnsureServicesReadyAsync()
     {
@@ -343,6 +425,7 @@ public sealed class MultiplayerSessionManager : MonoBehaviour
 
     private void HandleClientDisconnected(ulong clientId)
     {
+        TraceClose($"NGO disconnect explicitReason={networkManager.DisconnectReason == HostLeftReason}", clientId);
         Debug.LogWarning($"NGO client disconnected: {clientId}.", this);
 
         if (networkManager != null && networkManager.IsServer && clientId != networkManager.LocalClientId)
@@ -352,14 +435,18 @@ public sealed class MultiplayerSessionManager : MonoBehaviour
         }
 
         if (!operationInProgress && !leaving)
-            EndConnection(networkManager.DisconnectReason == HostLeftReason ? RoomIssue.HostLeft : RoomIssue.Connection);
+            EndConnection(DisconnectIssue);
     }
 
     private void HandleClientStopped(bool wasHost)
     {
+        TraceClose("NGO client stopped", networkManager.LocalClientId);
         if (!operationInProgress && !leaving && HasSession)
-            EndConnection(networkManager.DisconnectReason == HostLeftReason ? RoomIssue.HostLeft : RoomIssue.Connection);
+            EndConnection(DisconnectIssue);
     }
+
+    private RoomIssue DisconnectIssue => hostCloseReceived || networkManager.DisconnectReason == HostLeftReason
+        ? RoomIssue.HostLeft : RoomIssue.Connection;
 
     private void EndConnection(RoomIssue issue)
     {
@@ -367,6 +454,7 @@ public sealed class MultiplayerSessionManager : MonoBehaviour
         if (disconnectedSession == null) return;
         WasDisconnected = true;
         Issue = issue;
+        TraceClose($"disconnect classified {issue}", networkManager.LocalClientId);
         InterruptedRoomCode = CurrentJoinCode;
         CurrentJoinCode = string.Empty;
         JoinCodeChanged?.Invoke(CurrentJoinCode);
@@ -379,7 +467,9 @@ public sealed class MultiplayerSessionManager : MonoBehaviour
     {
         try
         {
+            TraceClose("MPS disconnect cleanup begin", networkManager.LocalClientId);
             await disconnectedSession.LeaveAsync();
+            TraceClose("MPS disconnect cleanup completed", networkManager.LocalClientId);
         }
         catch (Exception exception)
         {
@@ -403,6 +493,17 @@ public sealed class MultiplayerSessionManager : MonoBehaviour
         {
             SetStatus("Waiting for player... (1/2)");
         }
+    }
+
+    [System.Diagnostics.Conditional("DEVELOPMENT_BUILD")]
+    private void TraceClose(string step, ulong clientId)
+    {
+#if DEVELOPMENT_BUILD
+        if (RelayNetworkProbe.Current is not { } probe) return;
+        var game = V3GameplayBootstrap.Current?.state;
+        ulong match = game && game.IsSpawned ? game.MatchIdentity : 0;
+        probe.NoteClose($"{step} ngoId={clientId} match={match}");
+#endif
     }
 
     private void SetStatus(string message)

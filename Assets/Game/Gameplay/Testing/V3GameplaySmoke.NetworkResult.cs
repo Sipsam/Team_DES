@@ -97,7 +97,8 @@ public sealed partial class V3GameplaySmoke
         probe.Segment = "finished-rejoin";
         if (!host)
         {
-            manager.Shutdown();
+            if (NetworkCloseCase == null) manager.Shutdown();
+            else yield return ConfirmNetworkDeparture();
             yield return Until(() => !manager.IsListening && !sessions.HasSession, "Client disconnected in Finished", 60);
         }
         else yield return Until(() => !game.IsGameReady && game.Phase == FoundationPhase.Finished, "Host retained Finished", 45);
@@ -120,6 +121,11 @@ public sealed partial class V3GameplaySmoke
             "Finished rejoin restored original result, slot, time, transition, nickname, cape and object count");
         yield return Until(() => VisiblePage("Match Result").activeInHierarchy, "Original result UI restored");
         probe.Note("finished state and both runtime peers restored");
+        if (NetworkCloseCase == "networkCloseResult")
+        {
+            yield return ReplaceNetworkCloseRoom(game, unreachable: false);
+            yield break;
+        }
 
         yield return SyncContest("result-rebuild");
         probe.Segment = "rematch";
@@ -146,7 +152,8 @@ public sealed partial class V3GameplaySmoke
             "Fresh Client Ready and Host Start produced a new countdown");
         probe.Note("new runtime peers and fresh countdown observed");
 
-        yield return NetworkReplaceRoom(game);
+        if (NetworkCloseCase != null) yield return ReplaceNetworkCloseRoom(game, unreachable: false);
+        else yield return NetworkReplaceRoom(game);
     }
 
     ulong RemoteResultClientId()

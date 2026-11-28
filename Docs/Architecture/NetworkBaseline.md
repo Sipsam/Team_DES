@@ -29,4 +29,6 @@ UTP 2.7.4의 `ModifyNetworkSimulatorParameters`를 Development 드라이버에 �
 
 ## 검증 상태
 
+`NET-01`의 Host 종료 사유 유실과 Client 단절 감지 전의 재전송은 별도 관측이다. [V3-NET-CLOSE-01 검증](../Playtest/ValidationSummary.md#v3-net-close-01--graceful-session-shutdown)은 기존 Profile C의 송신 요청·드라이버 수명과 Client 분류를 같은 PC UTC로 대조한다. 정상 퇴장 메시지가 반대 피어에 실제 도착한 구간과 송수신이 차단된 구간을 각각 비교한다.
+
 측정 표와 판정은 [검증 요약](../Playtest/ValidationSummary.md)에서 관리한다. 선택 로컬 증거는 Git이 무시하는 `Docs/Development/NetworkBaseline/V1/`에 저장한다. 원시 증거의 참가 코드는 실행 종료 시 정리한다.

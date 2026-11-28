@@ -1,24 +1,23 @@
 # Current task
 
-**V3-NET-BASELINE** · Network traffic and resilience baseline
+**V3-NET-CLOSE-01** · Graceful session shutdown and disconnect recovery
 
-**Checkpoint** `READY_TO_COMMIT` · **Base** `bda29df0e645ecc4a2bc60d78552762119e0e654`
+**Checkpoint** `READY_TO_COMMIT` · **Base** `3ee464cbc8c8c7c456d12092b051f8c4b1ee3de6`
 
-Standard · Network, Gameplay and Performance. Local HEAD, origin/main and live main matched at entry. The pre-existing untracked design PDF is outside the task. V3-PERF-02 is published in the base commit.
+Complex · Network, Gameplay and UI · Task-Centric Orchestration V2. Local HEAD, origin/main and live main matched. The untracked design PDF and historical Players, captures and evidence are outside the task. Optional ignored evidence is under `Docs/Development/NetworkClose/V1/`.
 
-NET-A confirmed the installed NGO profiling hooks and UTP driver and connection counters. The scope includes opt-in Development telemetry, the lobby and movement matrix, genuine input at isolated bridge and contest spawn stations, and the isolated result setup with live pickup and finish approval. NET-B/C exploratory A and C collected lobby and movement samples but used hidden windows and missed the marker lookup. Their after-restore motion check sampled one half of an input cycle. D opened visible windows and its reconnect barrier expired before the transport's disconnect timeout. The candidate discovers registered profiler handles, samples both input directions across frames and allows the actual disconnect deadline.
+| Work | Worker | State | Scope and next check |
+| --- | --- | --- | --- |
+| CLOSE01-A | Explore + Plan | COMPLETED | Session manager, presentation, installed NGO/UTP/MPS teardown and NET-01 history reviewed. |
+| CLOSE01-B | Validate | COMPLETED | `Base-C-20261128-174554694` reproduced Connection under C. `Trace-Base-C-20261128-175153098` reproduced it 30.271s after the Host leave request. |
+| CLOSE01-C | Diagnose | COMPLETED | Trace baseline requested the existing reason before MPS leave and closed Host UTP about 0.13s after the request. Client did not receive the reason. Exact queue state and Relay wire delivery remain unmeasured. |
+| CLOSE01-D | Implement | COMPLETED | Session manager sends a reliable notice before teardown and waits for the current peer's departure. Spawn approval rejects new peers while the Host closes. Fixture changes are Development-only. |
+| CLOSE01-E | Validate + Review | COMPLETED | A and three consecutive C/D runs per profile passed. Outbound and Finished re-entry, rematch, D unreachable Host closure and C/D Client loss passed. The ordinary D3D11 pair passed with Development probes and simulator setup excluded. |
+| CLOSE01-F | Finalize | IN_PROGRESS | Scope and evidence reviewed. Compare and stage the exact paths, then commit, push and record the verified live hash in ignored evidence. |
 
-Visible A and C passed lobby, motion and Outbound rejoin. Both A receivers got all 300 calibration messages. C missed 3 at Host and 2 at Client. Guard-A recorded all four expected branches. Result-C approved the finish on both peers but its driver waited for an interior coordinate after Finished had stopped movement. The next candidate uses the actual finish collider. The prior recorder reset returned only its first marker sample. The next candidate reads each retained sample once.
+Candidate `Build-Dev-20261128-175207804` is traced by `compiled-fixture.txt`, `development-pass-receipts.csv` and the per-run assembly hashes. The baseline and candidate runs use separate evidence folders. See [NET-01 validation](../Playtest/ValidationSummary.md#v3-net-close-01--graceful-session-shutdown) for scope, counters and limits.
 
-The retained recorder candidate collects per-frame markers. Guard-C passed all four branches and resumed after a fresh remote transform. Result-C passed live pickup, both stale revision gates, grounded finish, Finished rejoin and same-room scene rebuild. Host closed and made a new room. Client released the original driver at roughly 30 seconds without reaching the explicit HostLeft branch. A follow-up measurement distinguishes the closed-room classification from gameplay recovery. The combat steps passed on both peers before its early cleanup deadline. The candidate restores the link setup before combat cleanup.
-
-The retained-marker A, B and D runs and the earlier C transport run all passed the two Runtime Ready checks, movement and Outbound rejoin. Profile D observed 9/5 missing diagnostic messages, 443/444 ms movement RTT medians and a confirmed return to zero settings. C and D both showed increased reliable retransmission during the roughly 30-second shutdown detection window. The shared draft tracks this separately from steady traffic.
-
-E verified pre-start Ready reset, lobby and Outbound rejoin, explicit HostLeft on the normal link and creation of a fresh room. Combat and guard passed in A and C. The A result passed and the C classification rerun confirmed Finished rejoin, scene rebuild, clean shutdown and a new Host room. C reproduced a 30-second generic Connection classification. The shared summary records NET-01 and the separate follow-up candidate.
-
-The isolated normal Player built and opened an actual D3D11 window with Development test flags. Assembly inspection and the boot output confirmed fixture exclusion. Optional local evidence is in ignored `Docs/Development/NetworkBaseline/V1/`. The `latest-matrix.txt`, `latest-post-matrix.txt` and `latest-normal-boot.txt` pointers identify the run and exclusion receipts.
-
-Review the exact staged diff, compare live main, commit and push, and retain the verified remote hash in local finalization evidence. Official screenshot publication is skipped for this nonvisual scope. QA-03 and the original ninth timber carry remain intermittent. Human playtests, final integration and release keep their roadmap states.
+Normal run `NormalRelay-20261128-180753815` stopped before room creation when the Windows launcher could not focus a Player. With focus and registry restoration corrected in the local launcher, `NormalRelay-20261128-180903346` passed using the same `Build-Normal-20261128-180515878` artifacts. Official publication is skipped for nonvisual scope. Human playtests, integration and release retain their roadmap states.
 
 ## State and handoff
 

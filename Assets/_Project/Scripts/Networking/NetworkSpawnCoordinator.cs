@@ -13,6 +13,7 @@ public sealed class NetworkSpawnCoordinator : MonoBehaviour
     [SerializeField] private NetworkManager networkManager;
     [SerializeField] private Transform[] spawnPoints;
 
+    private MultiplayerSessionManager sessions;
     private readonly Dictionary<ulong, int> clientSpawnSlots = new Dictionary<ulong, int>();
     private readonly Dictionary<ulong, (Pose Pose, string Checkpoint)> approvedV3Spawns = new();
     private readonly Dictionary<ulong, string> approvedNicknames = new();
@@ -114,6 +115,7 @@ public sealed class NetworkSpawnCoordinator : MonoBehaviour
         }
 
         networkManager.NetworkConfig.ConnectionApproval = true;
+        sessions = networkManager.GetComponent<MultiplayerSessionManager>();
         networkManager.ConnectionApprovalCallback = ApproveConnection;
         networkManager.OnClientConnectedCallback += PlaceConnectedPlayer;
         networkManager.OnClientDisconnectCallback += HandleClientDisconnected;
@@ -135,6 +137,11 @@ public sealed class NetworkSpawnCoordinator : MonoBehaviour
         NetworkManager.ConnectionApprovalRequest request,
         NetworkManager.ConnectionApprovalResponse response)
     {
+        if (sessions != null && sessions.IsClosingRoom)
+        {
+            response.Reason = "The room is closing.";
+            return;
+        }
         if (rebuilding)
         {
             response.Reason = RebuildingReason;

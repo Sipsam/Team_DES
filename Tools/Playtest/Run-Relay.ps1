@@ -1,7 +1,7 @@
 param(
     [Parameter(Mandatory)][string]$Build,
     [Parameter(Mandatory)][string]$Run,
-    [ValidateSet('rematch','networkResult','networkCombat','presentation','settings','transition','transitionRecovery','foundation','foundationImpaired','cameraControls','poleRecovery','bridge','bridgeContact','bridgeDisconnect','bridgeGuard','river','riverRecovery','castleUnderground','castleReconnect','castleKeypad','cavernHazards','cavernReconnect','contest','contestRegions','contestLifecycle','return','returnInput','returnReconnect','mountain','mountainExchange','mountainFromSpawn','mountainEntry','full','canyon','approach','summit','castle','castleWalk','riverLink','middle','finish')]
+    [ValidateSet('rematch','networkResult','networkCombat','networkClose','networkCloseResult','networkCloseRematch','networkCloseUnreachable','networkCloseClientLoss','presentation','settings','transition','transitionRecovery','foundation','foundationImpaired','cameraControls','poleRecovery','bridge','bridgeContact','bridgeDisconnect','bridgeGuard','river','riverRecovery','castleUnderground','castleReconnect','castleKeypad','cavernHazards','cavernReconnect','contest','contestRegions','contestLifecycle','return','returnInput','returnReconnect','mountain','mountainExchange','mountainFromSpawn','mountainEntry','full','canyon','approach','summit','castle','castleWalk','riverLink','middle','finish')]
     [string]$Case = 'foundation',
     [string]$PolePlan = 'Docs/Development/Gameplay/V1/MountainPole/ContinuousPlan.json',
     [string]$ReturnPlan = 'Docs/Development/Gameplay/V1/MountainReturn/Route.json',
@@ -34,7 +34,7 @@ if ($NetworkBaseline -and ($Case -ne 'foundation' -or !$NetworkProfile)) {
 if ($NetworkProfile -and ($Case -in 'full','foundationImpaired' -or ($NetworkProfile -eq 'E' -and !$NetworkBaseline))) {
     throw 'Use network profiles with isolated cases. Profile E belongs to the network baseline.'
 }
-if ($Case -in 'networkResult','networkCombat' -and !$NetworkProfile) { throw 'Network cases require a network profile.' }
+if ($Case -match '^network' -and !$NetworkProfile) { throw 'Network cases require a network profile.' }
 $project = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '../..')).Path
 Push-Location -LiteralPath $project
 $players = @()
@@ -52,6 +52,12 @@ try {
 
     switch -Regex ($Case) {
         '^networkCombat$' { $extra = @('-v3NetworkCombat') }
+        '^networkClose' {
+            $extra = @('-v3NetworkClose', $Case)
+            if ($Case -in 'networkCloseResult','networkCloseRematch') { $extra += '-v3NetworkResult' }
+            if ($Case -eq 'networkClose') { $extra += '-twinAudioTrace' }
+            $timeout = 390
+        }
         '^networkResult$' {
             $extra = @('-v3NetworkResult')
             $timeout = 390
@@ -206,7 +212,7 @@ finally {
         }
     }
     if (($Case -eq 'rematch' -or $NetworkProfile) -and $createdOutput) {
-        foreach ($name in 'join-code.txt', 'join-code.tmp') {
+        foreach ($name in 'join-code.txt', 'join-code.tmp', 'replacement-code.txt', 'replacement-code.tmp') {
             $codeFile = Join-Path $output $name
             if (Test-Path -LiteralPath $codeFile) { Remove-Item -LiteralPath $codeFile }
         }

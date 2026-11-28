@@ -128,8 +128,10 @@ public sealed partial class V3GameplaySmoke
         yield return SyncContest("network-lobby-leave");
         if (!host)
         {
-            manager.Shutdown();
+            if (NetworkCloseCase == null) manager.Shutdown();
+            else yield return ConfirmNetworkDeparture();
             yield return Until(() => !manager.IsListening && !sessions.HasSession, "Client shutdown before Host Start", 60);
+            RelayNetworkProbe.Current.NoteClose("local lobby leave settled");
         }
         else
         {
@@ -176,7 +178,7 @@ public sealed partial class V3GameplaySmoke
         Check(remoteTravel > .25f, $"Network sample observed remote movement, travel={remoteTravel:F3}m");
     }
 
-    IEnumerator NetworkReconnect(GameStateManager game)
+    IEnumerator NetworkReconnect(GameStateManager game, bool graceful = false, bool blackhole = false)
     {
         var probe = RelayNetworkProbe.Current;
         string code = sessions.CurrentJoinCode;
@@ -190,13 +192,18 @@ public sealed partial class V3GameplaySmoke
         ulong identity = game.MatchIdentity;
         if (!host)
         {
-            manager.Shutdown();
+            if (graceful) yield return ConfirmNetworkDeparture();
+            else if (blackhole) BlockCloseTransport();
+            else manager.Shutdown();
             yield return Until(() => !manager.IsListening && !sessions.HasSession, "Controlled client disconnect", 60);
             probe.Note("client disconnected");
+            if (blackhole)
+                Check(sessions.Issue == MultiplayerSessionManager.RoomIssue.Connection, "Client loss uses generic classification");
         }
         else
         {
             yield return Until(() => !game.IsGameReady, "Server observed client disconnect", 45);
+            probe.NoteClose("host cleared remote slot");
         }
         yield return SyncContest("network-disconnected", 60);
         if (!host)

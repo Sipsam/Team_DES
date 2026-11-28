@@ -26,7 +26,7 @@ namespace TwinEdge.Gameplay
         {
             "RpcMessage", "NetworkVariableDeltaMessage", "NetworkTransformMessage", "TimeSyncMessage",
             "ConnectionRequestMessage", "ConnectionApprovedMessage", "SceneEventMessage",
-            "CreateObjectMessage", "DestroyObjectMessage", "NamedMessage"
+            "CreateObjectMessage", "DestroyObjectMessage", "NamedMessage", "DisconnectReasonMessage"
         };
 
         readonly List<ProfilerRecorder> recorders = new();
@@ -135,6 +135,9 @@ namespace TwinEdge.Gameplay
 
         internal void Note(string message) =>
             events.WriteLine(FormattableString.Invariant($"{Time.realtimeSinceStartupAsDouble:F3} {message}"));
+
+        internal void NoteClose(string message) =>
+            Note(FormattableString.Invariant($"close utc={DateTime.UtcNow:O} generation={generation} {message}"));
 
         void VerifySettings(NetworkDriver driver, NetworkSimulatorParameter expected, string label)
         {
