@@ -450,6 +450,9 @@ namespace TwinEdge.Gameplay
                 (current.left != LoadState.Empty && !HolderValid(current, false)) ||
                 (current.right != LoadState.Empty && !HolderValid(current, true)))
             {
+#if DEVELOPMENT_BUILD
+                RecordGuardFixture("returned", current, current);
+#endif
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
                 if (BridgeRelaySmoke.Tracing)
                     BridgeRelaySmoke.TraceEvent($"carry reset canInteract={CanInteract} idle={now-lastActivity:F3} leftValid={HolderValid(current, false)} rightValid={HolderValid(current, true)}");
@@ -477,11 +480,17 @@ namespace TwinEdge.Gameplay
                 return;
             }
             next.center.y = height;
+#if DEVELOPMENT_BUILD
+            PrepareGuardFixture(current, next);
+#endif
             // The server advances the timber before the owners apply and replicate that pose.
             // Wait for the current holders to catch up instead of advancing beyond the same
             // range that would invalidate the carry at the start of the next step.
             if (!HolderValid(next, false) || !HolderValid(next, true))
             {
+#if DEVELOPMENT_BUILD
+                RecordGuardFixture("held", current, next);
+#endif
                 TraceCarryGate("waiting for holder positions");
                 return;
             }
@@ -494,13 +503,21 @@ namespace TwinEdge.Gameplay
             if (!AtSocket(next)) next.approvals = 0;
             lastActivity = now;
             load.Value = next;
+#if DEVELOPMENT_BUILD
+            RecordGuardFixture("advanced", current, next);
+#endif
         }
 
         bool HolderValid(LoadState current, bool right)
         {
-            var player = Player(right ? current.right : current.left);
+            ulong holder = right ? current.right : current.left;
+            var player = Player(holder);
             return player != null && player.IsSpawned &&
+#if DEVELOPMENT_BUILD
+                Vector3.Distance(GuardFixturePosition(holder, player.transform.position), current.Grip(right, gripHalfWidth)) < 2.5f;
+#else
                 Vector3.Distance(player.transform.position, current.Grip(right, gripHalfWidth)) < 2.5f;
+#endif
         }
 
         bool ClearCarry(LoadState next)

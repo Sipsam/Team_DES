@@ -34,7 +34,7 @@ V3의 NGO 연결 페이로드는 지난번 사용한 닉네임을 기본값으�
 
 Client가 떠나면 Host의 대기실에 상대 재입장 안내가 표시되고 진행은 서버에 남는다. 막대와 운반, PvP 잡기는 해제한다. 세션이 살아 있는 동안 기존 방 코드와 로컬 닉네임으로 수동 재입장하면 새 NGO client ID를 받을 수 있으며 서버의 슬롯/상태와 구간별 체크포인트를 복구한다. 성채에서는 왕로 상류 부두, 복로 지하문 인근을 사용한다. 개인 체크포인트와 왕로 뗏목 공동 복구는 각 시스템이 결정한다. Host가 방을 닫으면 Client를 메인 메뉴로 보내고 새 방을 안내한다. 통신 단절로 방 상태가 불명확하면 기존 코드를 채운 참여 화면으로 돌아간다.
 
-[Relay 재현 절차](../Playtest/PlaytestGuide.md) · [검증 범위](../Playtest/ValidationSummary.md)
+[Relay 재현 절차](../Playtest/PlaytestGuide.md) · [검증 범위](../Playtest/ValidationSummary.md) · [네트워크 계측과 임페어먼트 기준](NetworkBaseline.md)
 
 
 ## V3 대기실 시작 승인

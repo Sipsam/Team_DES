@@ -17,11 +17,11 @@ public sealed partial class V3GameplaySmoke
     string ContestRole => host ? "host" : "client";
     const float StagePause = .65f;
 
-    IEnumerator SyncContest(string label)
+    IEnumerator SyncContest(string label, float timeout = 20)
     {
         File.WriteAllText(Path.Combine(evidence, $"{ContestRole}-{label}.ready"), "");
         string peer = host ? "client" : "host";
-        yield return Until(() => File.Exists(Path.Combine(evidence, $"{peer}-{label}.ready")), label, 20);
+        yield return Until(() => File.Exists(Path.Combine(evidence, $"{peer}-{label}.ready")), label, timeout);
     }
 
     Vector3 MarkerPoint(string id) => FindObjectsByType<LevelMarker>(FindObjectsSortMode.None).Single(m => m.id == id).transform.position;

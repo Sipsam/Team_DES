@@ -108,6 +108,14 @@ namespace TwinEdge.Gameplay
             if (character != null) AcquireRpc(revision.Value, character.OwnerLife, game.ActionRevision);
         }
 
+#if DEVELOPMENT_BUILD
+        internal void RequestAcquireForBaseline(uint revisionOffset, uint actionOffset)
+        {
+            var character = NetworkManager.LocalClient.PlayerObject.GetComponent<GameplayCharacter>();
+            AcquireRpc(revision.Value - revisionOffset, character.OwnerLife, game.ActionRevision - actionOffset);
+        }
+#endif
+
         [Rpc(SendTo.Server, InvokePermission = RpcInvokePermission.Everyone)]
         void AcquireRpc(uint expectedRevision, int life, uint action, RpcParams rpc = default)
         {

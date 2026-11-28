@@ -1,7 +1,7 @@
 param(
     [Parameter(Mandatory)][string]$Build,
     [Parameter(Mandatory)][string]$Run,
-    [ValidateSet('rematch','presentation','settings','transition','transitionRecovery','foundation','foundationImpaired','cameraControls','poleRecovery','bridge','bridgeContact','bridgeDisconnect','river','riverRecovery','castleUnderground','castleReconnect','castleKeypad','cavernHazards','cavernReconnect','contest','contestRegions','contestLifecycle','return','returnInput','returnReconnect','mountain','mountainExchange','mountainFromSpawn','mountainEntry','full','canyon','approach','summit','castle','castleWalk','riverLink','middle','finish')]
+    [ValidateSet('rematch','networkResult','networkCombat','presentation','settings','transition','transitionRecovery','foundation','foundationImpaired','cameraControls','poleRecovery','bridge','bridgeContact','bridgeDisconnect','bridgeGuard','river','riverRecovery','castleUnderground','castleReconnect','castleKeypad','cavernHazards','cavernReconnect','contest','contestRegions','contestLifecycle','return','returnInput','returnReconnect','mountain','mountainExchange','mountainFromSpawn','mountainEntry','full','canyon','approach','summit','castle','castleWalk','riverLink','middle','finish')]
     [string]$Case = 'foundation',
     [string]$PolePlan = 'Docs/Development/Gameplay/V1/MountainPole/ContinuousPlan.json',
     [string]$ReturnPlan = 'Docs/Development/Gameplay/V1/MountainReturn/Route.json',
@@ -10,6 +10,8 @@ param(
     [switch]$AudioTrace,
     [switch]$PolishTrace,
     [switch]$PresentationMetrics,
+    [ValidateSet('A','B','C','D','E')][string]$NetworkProfile,
+    [switch]$NetworkBaseline,
     [ValidateSet(1024,1280,1600,1920,2560)][int]$Width = 1024,
     [string]$EvidenceRoot = 'Docs/Development/Gameplay/V1/RelayRuns',
     [switch]$BridgeTrace,
@@ -26,6 +28,13 @@ if ($BridgeHazardRoute -and $Case -eq 'bridgeDisconnect') { throw 'The disconnec
 if ($BridgeCarryRepeats -gt 1 -and $Case -notin 'bridge','bridgeContact') {
     throw 'Carry repeats require a bridge crossing case.'
 }
+if ($NetworkBaseline -and ($Case -ne 'foundation' -or !$NetworkProfile)) {
+    throw 'The network baseline uses the foundation entry point and requires a profile.'
+}
+if ($NetworkProfile -and ($Case -in 'full','foundationImpaired' -or ($NetworkProfile -eq 'E' -and !$NetworkBaseline))) {
+    throw 'Use network profiles with isolated cases. Profile E belongs to the network baseline.'
+}
+if ($Case -in 'networkResult','networkCombat' -and !$NetworkProfile) { throw 'Network cases require a network profile.' }
 $project = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '../..')).Path
 Push-Location -LiteralPath $project
 $players = @()
@@ -42,6 +51,11 @@ try {
     $marker = 'pass'
 
     switch -Regex ($Case) {
+        '^networkCombat$' { $extra = @('-v3NetworkCombat') }
+        '^networkResult$' {
+            $extra = @('-v3NetworkResult')
+            $timeout = 390
+        }
         '^rematch$' {
             $extra = @('-v3Rematch')
             $captureFlag = '-v3RematchScreenshots'
@@ -66,6 +80,7 @@ try {
             $mode = 'bridgeSmoke'; $evidence = 'bridgeEvidence'; $timeout = 560 + 30 * ($BridgeCarryRepeats - 1); $captureFlag = '-bridgeScreenshots'
             if ($Case -eq 'bridgeContact') { $extra = @('-bridgeContactWithoutFall') }
             if ($Case -eq 'bridgeDisconnect') { $extra = @('-bridgeCarryDisconnect'); $marker = 'disconnect-pass' }
+            if ($Case -eq 'bridgeGuard') { $extra = @('-bridgeCarryGuard'); $marker = 'guard-pass'; $timeout = 240 }
         }
         '^river(Recovery)?$' {
             $mode = 'riverReplay'; $evidence = 'riverEvidence'; $timeout = 500; $captureFlag = '-riverScreenshots'
@@ -128,6 +143,10 @@ try {
     if ($Screenshots -and !$Headless -and $captureFlag) { $extra += $captureFlag }
     if ($AudioTrace) { $extra += '-twinAudioTrace' }
     if ($PresentationMetrics) { $extra += '-v3PresentationMetrics' }
+    if ($NetworkBaseline) {
+        $extra += '-v3NetworkBaseline'
+        if ($NetworkProfile -eq 'E') { $extra += '-v3NetworkDisconnect' }
+    }
     if ($PolishTrace) { $extra += '-v3PolishTrace' }
     if ($BridgeTrace) { $extra += '-bridgeTrace' }
     if ($BridgeCarryRepeats -gt 1) { $extra += @('-bridgeCarryRepeats',"$BridgeCarryRepeats") }
@@ -138,14 +157,25 @@ try {
     }
     foreach ($role in 'host','client') {
         $arguments = $graphics + @('-runInBackground',"-$mode",$role,"-$evidence",$output,'-logFile',"$output/$role.log") + $extra
+        if ($NetworkProfile) { $arguments += @('-relayNetworkProbe', $output, $role, $NetworkProfile) }
         $quoted = $arguments | ForEach-Object { if ($_ -match '\s') { '"' + $_ + '"' } else { $_ } }
-        $players += Start-Process -FilePath $exe -ArgumentList $quoted -PassThru -WindowStyle Hidden
+        $windowStyle = if ($NetworkProfile -and !$Headless) { 'Normal' } else { 'Hidden' }
+        $players += Start-Process -FilePath $exe -ArgumentList $quoted -PassThru -WindowStyle $windowStyle
     }
     $deadline = [DateTime]::UtcNow.AddSeconds($timeout)
     $failureDeadline = $null
+    $windowRecorded = $false
     while ([DateTime]::UtcNow -lt $deadline) {
         $active = @($players | Where-Object { !$_.HasExited })
         $failed = @($players | Where-Object { $_.HasExited -and $_.ExitCode -ne 0 })
+        if ($NetworkProfile -and !$Headless -and !$windowRecorded -and $active.Count -eq 2) {
+            $players | ForEach-Object { $_.Refresh() }
+            if ($players[0].MainWindowHandle -ne 0 -and $players[1].MainWindowHandle -ne 0) {
+                "host=$($players[0].MainWindowHandle) client=$($players[1].MainWindowHandle)" |
+                    Set-Content -LiteralPath "$output/visible-windows.txt"
+                $windowRecorded = $true
+            }
+        }
         if (!$active.Count) { break }
         if ($failed.Count) {
             if (!$BridgeTrace) { break }
@@ -169,13 +199,13 @@ try {
 }
 finally {
     $players | Where-Object { !$_.HasExited } | Stop-Process
-    if (($Case -in 'settings','castleKeypad' -or $BridgeTrace -or $BridgeHazardRoute -or $BridgeCarryRepeats -gt 1) -and $createdOutput) {
+    if (($Case -in 'settings','castleKeypad' -or $BridgeTrace -or $BridgeHazardRoute -or $BridgeCarryRepeats -gt 1 -or $NetworkProfile) -and $createdOutput) {
         foreach ($name in 'room.txt', 'room.tmp') {
             $codeFile = Join-Path $output $name
             if (Test-Path -LiteralPath $codeFile) { Remove-Item -LiteralPath $codeFile }
         }
     }
-    if ($Case -eq 'rematch' -and $createdOutput) {
+    if (($Case -eq 'rematch' -or $NetworkProfile) -and $createdOutput) {
         foreach ($name in 'join-code.txt', 'join-code.tmp') {
             $codeFile = Join-Path $output $name
             if (Test-Path -LiteralPath $codeFile) { Remove-Item -LiteralPath $codeFile }

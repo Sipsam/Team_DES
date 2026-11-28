@@ -57,6 +57,9 @@ namespace TwinEdge.Gameplay
             var game = FindFirstObjectByType<GameStateManager>();
             bridge = game.GetComponent<BridgeGameplay>();
             yield return Until(() => bridge.PlankCount == 198 && FindObjectsByType<Checkpoint>(FindObjectsSortMode.None).Length >= 4, "V3 ready", 80);
+#if DEVELOPMENT_BUILD
+            if (CarryGuard) PrepareGuardSpawns();
+#endif
             if (host)
             {
                 var room = sessions.CreateRoomAsync();
@@ -82,6 +85,13 @@ namespace TwinEdge.Gameplay
             keyboard = InputSystem.AddDevice<Keyboard>();
             movementPad = InputSystem.AddDevice<Gamepad>();
             player.GetComponent<GameplayInput>().SimulateCapturedCursor = true;
+#if DEVELOPMENT_BUILD
+            if (CarryGuard)
+            {
+                yield return RunCarryGuard(sessions, manager);
+                yield break;
+            }
+#endif
             StartTrace(manager);
             var side = Vector3.right * (host ? -bridge.GripHalfWidth : bridge.GripHalfWidth);
             // Only initial summit station placement. All deliveries and crossing use production input and CC.

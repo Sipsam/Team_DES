@@ -32,14 +32,28 @@ public sealed partial class V3GameplaySmoke : MonoBehaviour
     }
     IEnumerator Start()
     {
+#if DEVELOPMENT_BUILD
+        bool networkResult = Environment.GetCommandLineArgs().Contains("-v3NetworkResult");
+        if (RematchTest || networkResult) DontDestroyOnLoad(gameObject);
+#else
         if (RematchTest) DontDestroyOnLoad(gameObject);
+#endif
         Application.runInBackground = true; Application.targetFrameRate = 60;
         // This opt-in process owns a runtime settings clone; hidden-window focus must not discard injected keys.
         InputSystem.settings = Instantiate(InputSystem.settings);
         InputSystem.settings.backgroundBehavior = InputSettings.BackgroundBehavior.IgnoreFocus;
         Application.logMessageReceived += Log;
         manager = FindFirstObjectByType<NetworkManager>(); sessions = FindFirstObjectByType<MultiplayerSessionManager>();
+#if DEVELOPMENT_BUILD
+        bool networkBaseline = Environment.GetCommandLineArgs().Contains("-v3NetworkBaseline");
+        bool networkCombat = Environment.GetCommandLineArgs().Contains("-v3NetworkCombat");
+        if (networkBaseline) RelayNetworkProbe.Current.Automatic = false;
+#endif
         yield return Until(() => FindObjectsByType<Checkpoint>(FindObjectsSortMode.None).Length >= 4, "V3 load / checkpoint setup");
+#if DEVELOPMENT_BUILD
+        if (networkResult) PrepareNetworkResultStation();
+        if (networkCombat) PrepareNetworkCombatStation();
+#endif
         if (host)
         {
             var task = sessions.CreateRoomAsync(RematchTest ? "가나다라마바사아자차카타" : null);
@@ -55,6 +69,9 @@ public sealed partial class V3GameplaySmoke : MonoBehaviour
             yield return Until(() => task.IsCompleted, "Relay join", 80); Check(sessions.HasSession, "Joined Relay code");
         }
         var game = FindFirstObjectByType<GameStateManager>();
+#if DEVELOPMENT_BUILD
+        if (networkBaseline) yield return MeasureNetworkLobby(game);
+#endif
         if (RematchTest) yield return RecordInitialLobby(game);
         yield return TwinEdge.Gameplay.RelayMatchStart.Run(game);
         yield return Until(() => game.IsGameReady && manager.LocalClient?.PlayerObject != null, "Two players spawned", 80);
@@ -71,6 +88,23 @@ public sealed partial class V3GameplaySmoke : MonoBehaviour
         File.WriteAllText(evidence + (host ? "/host-input-ready.txt" : "/client-input-ready.txt"), "ready");
         yield return Until(() => File.Exists(evidence + "/host-input-ready.txt") && File.Exists(evidence + "/client-input-ready.txt"), "Input barrier");
         var remote = FindObjectsByType<GameplayCharacter>(FindObjectsSortMode.None).Single(x => !x.IsOwner);
+#if DEVELOPMENT_BUILD
+        if (networkBaseline)
+        {
+            yield return RunNetworkBaseline(game, remote);
+            yield break;
+        }
+        if (networkResult)
+        {
+            yield return RunNetworkResult(game);
+            yield break;
+        }
+        if (networkCombat)
+        {
+            yield return RunNetworkCombat(game, remote);
+            yield break;
+        }
+#endif
         if (Environment.GetCommandLineArgs().Contains("-v3CameraControls"))
         {
             yield return RunCameraControls(remote);

@@ -227,6 +227,26 @@ For scene checks use the saved Foundation, Cooperative Pole, River, Castle, Unde
 
 Use **Tools > Twin Edge > V3 World > Refresh Environmental Geology** to rebuild the saved visual geology and apply the V3 fortress materials. Use `TwinEdge.Levels.Editor.LatestMapScreenshots.CaptureWorkingMap` to review an uncommitted scene under `Docs/Development/Level/V3/WorldWorking/`.
 
+## Network traffic and resilience baseline
+
+Build an isolated Development Player with a unique direct child of `Builds/`, as shown above. Run the cases sequentially with no concurrent Unity Editor or Player beyond the two peers. Use a new `-Run` value for every attempt and keep the output in ignored development evidence.
+
+```powershell
+$evidence = 'Docs/Development/NetworkBaseline/V1'
+$id = Get-Date -Format 'yyyyMMdd-HHmmssfff'
+foreach ($profile in 'A','B','C','D','E') {
+    ./Tools/Playtest/Run-Relay.ps1 -Build $build -Run "$profile-$id" -Case foundation -NetworkProfile $profile -NetworkBaseline -EvidenceRoot $evidence
+}
+./Tools/Playtest/Run-Relay.ps1 -Build $build -Run "BridgeGuard-A-$id" -Case bridgeGuard -NetworkProfile A -EvidenceRoot $evidence
+./Tools/Playtest/Run-Relay.ps1 -Build $build -Run "Combat-C-$id" -Case networkCombat -NetworkProfile C -EvidenceRoot $evidence
+./Tools/Playtest/Run-Relay.ps1 -Build $build -Run "Result-C-$id" -Case networkResult -NetworkProfile C -EvidenceRoot $evidence
+py Tools/Playtest/Summarize-NetworkBaseline.py "$evidence/A-$id" "$evidence/C-$id"
+```
+
+The runner opens actual D3D11 windows when a network profile is supplied. Add `-Headless` for a separately labeled headless check. The foundation baseline records 32-second lobby and genuine spawn movement windows. The separate unreliable sequence check adds diagnostic traffic after the movement window. E tests an explicit shutdown and manual rejoin. The bridge guard case uses initial NGO spawn positions at the supply and production grip/steer input, then substitutes a deterministic stale position sample at the existing server range check. The combat case uses the saved summit approach and real mouse, walk and grab input. The result case uses the isolated pickup precondition from the existing result fixture. Its owner pickup, Return, grounded finish, Finished rejoin and same-room rematch exercise the live approval paths.
+
+Review each peer's exit and pass files, connected settings, restored settings, nonzero RTT, missing sequence indices by count, and visible window receipt. Interpret driver packets separately from NGO messages and the diagnostic sequence count. Use the raw per-peer events to distinguish denied requests, server phase changes and distinct driver generations. Keep the Development and normal Players separate. [Measurement layers](../Architecture/NetworkBaseline.md)
+
 ## Final integration only
 
 Run the following only after the [roadmap](../Workflow/ROADMAP.md) prerequisites are met and the user explicitly starts final integration. Use the matching Development Player and route data prepared above.

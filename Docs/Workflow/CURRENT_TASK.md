@@ -1,17 +1,24 @@
 # Current task
 
-**V3-PERF-02** · CPU, GC, Audio and Resource Lifetime Optimization
+**V3-NET-BASELINE** · Network traffic and resilience baseline
 
-**Checkpoint** `READY_TO_COMMIT` · **Base** `323a324a78b171cf602d8f35969f7fafb92327be`
+**Checkpoint** `READY_TO_COMMIT` · **Base** `bda29df0e645ecc4a2bc60d78552762119e0e654`
 
-Standard · UI, Gameplay, Audio and Performance. The production diff covers the existing pole overlap filter and changes to lobby and result text updates. Startup reduced measured allocation by 8.00MB with all 29 summit boundary hashes equal. Paired lobby and result samples captured the per-frame savings and targeted UI CPU times.
+Standard · Network, Gameplay and Performance. Local HEAD, origin/main and live main matched at entry. The pre-existing untracked design PDF is outside the task. V3-PERF-02 is published in the base commit.
 
-The candidate passed visible D3D11 Relay UI and audio, ten keypad cycles, same-room rematch, settings and first pole exchange checks. Earlier repeated menu, lobby, Esc and map checks supply lifecycle evidence. The normal Player booted in D3D11 with all six probed fixture types excluded. The repeat launch verified preference restoration after a log-lock failure in the first normal boot run. See [validation, evidence and limits](../Playtest/ValidationSummary.md#v3-perf-02--cpu-gc-오디오와-자원-수명).
+NET-A confirmed the installed NGO profiling hooks and UTP driver and connection counters. The scope includes opt-in Development telemetry, the lobby and movement matrix, genuine input at isolated bridge and contest spawn stations, and the isolated result setup with live pickup and finish approval. NET-B/C exploratory A and C collected lobby and movement samples but used hidden windows and missed the marker lookup. Their after-restore motion check sampled one half of an input cycle. D opened visible windows and its reconnect barrier expired before the transport's disconnect timeout. The candidate discovers registered profiler handles, samples both input directions across frames and allows the actual disconnect deadline.
 
-Optional local evidence is in ignored `Docs/Development/RuntimeOptimization/V1/`. The protected manifest matches all 240 captures, three deployed executables, two ZIPs and the untracked design PDF. Official screenshot publication is skipped for this scope. The second and third human playtests await reports. Final integration, release and the network baseline retain their roadmap states.
+Visible A and C passed lobby, motion and Outbound rejoin. Both A receivers got all 300 calibration messages. C missed 3 at Host and 2 at Client. Guard-A recorded all four expected branches. Result-C approved the finish on both peers but its driver waited for an interior coordinate after Finished had stopped movement. The next candidate uses the actual finish collider. The prior recorder reset returned only its first marker sample. The next candidate reads each retained sample once.
 
-Verify live main, review the exact staged diff, and commit and push. Record the resulting commit and remote check in ignored finalization evidence.
+The retained recorder candidate collects per-frame markers. Guard-C passed all four branches and resumed after a fresh remote transform. Result-C passed live pickup, both stale revision gates, grounded finish, Finished rejoin and same-room scene rebuild. Host closed and made a new room. Client released the original driver at roughly 30 seconds without reaching the explicit HostLeft branch. A follow-up measurement distinguishes the closed-room classification from gameplay recovery. The combat steps passed on both peers before its early cleanup deadline. The candidate restores the link setup before combat cleanup.
 
+The retained-marker A, B and D runs and the earlier C transport run all passed the two Runtime Ready checks, movement and Outbound rejoin. Profile D observed 9/5 missing diagnostic messages, 443/444 ms movement RTT medians and a confirmed return to zero settings. C and D both showed increased reliable retransmission during the roughly 30-second shutdown detection window. The shared draft tracks this separately from steady traffic.
+
+E verified pre-start Ready reset, lobby and Outbound rejoin, explicit HostLeft on the normal link and creation of a fresh room. Combat and guard passed in A and C. The A result passed and the C classification rerun confirmed Finished rejoin, scene rebuild, clean shutdown and a new Host room. C reproduced a 30-second generic Connection classification. The shared summary records NET-01 and the separate follow-up candidate.
+
+The isolated normal Player built and opened an actual D3D11 window with Development test flags. Assembly inspection and the boot output confirmed fixture exclusion. Optional local evidence is in ignored `Docs/Development/NetworkBaseline/V1/`. The `latest-matrix.txt`, `latest-post-matrix.txt` and `latest-normal-boot.txt` pointers identify the run and exclusion receipts.
+
+Review the exact staged diff, compare live main, commit and push, and retain the verified remote hash in local finalization evidence. Official screenshot publication is skipped for this nonvisual scope. QA-03 and the original ninth timber carry remain intermittent. Human playtests, final integration and release keep their roadmap states.
 
 ## State and handoff
 
