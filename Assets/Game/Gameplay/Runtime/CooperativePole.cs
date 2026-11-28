@@ -347,7 +347,11 @@ namespace TwinEdge.Gameplay
             Vector3 high = from + center + Vector3.up * half;
             Vector3 delta = to - from;
             if (delta.sqrMagnitude > 0 && Physics.CapsuleCastAll(low, high, radius, delta.normalized, delta.magnitude, ~0, QueryTriggerInteraction.Ignore).Any(h => Environment(h.collider))) return false;
-            return !Physics.OverlapCapsule(to + center - Vector3.up * half + Vector3.up * .04f, to + center + Vector3.up * half, radius, ~0, QueryTriggerInteraction.Ignore).Any(Environment);
+            var overlaps = Physics.OverlapCapsule(to + center - Vector3.up * half + Vector3.up * .04f,
+                to + center + Vector3.up * half, radius, ~0, QueryTriggerInteraction.Ignore);
+            foreach (var collider in overlaps)
+                if (Environment(collider)) return false;
+            return true;
         }
         void LateUpdate() { if (IsSpawned) Render(snapshot.Value); }
         void Render(PoleSnapshot s)

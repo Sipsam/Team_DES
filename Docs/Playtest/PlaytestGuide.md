@@ -328,6 +328,15 @@ Use the fixed mountain view at the beginning of the focused Presentation Relay c
 - With phase, effect intensity and camera pose held constant, sample the closed map, minimap, overview, region sheet and world-mask-zero control. Use at least three 600-frame windows for the principal comparisons. Keep individual run samples, valid timing counts and CPU main, render and Present wait results. Draw calls and batches are distinct counters. Record unavailable pass or resource counters as `NOT_MEASURED`.
 - Run the focused `presentation` case to exercise M, Esc, the partner and gem markers, the server clock, the active camera and Listener, window-sized backdrop capture, the Return transition and re-entry. Use `rematch` for results and same-room reset when those checks apply. Use the saved-scene captures for direct geometry and material review. Keep an actual window capture of the full map alongside any fixed-target captures.
 
+## Runtime CPU, allocations, audio and resource lifetime
+
+Use a separate Development checkout and give each Player build, run and profile capture its own ignored output directory. Record the source and instrumentation diff, executable and managed assembly hashes, Unity version, graphics backend, actual window size, frame cap and VSync. Record whether the companion peer also renders, the game phase, camera, map visibility, effect settings and warm-up for each segment. Keep Frame Timing Stats and temporary probes in the profiling checkout. Build the normal Player with the saved Player settings and verify that diagnostic entry points are absent.
+
+Separate process startup, the first menu window and warm steady state. Start steady recording after the recorder setup frame has cleared. Use at least 600 settled frames for steady comparisons and repeat the primary segments under the same conditions. Record frame interval, Present wait and code-marker time separately. Keep allocation call-stack captures separate from timing runs and account for sampler and fixture overhead. Use the Audio Profiler module for mixer and streaming data if the Player capture reports them. Record playing voices separately from allocated AudioSource slots. Mark unavailable counters `NOT_MEASURED`. Verify the requested windows are visible. Reject samples that move to another screen or lose a peer mid-segment.
+
+For lifetime checks, take snapshots after equivalent settling intervals before and after ten representative transitions. Include snapshots while the map, portrait or keypad is in use. Compare live objects, used memory and reserved memory separately. The existing `presentation`, `settings`, `castleKeypad` and `rematch` Relay cases provide scoped entry points for direct regression. Use fixture placement and approved state transitions to reach representative screens without replaying a full match.
+
+
 ## V3-PLAYTEST-03 · 3차 사람 플레이테스트 준비
 
 테스터에게 [3차 플레이테스트 안내와 체크리스트](ThirdHumanPlaytest.md)가 포함된 같은 ZIP을 전달한다. 2차 테스트는 `2079709`의 별도 패키지를 사용한다. 각 회차의 소스와 패키지 식별자는 [검증 요약](ValidationSummary.md#v3-playtest-03--3차-사람-플레이테스트-준비)에 기록한다.

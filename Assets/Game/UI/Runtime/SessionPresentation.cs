@@ -1,6 +1,7 @@
 using TwinEdge.Audio;
 using System.Threading.Tasks;
 using TwinEdge.Gameplay;
+using Unity.Collections;
 using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -28,6 +29,7 @@ namespace TwinEdge.Presentation
         UiTextField nickname, roomCode;
         UiButton create, joinPage, connect, joinBack, paste, copy, leave, cancelQuit, lobbyAction;
         Text landingStatus, joinStatus, lobbyStatus, lobbyCode, lobbyCount, loadingStatus, loadingDetail;
+        int displayedLobbyCount = -1;
         RectTransform activity;
         readonly LobbySlot[] slots = { new(), new() };
         readonly GameplayCharacter[] peers = new GameplayCharacter[2];
@@ -251,7 +253,11 @@ namespace TwinEdge.Presentation
             {
                 int connected = game.state.IsSpawned ? game.state.ConnectedPlayerCount : 0;
                 SetText(lobbyCode, string.IsNullOrEmpty(session.CurrentJoinCode) ? pendingJoinCode : session.CurrentJoinCode);
-                SetText(lobbyCount, $"연결된 플레이어  {connected} / 2");
+                if (connected != displayedLobbyCount)
+                {
+                    displayedLobbyCount = connected;
+                    SetText(lobbyCount, $"연결된 플레이어  {connected} / 2");
+                }
                 bool host = game.manager.IsHost;
                 bool waiting = game.state.IsSpawned && game.state.Phase == FoundationPhase.WaitingForPlayers;
                 bool ready = game.state.ClientReady;
@@ -581,6 +587,9 @@ namespace TwinEdge.Presentation
             internal Text Name, Status, Empty;
             internal RawImage Image;
             LobbyCharacterPreview preview;
+            FixedString64Bytes displayedNickname;
+            string displayedState;
+            bool hasDisplayedName, displayedLocal, displayedCapeAssigned;
 
             internal void Update(GameplayCharacter peer, ulong localClient, Transform visual, int slot, bool ready, bool waiting)
             {
@@ -591,11 +600,24 @@ namespace TwinEdge.Presentation
                     SetText(Status, "연결 대기");
                     return;
                 }
-                string name = peer.OwnerClientId == localClient ? peer.Nickname + " (나)" : peer.Nickname;
-                SetText(Name, name);
+                var approvedNickname = peer.ApprovedNickname;
+                bool local = peer.OwnerClientId == localClient;
+                if (!hasDisplayedName || !displayedNickname.Equals(approvedNickname) || displayedLocal != local)
+                {
+                    displayedNickname = approvedNickname;
+                    displayedLocal = local;
+                    hasDisplayedName = true;
+                    string name = approvedNickname.ToString();
+                    SetText(Name, local ? name + " (나)" : name);
+                }
                 string state = !waiting ? "연결됨" : slot == 0 ? "방장" : ready ? "준비 완료" : "준비 대기";
                 bool assigned = peer.CapeColorIndex < GameplayCharacter.CapeColorCount;
-                SetText(Status, assigned ? state : state + "\n망토 배정 대기");
+                if (displayedState != state || displayedCapeAssigned != assigned)
+                {
+                    displayedState = state;
+                    displayedCapeAssigned = assigned;
+                    SetText(Status, assigned ? state : state + "\n망토 배정 대기");
+                }
                 preview ??= new LobbyCharacterPreview(Image, visual, slot);
                 Empty.enabled = false;
                 preview.SetCape(peer.CapeColorIndex);
@@ -606,6 +628,8 @@ namespace TwinEdge.Presentation
                 if (preview == null) return;
                 preview.Dispose();
                 preview = null;
+                hasDisplayedName = false;
+                displayedState = null;
                 Empty.enabled = true;
             }
         }

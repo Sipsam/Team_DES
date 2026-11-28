@@ -79,4 +79,6 @@ Unity에서 **Tools > Twin Edge > Presentation > Bake Public Course Map** 또는
 
 `SessionPresentation`은 확정된 경기 결과에 전용 uGUI 화면을 표시한다. 결과와 로비의 캐릭터 미리보기에는 렌더러와 Animator, 미리보기 카메라와 조명만 사용한다. 화면을 닫을 때 PlayableGraph, 렌더 텍스처와 미리보기 오브젝트를 해제한다.
 
+대기실의 연결 인원, 승인 닉네임과 슬롯 상태는 표시값이 바뀔 때 문자열을 다시 만든다. 결과 닉네임은 승인값, 경기 시간은 서버 경과 시간의 정수 초를 기준으로 갱신한다.
+
 재경기에서는 NGO가 `V3Gameplay`를 Single로 다시 열고 `LevelBlockoutV3`를 Additive로 다시 연다. 저장된 레벨을 기반으로 기믹의 런타임 바인딩과 초기 스폰을 다시 구성한다. 세션 루트는 NGO의 DontDestroyOnLoad 수명을 사용하며, 새 부트스트랩이 기존 루트에 연결한다. 로컬 닉네임, Master 음량, 미니맵 표시 설정은 기존 PlayerPrefs를 통해 유지한다. [서버 동의 및 복구](Multiplayer.md#결과와-재경기)

@@ -1,20 +1,17 @@
 # Current task
 
-**V3-PERF-01** · World and Map Rendering Optimization
+**V3-PERF-02** · CPU, GC, Audio and Resource Lifetime Optimization
 
-**Checkpoint** `READY_TO_COMMIT` · **Base** `a764f1427addeb49ceac092b4a39f365ea326a74`
+**Checkpoint** `READY_TO_COMMIT` · **Base** `323a324a78b171cf602d8f35969f7fafb92327be`
 
-Complex · Rendering, Level and UI. HEAD, origin/main and live main agreed at entry and precommit fetch. The earlier verified V3-STABILITY-01 result remains closed. Preserve the untracked design PDF, three distributed Players, 216 prior captures, QA-AUDIT and BridgeStability evidence. Both human playtests await reports. V3-INTEGRATION and V3-RELEASE stay deferred.
+Standard · UI, Gameplay, Audio and Performance. The production diff covers the existing pole overlap filter and changes to lobby and result text updates. Startup reduced measured allocation by 8.00MB with all 29 summit boundary hashes equal. Paired lobby and result samples captured the per-frame savings and targeted UI CPU times.
 
-| Subtask | Worker | State | Evidence or next action |
-| --- | --- | --- | --- |
-| PERF01-A/B | Explore + Diagnose | `COMPLETED` | Baseline two-world and one-world-with-companion samples, fixed-camera GPU and render counter attribution, and URP 17.3.0 reference review. `Attribution-20261128-063724901` and `Geometry-20261128-065418724` identify opaque, SSAO and depth-normal work and the repeated fixed bridge modules. |
-| PERF01-C | Implement + Validate | `COMPLETED` | The full map captures the world frame and restores the camera on close and transitions. `Pair-20261128-070528011` confirmed Host 4.26ms GPU and ~17 draws in the overview. Static region-sheet margins match. |
-| PERF01-D/E | Implement + Review | `COMPLETED` | Combine compatible fixed bridge frame parts into three module meshes. 26 spans share them, cutting active frame renderers from 2,392 to 78. Preserve the terrain, shadow paths, materials and collisions. Depth priming, mountain partition, opaque-copy and settings experiments were excluded. |
-| PERF01-F | Validate + Review | `COMPLETED` | Both configurations passed three stationary 600-frame repeats. `Focused-20261128-071413330`, `Rematch-20261128-071540133` and `Bridge-20261128-071650766` passed both peers. Baseline and optimized bridge fixtures match visually. `NormalPlayer-20261128-072119343` built and booted in D3D11 with Development fixtures absent. |
-| PERF01-G | Finalize | `IN_PROGRESS` | Stage exact scopes, commit and push. Verify the hash against live main. In a clean checkout run the official saved-world capture and commit-qualified map and bridge runtime captures. Record publication and verify historical artifacts independently. |
+The candidate passed visible D3D11 Relay UI and audio, ten keypad cycles, same-room rematch, settings and first pole exchange checks. Earlier repeated menu, lobby, Esc and map checks supply lifecycle evidence. The normal Player booted in D3D11 with all six probed fixture types excluded. The repeat launch verified preference restoration after a log-lock failure in the first normal boot run. See [validation, evidence and limits](../Playtest/ValidationSummary.md#v3-perf-02--cpu-gc-오디오와-자원-수명).
 
-Local evidence is in ignored `Docs/Development/RenderingOptimization/V1/`. Source paths cover the fixed frame visual builder, full map backdrop and focused Presentation Relay driver, plus relevant shared contracts. The initial profiling runner's read-only registry handle prevented verification of display-preference restoration. The corrected runner saved snapshots and verified restoration for the repeated matrices, focused runs and rematch. A post-run comparison found no preference drift against the pre-Rematch snapshot. Whole-match, whole-world and full E2E Relay are deferred. Actual 1440p was unavailable. [Measured results and checks](../Playtest/ValidationSummary.md#v3-perf-01--월드와-전체-지도-렌더링)
+Optional local evidence is in ignored `Docs/Development/RuntimeOptimization/V1/`. The protected manifest matches all 240 captures, three deployed executables, two ZIPs and the untracked design PDF. Official screenshot publication is skipped for this scope. The second and third human playtests await reports. Final integration, release and the network baseline retain their roadmap states.
+
+Verify live main, review the exact staged diff, and commit and push. Record the resulting commit and remote check in ignored finalization evidence.
+
 
 ## State and handoff
 

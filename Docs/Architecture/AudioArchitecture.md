@@ -71,3 +71,7 @@
 ## 결과와 재경기
 
 확정 결과는 기존 Winner 변경에서 로컬 Win 또는 Lose 효과음을 한 번 재생한다. 결과 화면 자체는 승패음을 재생하지 않는다. Finished 동기화에는 새 Winner 이벤트가 없으며, CourseAudio는 복원된 서버 슬롯을 읽어 승리의 Sunset Plains 또는 패배의 Whispers in the Fog를 선택한다. 재경기 씬 전환과 방 나가기는 이전 소스와 반복음을 정리하고 대기실·메인 메뉴에서 기존 메뉴 음악을 재생한다. 새 서비스가 기존 Master 설정을 복원한다.
+
+## 런타임 계측
+
+V3-PERF-02의 Windows D3D11 Relay에서 메뉴와 결과에는 한 소스, 산악·성채·복로에는 두 소스, 강과 지하에는 환경 공간음을 포함해 세 소스의 재생을 관측했다. Unity Audio Profiler에서 DSP 및 Streaming CPU와 Decode 버퍼를 기록했다. 오디오 서비스의 포함 시간은 스크립트 마커를 사용했다. 전체 풀 용량은 피어당 25개이며 세션 정리 뒤에는 메뉴 음악 한 소스가 남았다. [구간별 수치와 계측 범위](../Playtest/ValidationSummary.md#오디오-cpu와-스트리밍)

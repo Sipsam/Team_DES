@@ -1,4 +1,5 @@
 using System;
+using Unity.Collections;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -11,6 +12,8 @@ namespace TwinEdge.Presentation
         RawImage resultImage;
         UiButton rematch, resultLeave;
         LobbyCharacterPreview resultPreview;
+        FixedString64Bytes displayedResultNickname;
+        double displayedResultSeconds = double.NaN;
 
         void BuildResult()
         {
@@ -58,8 +61,18 @@ namespace TwinEdge.Presentation
             bool won = state.Won(local.LobbySlot);
             SetText(resultTitle, won ? "승리" : "패배");
             resultTitle.color = won ? PresentationTheme.Accent : new Color32(229, 143, 132, 255);
-            SetText(resultName, local.Nickname);
-            SetText(resultTime, "경기 시간  " + FormatResultTime(state.ElapsedSeconds));
+            var approvedNickname = local.ApprovedNickname;
+            if (!displayedResultNickname.Equals(approvedNickname))
+            {
+                displayedResultNickname = approvedNickname;
+                SetText(resultName, approvedNickname.ToString());
+            }
+            double wholeSeconds = Math.Floor(state.ElapsedSeconds);
+            if (displayedResultSeconds != wholeSeconds)
+            {
+                displayedResultSeconds = wholeSeconds;
+                SetText(resultTime, "경기 시간  " + FormatResultTime(wholeSeconds));
+            }
             if (resultPreview == null)
             {
                 var visual = game.manager.NetworkConfig.PlayerPrefab.transform.Find("VisualRoot");
