@@ -333,6 +333,40 @@ namespace TwinEdge.Gameplay
         {
             var panel = game.Presentation.GetComponentsInChildren<CanvasGroup>(false)
                 .Single(item => item.name == "Match transition");
+            CaptureTransition(game, panel, output, label, capture);
+        }
+
+        internal static IEnumerator CaptureLiveTransition(V3GameplayBootstrap game, MatchTransitionWindow window,
+            string output, string label)
+        {
+            var state = game.state;
+            var panel = game.Presentation.GetComponentsInChildren<CanvasGroup>(true)
+                .Single(item => item.name == "Match transition");
+            TraceTransitionCapture(state, window, label, "requested");
+            while (state.Transition.Sequence == window.Sequence && state.MatchServerTime < window.End)
+            {
+                yield return new WaitForEndOfFrame();
+                if (state.Transition.Sequence != window.Sequence || !state.TransitionBlocksInput ||
+                    state.MatchServerTime < window.Start || !panel.isActiveAndEnabled || panel.alpha <= 0 ||
+                    !game.Presentation.Canvas.isActiveAndEnabled || !game.standbyCamera.isActiveAndEnabled)
+                    continue;
+
+                TraceTransitionCapture(state, window, label, "visible-end-of-frame");
+                CaptureTransition(game, panel, output, label, true);
+                TraceTransitionCapture(state, window, label, "saved");
+                yield break;
+            }
+            TraceTransitionCapture(state, window, label, "missed");
+        }
+
+        static void TraceTransitionCapture(GameStateManager state, MatchTransitionWindow window, string label, string stage) =>
+            Debug.Log($"TRANSITION_CAPTURE {label} {stage} kind={window.Kind} seq={window.Sequence} " +
+                $"time={state.MatchServerTime:F4} frame={Time.frameCount} start={window.Start:F4} end={window.End:F4} " +
+                $"realtime={Time.realtimeSinceStartupAsDouble:F4} " +
+                $"effect={LocalPresentationSettings.EffectPercent} screen={Screen.width}x{Screen.height}");
+
+        static void CaptureTransition(V3GameplayBootstrap game, CanvasGroup panel, string output, string label, bool capture)
+        {
             foreach (int width in new[] { 1280, 1600, 1920, 2560 })
             {
                 int height = width * 9 / 16;

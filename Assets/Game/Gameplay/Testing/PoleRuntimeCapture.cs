@@ -20,6 +20,19 @@ namespace TwinEdge.Gameplay {
    if (SystemInfo.graphicsDeviceType == UnityEngine.Rendering.GraphicsDeviceType.Null) return;
    Render(V3GameplayBootstrap.Current.standbyCamera,path);
   }
+  internal static void SaveGrip(Vector3 endpoint, Vector3 otherEndpoint, string path) {
+   if (SystemInfo.graphicsDeviceType == UnityEngine.Rendering.GraphicsDeviceType.Null) return;
+   var view = new GameObject("TemporaryGripEvidenceCamera") { hideFlags = HideFlags.HideAndDontSave };
+   var camera = view.AddComponent<Camera>();
+   camera.enabled = false;
+   camera.fieldOfView = 42;
+   var forward = Vector3.ProjectOnPlane(otherEndpoint - endpoint, Vector3.up).normalized;
+   var side = Vector3.Cross(Vector3.up, forward);
+   camera.transform.position = endpoint + side * 3.4f + forward * 1.8f + Vector3.up * 1.8f;
+   camera.transform.LookAt(endpoint + Vector3.up * 1.05f + forward * .25f);
+   try { Render(camera, path); }
+   finally { Object.Destroy(view); }
+  }
   static void Render(Camera cam,string path) {
    var rt=new RenderTexture(1280,720,24);var previous=RenderTexture.active;var priorTarget=cam.targetTexture;Texture2D texture=null;
    try {

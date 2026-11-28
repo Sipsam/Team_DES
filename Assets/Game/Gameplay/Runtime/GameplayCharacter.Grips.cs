@@ -8,6 +8,7 @@ namespace TwinEdge.Gameplay
         Vector3 stationTarget;
         double stationGestureAt;
         int stationGestureLife;
+        const float PoleReachCorrectionLimit = .27f;
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
         float nextGripTrace;
 #endif
@@ -75,17 +76,46 @@ namespace TwinEdge.Gameplay
             Vector3 nearGrip = grip + axis * .10f;
             Vector3 farGrip = grip + axis * .29f;
             bool orbiting = snap.Paired && snap.Orbit == OwnerClientId;
-            if (orbiting && snap.phase == PolePhase.Rotating)
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+            Vector3 visualBefore = visualRoot.position;
+#endif
+            if (orbiting && snap.phase is PolePhase.Rotating or PolePhase.Landed)
             {
-                // The airborne clip tucks the body away from the pole. Keep the rig within arm's reach.
+                // The airborne pose can outlast the landing snapshot. Use the evaluated
+                // pose's reach through the blend so the offset falls away as the rig settles.
                 Vector3 leftOffset = GripReachOffset(0, nearGrip);
                 Vector3 rightOffset = GripReachOffset(3, farGrip);
                 Vector3 offset = leftOffset.sqrMagnitude > rightOffset.sqrMagnitude ? leftOffset : rightOffset;
-                visualRoot.position += Vector3.ClampMagnitude(offset, .27f);
-                toolVisual = true;
+                visualRoot.position += Vector3.ClampMagnitude(offset, PoleReachCorrectionLimit);
+                toolVisual = offset.sqrMagnitude > 0;
             }
             ApplyGrips(nearGrip, farGrip, orbiting ? "PoleOrbit" : "PolePivot");
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+            if (GameplayEffects.Trace)
+            {
+                var transition = animator.IsInTransition(0);
+                Debug.Log(FormatPoleTrace(snap, orbiting, transition, visualRoot.position - visualBefore, nearGrip, farGrip));
+            }
+#endif
         }
+
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+        string FormatPoleTrace(PoleSnapshot snap, bool orbiting, bool transition, Vector3 offset,
+            Vector3 left, Vector3 right)
+        {
+            var leftHand = contestJoints[2].position;
+            var rightHand = contestJoints[5].position;
+            return $"POLE_GRIP time={Now:F4} frame={Time.frameCount} rev={snap.revision} phase={snap.phase} " +
+                $"slot={LobbySlot} owner={IsOwner} role={(orbiting ? "Orbit" : "Pivot")} motion={DisplayMotion} " +
+                $"surface={snap.surface} controllerGrounded={contestMovement.IsGrounded} " +
+                $"anim={animator.GetCurrentAnimatorStateInfo(0).shortNameHash} " +
+                $"next={(transition ? animator.GetNextAnimatorStateInfo(0).shortNameHash : 0)} air={animator.GetFloat(AirPose):F3} " +
+                $"axis=({snap.yaw:F3},{snap.pitch:F3}) offset={offset.ToString("F4")} cap={PoleReachCorrectionLimit:F3} " +
+                $"leftHand={leftHand.ToString("F4")} rightHand={rightHand.ToString("F4")} " +
+                $"leftGrip={left.ToString("F4")} rightGrip={right.ToString("F4")} " +
+                $"error={Vector3.Distance(leftHand, left):F5}/{Vector3.Distance(rightHand, right):F5}";
+        }
+#endif
 
         Vector3 GripReachOffset(int arm, Vector3 target)
         {

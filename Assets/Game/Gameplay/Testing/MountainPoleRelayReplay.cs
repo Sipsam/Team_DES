@@ -10,18 +10,57 @@ namespace TwinEdge.Gameplay {
  [DefaultExecutionOrder(11000)]
  public sealed class MountainPoleRelayReplay:MonoBehaviour {
   bool host,failed,firstExchangeOnly; FullMatchRelayReplay fullMatch;string output,planPath,prefix;NetworkManager manager;CooperativePole pole;Vector2 steering;bool send;MountainPolePlan plan;
+  bool gripFrames, gripPairSeen, initialGripSaved, orbitGripSaved;
+  int rotatingSince, landedFrames, exchangedFrames;
+  ulong firstGripPivot, firstGripOrbit;
   [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]static void Install(){
    var a=Environment.GetCommandLineArgs();int i=Array.IndexOf(a,"-mountainPoleRun");if(i<0)return;
    var test=new GameObject("MountainPoleRelayReplay").AddComponent<MountainPoleRelayReplay>();test.host=a[i+1]=="host";test.prefix=test.host?"host":"client";
    test.firstExchangeOnly=Array.IndexOf(a,"-mountainFirstExchange")>=0;
+   test.gripFrames=Array.IndexOf(a,"-mountainGripFrames")>=0;
    test.output=a[Array.IndexOf(a,"-mountainPoleEvidence")+1];test.planPath=a[Array.IndexOf(a,"-mountainPolePlan")+1];Directory.CreateDirectory(test.output);
   }
   void LateUpdate(){
+   if(gripFrames&&pole&&pole.IsSpawned&&pole.Snapshot.Paired) CaptureGrips(pole.Snapshot);
    if(fullMatch==null&&send&&pole&&pole.IsSpawned&&pole.Snapshot.Paired){
     var player=manager.LocalClient?.PlayerObject;var s=pole.Snapshot;
     if(player&&player.GetComponent<PoleMotor>().Attached)Check(Vector3.Distance(player.transform.position,s.left==player.OwnerClientId?s.a:s.b)<.01f,"LateUpdate endpoint agrees with received snapshot");
     pole.SteerRpc(s.revision,steering);
    }
+  }
+  void CaptureGrips(PoleSnapshot snapshot)
+  {
+   if (!gripPairSeen)
+   {
+    gripPairSeen = true;
+    firstGripPivot = snapshot.Pivot;
+    firstGripOrbit = snapshot.Orbit;
+   }
+   if (!initialGripSaved && !send)
+   {
+    initialGripSaved = true;
+    SaveGrip(snapshot, firstGripPivot, "stationary");
+   }
+   if (snapshot.phase == PolePhase.Rotating && !orbitGripSaved)
+   {
+    if (rotatingSince == 0) rotatingSince = Time.frameCount;
+    if (Time.frameCount - rotatingSince >= 12)
+    {
+     orbitGripSaved = true;
+     SaveGrip(snapshot, firstGripOrbit, "airborne");
+    }
+   }
+   if (snapshot.phase == PolePhase.Landed && snapshot.Pivot == firstGripPivot && landedFrames < 5)
+    SaveGrip(snapshot, firstGripOrbit, $"landing-{++landedFrames}");
+   if (snapshot.Pivot != firstGripPivot && exchangedFrames < 5)
+    SaveGrip(snapshot, firstGripOrbit, $"exchange-{++exchangedFrames}");
+  }
+
+  void SaveGrip(PoleSnapshot snapshot, ulong player, string label)
+  {
+   bool left = snapshot.left == player;
+   PoleRuntimeCapture.SaveGrip(left ? snapshot.a : snapshot.b, left ? snapshot.b : snapshot.a,
+    Path.Combine(output, $"{prefix}-grip-{label}.png"));
   }
   IEnumerator Start(){
    if(fullMatch!=null)yield break;

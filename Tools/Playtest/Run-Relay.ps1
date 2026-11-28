@@ -9,6 +9,7 @@ param(
     [switch]$Screenshots,
     [switch]$AudioTrace,
     [switch]$PolishTrace,
+    [switch]$PoleGripFrames,
     [switch]$PresentationMetrics,
     [ValidateSet('A','B','C','D','E')][string]$NetworkProfile,
     [switch]$NetworkBaseline,
@@ -21,6 +22,9 @@ param(
 
 $ErrorActionPreference = 'Stop'
 if ($Run -notmatch '^[a-zA-Z0-9][a-zA-Z0-9_-]*$') { throw 'Use a single directory name for -Run.' }
+if ($PoleGripFrames -and ($Case -ne 'mountainExchange' -or $Headless)) {
+    throw 'Pole grip frame capture requires the D3D11 mountainExchange case.'
+}
 if (($BridgeTrace -or $BridgeHazardRoute) -and $Case -notin 'bridge','bridgeContact','bridgeDisconnect') {
     throw 'Bridge diagnostics require an isolated bridge case.'
 }
@@ -154,6 +158,7 @@ try {
         if ($NetworkProfile -eq 'E') { $extra += '-v3NetworkDisconnect' }
     }
     if ($PolishTrace) { $extra += '-v3PolishTrace' }
+    if ($PoleGripFrames) { $extra += '-mountainGripFrames' }
     if ($BridgeTrace) { $extra += '-bridgeTrace' }
     if ($BridgeCarryRepeats -gt 1) { $extra += @('-bridgeCarryRepeats',"$BridgeCarryRepeats") }
     if ($BridgeHazardRoute) {
@@ -195,6 +200,13 @@ try {
     if (($exitCodes -join ',') -ne '0,0') { throw "$Case failed ($($exitCodes -join ',')). See $output" }
     foreach ($role in 'host','client') {
         if (!(Test-Path -LiteralPath "$output/$role-$marker.txt")) { throw "Missing $role $marker in $output" }
+        if ($Case -in 'transition','transitionRecovery' -and $Screenshots -and !$Headless) {
+            foreach ($label in 'seal','first-pickup') {
+                if (!(Test-Path -LiteralPath "$output/$role-$label-1600x900.png")) {
+                    throw "$role completed gameplay but missed the $label capture. See $output/$role.log"
+                }
+            }
+        }
     }
     if ($Case -in 'full','finish') {
         $hostResult = Get-Content -Raw -LiteralPath "$output/host-result.txt"

@@ -218,10 +218,9 @@ namespace TwinEdge.Gameplay
                 }
                 if (screenshots)
                 {
-                    yield return Wait(() => game.MatchServerTime >= window.Start + .25, "visible seal effect");
-                    yield return new WaitForEndOfFrame();
-                    PresentationRelaySmoke.CaptureTransition(V3GameplayBootstrap.Current, output, role + "-seal", true);
-                    if (host && transitionsOnly)
+                    yield return PresentationRelaySmoke.CaptureLiveTransition(
+                        V3GameplayBootstrap.Current, window, output, role + "-seal");
+                    if (host && transitionsOnly && game.TransitionBlocksInput)
                         CaptureView("seal-crystals", cave.Altar + new Vector3(4, 2.2f, 4), window.Point);
                 }
                 Require(gem.State == GemState.Available, "acquire request during seal did not reserve the gem");
@@ -230,6 +229,8 @@ namespace TwinEdge.Gameplay
                 Require(character.AttackReadyAtForTest == attack, "server rejected attacks during real seal");
             }
             else yield return Wait(() => game.AcceptsGameplay, "seal window releases");
+            if (transitionReconnect && screenshots)
+                yield return Wait(() => Camera.main != null, "gameplay camera restored after seal rejoin");
             Capture("altar-unsealed");
             CaptureView("altar-gem", cave.Altar + new Vector3(5, 3, 5), cave.Altar + Vector3.up);
 
@@ -238,10 +239,14 @@ namespace TwinEdge.Gameplay
             if (host || (!transitionReconnect && !testReconnect && fullMatch == null))
             {
                 SetKeys(Key.E);
-                yield return new WaitForSeconds(.16f);
-                SetKeys();
+                if (!screenshots || fullMatch != null)
+                {
+                    yield return new WaitForSeconds(.16f);
+                    SetKeys();
+                }
             }
             yield return Wait(() => game.Phase == FoundationPhase.Return && gem.State == GemState.Carried, "one server-approved E pickup starts Return");
+            SetKeys();
             if (fullMatch == null)
             {
                 var window = game.Transition;
@@ -254,9 +259,8 @@ namespace TwinEdge.Gameplay
                 character.ProbeTransitionActions(lockedRevision);
                 if (screenshots)
                 {
-                    yield return Wait(() => game.MatchServerTime >= window.Start + .25, "visible Return effect");
-                    yield return new WaitForEndOfFrame();
-                    PresentationRelaySmoke.CaptureTransition(V3GameplayBootstrap.Current, output, role + "-first-pickup", true);
+                    yield return PresentationRelaySmoke.CaptureLiveTransition(
+                        V3GameplayBootstrap.Current, window, output, role + "-first-pickup");
                 }
                 Require(Quaternion.Angle(rotation, Camera.main.transform.rotation) < .1f, "transition retains camera rotation");
                 if (transitionReconnect) yield return ReconnectDuringTransition(window);

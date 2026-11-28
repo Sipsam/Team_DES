@@ -75,6 +75,9 @@ namespace TwinEdge.Presentation
                 now >= window.End && now < window.End + GameStateManager.OutboundNoticeSeconds;
             if (window.Kind == MatchTransition.None || (!locked && !startNotice) || now < window.Start)
             {
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+                if (banner.gameObject.activeSelf) Trace(window, "banner-hidden", now);
+#endif
                 Hide();
                 return false;
             }
@@ -204,6 +207,6 @@ namespace TwinEdge.Presentation
 
         [System.Diagnostics.Conditional("UNITY_EDITOR"), System.Diagnostics.Conditional("DEVELOPMENT_BUILD")]
         static void Trace(MatchTransitionWindow window, string action, double now) =>
-            Debug.Log($"MATCH_TRANSITION {action} kind={window.Kind} seq={window.Sequence} time={now:F3} start={window.Start:F3} end={window.End:F3}");
+            Debug.Log($"MATCH_TRANSITION {action} kind={window.Kind} seq={window.Sequence} time={now:F3} start={window.Start:F3} end={window.End:F3} frame={Time.frameCount}");
     }
 }

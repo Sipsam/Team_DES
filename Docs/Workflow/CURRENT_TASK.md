@@ -1,23 +1,21 @@
 # Current task
 
-**V3-NET-CLOSE-01** · Graceful session shutdown and disconnect recovery
+**V3-PRES-FOLLOWUP** · Pole grip alignment and transition capture timing
 
-**Checkpoint** `READY_TO_COMMIT` · **Base** `3ee464cbc8c8c7c456d12092b051f8c4b1ee3de6`
+**Checkpoint** `READY_TO_COMMIT` · **Base** `611b3a8059b16681b9837f9d08368898ca4261e5`
 
-Complex · Network, Gameplay and UI · Task-Centric Orchestration V2. Local HEAD, origin/main and live main matched. The untracked design PDF and historical Players, captures and evidence are outside the task. Optional ignored evidence is under `Docs/Development/NetworkClose/V1/`.
+Standard · Animation, Gameplay, UI and Testing · Lightweight Task-Centric Orchestration V2. Local HEAD, origin/main and live main matched. The preceding Network Close result is already recorded in ROADMAP. Preserve the untracked design PDF, prior builds, captures and evidence.
 
 | Work | Worker | State | Scope and next check |
 | --- | --- | --- | --- |
-| CLOSE01-A | Explore + Plan | COMPLETED | Session manager, presentation, installed NGO/UTP/MPS teardown and NET-01 history reviewed. |
-| CLOSE01-B | Validate | COMPLETED | `Base-C-20261128-174554694` reproduced Connection under C. `Trace-Base-C-20261128-175153098` reproduced it 30.271s after the Host leave request. |
-| CLOSE01-C | Diagnose | COMPLETED | Trace baseline requested the existing reason before MPS leave and closed Host UTP about 0.13s after the request. Client did not receive the reason. Exact queue state and Relay wire delivery remain unmeasured. |
-| CLOSE01-D | Implement | COMPLETED | Session manager sends a reliable notice before teardown and waits for the current peer's departure. Spawn approval rejects new peers while the Host closes. Fixture changes are Development-only. |
-| CLOSE01-E | Validate + Review | COMPLETED | A and three consecutive C/D runs per profile passed. Outbound and Finished re-entry, rematch, D unreachable Host closure and C/D Client loss passed. The ordinary D3D11 pair passed with Development probes and simulator setup excluded. |
-| CLOSE01-F | Finalize | IN_PROGRESS | Scope and evidence reviewed. Compare and stage the exact paths, then commit, push and record the verified live hash in ignored evidence. |
+| FOLLOWUP-A | Explore | COMPLETED | Reconciled Git and historical PRES-09 receipts. |
+| FOLLOWUP-B | Diagnose | COMPLETED | Saved D3D11 first landing reproduced 0.17395m for Orbit on both peers. The Landed snapshot removed reach correction while the evaluated rig still held AirPose. |
+| FOLLOWUP-C | Implement | COMPLETED | Continue the existing capped pose-based correction while Orbit is Landed. |
+| FOLLOWUP-D | Diagnose + Implement | COMPLETED | The archived concurrent capture stopped at Seal sequence 2. The fixture now captures the active banner for the same sequence at end of frame. |
+| FOLLOWUP-E | Validate + Review | COMPLETED | Three saved-route pairs per build, poleRecovery, cameraControls, isolated 0/100% and concurrent transition, recovery retry and both peer grip frames passed. |
+| FOLLOWUP-F | Finalize | IN_PROGRESS | Stage and review the exact task scope, commit, push and verify live main. Publish warmed map and runtime images from clean pushed source. |
 
-Candidate `Build-Dev-20261128-175207804` is traced by `compiled-fixture.txt`, `development-pass-receipts.csv` and the per-run assembly hashes. The baseline and candidate runs use separate evidence folders. See [NET-01 validation](../Playtest/ValidationSummary.md#v3-net-close-01--graceful-session-shutdown) for scope, counters and limits.
-
-Normal run `NormalRelay-20261128-180753815` stopped before room creation when the Windows launcher could not focus a Player. With focus and registry restoration corrected in the local launcher, `NormalRelay-20261128-180903346` passed using the same `Build-Normal-20261128-180515878` artifacts. Official publication is skipped for nonvisual scope. Human playtests, integration and release retain their roadmap states.
+Optional ignored evidence is under `Docs/Development/Presentation/V3-PRES-FOLLOWUP/`. The first diagnostic build picked up an in-progress test source change during player compilation and failed with CS0117. Its log is preserved. The baseline retry held the capture patch separately until the build exited. Baseline `Build-Dev-20261128-183321799` and candidate `Build-Dev-20261128-183932385` have distinct input receipts. The re-entry retry used `Build-Dev-20261128-190651092` after a supplemental camera capture failed on the first recovery run. See [validation](../Playtest/ValidationSummary.md#v3-pres-followup) and optional `grip-metrics.txt`, `root-continuity.txt` and `transition-timeline.txt`. Record commit, push and publication receipts independently in ignored evidence. The historical Client logged Seal sequence 2 first-display at 150.736, then input release at 153.176 after the 151.085 deadline. The exception at the Seal capture aborted the original run before a Return observation. The same archived build reached Return sequence 3 on both peers in isolation.
 
 ## State and handoff
 

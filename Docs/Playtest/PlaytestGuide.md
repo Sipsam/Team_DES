@@ -350,6 +350,15 @@ Build with Unity 6000.3.27f1 using a unique direct child such as `TWIN_EDGE_V3_B
 - Compare matching camera and replay phases when collecting frame timings, batches, allocations and active particles. Record the tested build hashes, graphics API, limitations and any metric unavailable on the capture machine.
 - Use the official map procedure on clean pushed source. Inspect warmed D3D11 images and retain prior commit-qualified sets. Use the same source for fixed render targets from scoped gameplay and record the source and build hashes. Use pose and event logs or short recordings alongside stills for motion evidence. Leave full-world, full-match, E2E and the second human playtest deferred.
 
+## V3-PRES-FOLLOWUP pole and transition evidence
+
+Use the saved mountain plan and the isolated transition cases on Windows D3D11 with Unity 6000.3.27f1. Record the Player hashes and use a new run ID for every pair under the optional ignored `Docs/Development/Presentation/V3-PRES-FOLLOWUP/` evidence root.
+
+- Repeat `mountainExchange` at least three times on each measured build. With `-PolishTrace`, `POLE_GRIP` records evaluated Animator states, snapshot phase and revision, role, peer ownership, render offset and both hand-to-grip distances per frame. Split airborne, first landed frames, stationary grip, movement and the exchange by snapshot and frame. Report sample count, median, P95, maximum and consecutive frames above 0.05m. The disabled capsule's reported grounded flag is diagnostic only. Use the snapshot's phase and support for the attached landing.
+- Use `-PoleGripFrames` on a separate `mountainExchange` run for close views and consecutive frames at landing and exchange. Keep the render cost of these synchronous captures outside the timing comparison.
+- Run `transition` with `-Screenshots -AudioTrace`. Compare the server approval, `MATCH_TRANSITION` display and input messages, and `TRANSITION_CAPTURE` request, end-of-frame visibility and saved or missed messages by sequence on both peers. The driver checks the actual active banner before capturing the fixed layout, and the launcher checks each peer's capture files separately from the gameplay completion markers. Use `transitionRecovery` for re-entry and retain the independently generated evidence.
+- Exercise local effect intensity at 0% and 100%, restore the prior setting, and record the capture frame and setting. Use the regular seal interaction and first pickup approvals in these cases. Document actual overlap when repeating a transition with a second active D3D11 pair. Full-world and full-match validation remain deferred.
+
 ## V3-PRES-10 presentation integration
 
 Use a unique Development build and evidence run for each Windows D3D11 pair.
